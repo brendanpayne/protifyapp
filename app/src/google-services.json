@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "925699968165",
+    "project_id": "protify-6f6dd",
+    "storage_bucket": "protify-6f6dd.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:925699968165:android:c37b42f67db1f09529d14c",
+        "android_client_info": {
+          "package_name": "com.protify.protifyapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSuxzbmkvHRe_LzBgYGBE-Zi-KlqPKsnc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
