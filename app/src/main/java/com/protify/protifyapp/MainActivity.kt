@@ -47,6 +47,9 @@ class MainActivity : ComponentActivity() {
                        composable("login") {
                         LoginActivity().LoginPage(navController = navController)
                        }
+                       composable("home") {
+                           HomeActivity().HomePage(navController = navController)
+                       }
                    }
                 }
 
