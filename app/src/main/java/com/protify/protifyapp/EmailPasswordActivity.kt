@@ -12,6 +12,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
 class EmailPasswordActivity : Activity() {
+
     // [START declare_auth]
     private lateinit var auth: FirebaseAuth
     // [END declare_auth]
@@ -32,7 +33,6 @@ class EmailPasswordActivity : Activity() {
         // Check if user is signed in (non-null) and update UI accordingly.
         val currentUser = auth.currentUser
         if (currentUser != null) {
-            reload()
         }
         // [END on_start_check_user]
     }
@@ -44,7 +44,6 @@ class EmailPasswordActivity : Activity() {
                     // Sign in success, update UI with the signed-in user's information
                     Log.d(TAG, "createUserWithEmail:success")
                     val user = auth.currentUser
-                    updateUI(user)
                 } else {
                     // If sign in fails, display a message to the user
                     Log.w(TAG, "createUserWithEmail:failure", task.exception)
@@ -53,41 +52,19 @@ class EmailPasswordActivity : Activity() {
                         "Account Creation Failed",
                         Toast.LENGTH_SHORT,
                     ).show()
-                    updateUI(null)
                 }
             }
     }
     fun signIn(email: String, password: String): Task<AuthResult> {
         // [START sign_in_with_email]
-//        auth.signInWithEmailAndPassword(email, password)
-//            .addOnCompleteListener(this) {task ->
-//                if (task.isSuccessful) {
-//                    Log.d(TAG, "signInWithEmail:success")
-//                    val user = auth.currentUser
-//                } else {
-//                    // If sign in fails, display a message to the user
-//                    Log.w(TAG, "signInWithEmail:failure", task.exception)
-//                    Toast.makeText(
-//                        baseContext,
-//                        "Authentication failed.",
-//                        Toast.LENGTH_SHORT,
-//                    ).show()
-//
-//
-//                }
-//            }
-
         return auth.signInWithEmailAndPassword(email,password)
         // [END sign_in_with_email]
     }
-
-
-    private fun updateUI(user: FirebaseUser?) {
-        //Logic goes here
+    public fun getCurrentUser(): FirebaseUser? {
+        //This is for passing the user's info to the home page
+        return auth.currentUser
     }
-    private fun reload() {
-        //Logic goes here
-    }
+
     companion object {
         private const val TAG = "EmailPassword"
     }
