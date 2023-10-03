@@ -1,5 +1,6 @@
 package com.protify.protifyapp
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.Button
 import androidx.compose.material.Text
@@ -9,12 +10,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.navigation.NavController
 
 class LoginActivity {
-
-     var email = "tommy.mcreynolds@gmail.com"
-     var password = "testpassword"
-     val emailPasswordActivity = EmailPasswordActivity()
+    var email = "tommy.mcreynolds@gmail.com"
+    var password = "testpassword"
+    val emailPasswordActivity = EmailPasswordActivity()
     @Composable
-    fun LandingPage(navController : NavController) {
+    fun LoginPage(navController : NavController) {
         Column {
             TextField(
                 value = email,
@@ -27,9 +27,26 @@ class LoginActivity {
                 label = { Text("Password") },
                 visualTransformation = PasswordVisualTransformation()
             )
-            Button(onClick = { EmailPasswordActivity().createAccount(email, password) }) {
-                Text("Create Account")
+            Button(onClick = {
+                EmailPasswordActivity().signIn(email, password).addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        // Sign in success, update UI with the signed-in user's information
+                        task.result?.user?.let {
+//                            navController.navigate("home")
+                        }
+                    } else {
+                       Toast.makeText(
+                           navController.context,
+                           "Login Failed",
+                           Toast.LENGTH_SHORT,
+                       ).show()
+                    }
+                }
+            }) {
+                Text("Login")
             }
+
         }
+
     }
-    }
+}
