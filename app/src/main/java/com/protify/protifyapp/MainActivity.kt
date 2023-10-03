@@ -3,6 +3,7 @@ package com.protify.protifyapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
@@ -27,24 +28,31 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colors.background
                 ) {
                     //Greeting("Android")
-                    val loginPage = LoginActivity();
-
+                    var state = false
                     val navController = rememberNavController()
                    NavHost(navController = navController, startDestination = "main") {
                           composable("main") {
-                            Button(onClick = {navController.navigate("login") }) {
-                                 Text("Login Page")
-                            }
+                              Row {
+                                  Button(onClick = { navController.navigate("register") }) {
+                                      Text("Register")
+                                  }
+                                  Button(onClick = { navController.navigate("login") }) {
+                                      Text("Login")
+                                  }
+                              }
                           }
-                       composable("login") {
-                           loginPage.LandingPage(navController = navController)
+                       composable("register") {
+                           RegisterActivity().LandingPage(navController = navController)
                    }
-                    }
+                       composable("login") {
+                        LoginActivity().LoginPage(navController = navController)
+                       }
+                   }
                 }
+
             }
         }
     }
-}
 
 @Composable
 fun Greeting(name: String) {
@@ -60,6 +68,6 @@ fun DefaultPreview() {
 }
 @Preview(showBackground = true)
 @Composable
-fun LoginPage() {
+fun RegisterPage() {
     Text(text = "Success!")
-}
+}}
