@@ -8,13 +8,13 @@ class HomeActivity {
     @Composable
     fun HomePage(navController: NavController) {
         //Get the current user from the EmailPasswordActivity class
-        val user = EmailPasswordActivity().getCurrentUser()
+        val user = FirebaseLoginHelper().getCurrentUser()
         //Display the user's email
         Text(text = "Welcome ${user?.email}")
         if (user != null) {
             //Get the user's information from the database
 
-            FireStoreHelper().userExists(user.uid, user.metadata!!.creationTimestamp)
+            FirestoreHelper().userExists(user.uid, user.metadata!!.creationTimestamp)
         }
     }
 }

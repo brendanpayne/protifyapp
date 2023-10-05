@@ -1,18 +1,14 @@
 package com.protify.protifyapp
 
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
 
-class FireStoreHelper {
-    private val db = Firebase.firestore
-    init {
-        // [START initialize_firestore]
-        val db = Firebase.firestore
-        // [END initialize_firestore]
-    }
+class FirestoreHelper {
+    private val db: FirebaseFirestore = Firebase.firestore
 
 
 
