@@ -1,5 +1,6 @@
 package com.protify.protifyapp
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.Button
 import androidx.compose.material.Text
@@ -12,7 +13,7 @@ class RegisterActivity {
 
      var email = "tommy.mcreynolds@gmail.com"
      var password = "testpassword"
-     val emailPasswordActivity = EmailPasswordActivity()
+     val firebaseLoginHelper = FirebaseLoginHelper()
     @Composable
     fun LandingPage(navController : NavController) {
         Column {
@@ -27,7 +28,17 @@ class RegisterActivity {
                 label = { Text("Password") },
                 visualTransformation = PasswordVisualTransformation()
             )
-            Button(onClick = { EmailPasswordActivity().createAccount(email, password) }) {
+            Button(onClick = { firebaseLoginHelper.createAccount(email, password)
+                .addOnCompleteListener {task ->
+                    if(task.isSuccessful) {
+                        navController.navigate("home")
+                    }
+                    else {
+                        task.exception?.localizedMessage?.let {
+                            Toast.makeText( navController.context, it, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }}) {
                 Text("Create Account")
             }
         }
