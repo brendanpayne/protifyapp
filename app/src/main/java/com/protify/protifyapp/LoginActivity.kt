@@ -12,7 +12,7 @@ import androidx.navigation.NavController
 class LoginActivity {
     var email = "tommy.mcreynolds@gmail.com"
     var password = "testpassword"
-    val emailPasswordActivity = EmailPasswordActivity()
+    val firebaseLoginHelper = FirebaseLoginHelper()
     @Composable
     fun LoginPage(navController : NavController) {
         Column {
@@ -28,11 +28,11 @@ class LoginActivity {
                 visualTransformation = PasswordVisualTransformation()
             )
             Button(onClick = {
-                EmailPasswordActivity().signIn(email, password).addOnCompleteListener { task ->
+                FirebaseLoginHelper().signIn(email, password).addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         // Sign in success, update UI with the signed-in user's information
                         task.result?.user?.let {
-//                            navController.navigate("home")
+                            navController.navigate("home")
                         }
                     } else {
                        Toast.makeText(
