@@ -3,13 +3,18 @@ package com.protify.protifyapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.protify.protifyapp.ui.theme.ProtifyTheme
 
 class MainActivity : ComponentActivity() {
@@ -22,12 +27,35 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colors.background
                 ) {
-                    Greeting("Android")
+                    //Greeting("Android")
+                    var state = false
+                    val navController = rememberNavController()
+                   NavHost(navController = navController, startDestination = "main") {
+                          composable("main") {
+                              Row {
+                                  Button(onClick = { navController.navigate("register") }) {
+                                      Text("Register")
+                                  }
+                                  Button(onClick = { navController.navigate("login") }) {
+                                      Text("Login")
+                                  }
+                              }
+                          }
+                       composable("register") {
+                           RegisterActivity().LandingPage(navController = navController)
+                   }
+                       composable("login") {
+                        LoginActivity().LoginPage(navController = navController)
+                       }
+                       composable("home") {
+                           HomeActivity().HomePage(navController = navController)
+                       }
+                   }
                 }
+
             }
         }
     }
-}
 
 @Composable
 fun Greeting(name: String) {
@@ -41,3 +69,8 @@ fun DefaultPreview() {
         Greeting("Android")
     }
 }
+@Preview(showBackground = true)
+@Composable
+fun RegisterPage() {
+    Text(text = "Success!")
+}}
