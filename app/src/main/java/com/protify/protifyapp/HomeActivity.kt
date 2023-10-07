@@ -3,6 +3,7 @@ package com.protify.protifyapp
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
+import java.time.LocalDateTime
 
 class HomeActivity {
     @Composable
@@ -14,7 +15,21 @@ class HomeActivity {
         if (user != null) {
             //Get the user's information from the database
 
-            FirestoreHelper().userExists(user.uid, user.metadata!!.creationTimestamp)
+            FirestoreHelper().userExists(user.uid, user.metadata!!.creationTimestamp) {userExists ->
+                if (userExists) {
+                    FirestoreHelper().addEvent(user.uid, FirestoreEvent(
+                        name = "Test Event",
+                        startTime = LocalDateTime.now(),
+                        endTime = LocalDateTime.now(),
+                        location = "Test Location",
+                        description = "Test Description",
+                        timeZone = "Test Timezone",
+                        importance = 1,
+                        attendees = null
+                    ))
+
+                }
+            }
         }
     }
 }
