@@ -1,34 +1,36 @@
 package com.protify.protifyapp
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.protify.protifyapp.features.calendar.CalendarView
+import com.protify.protifyapp.features.login.FirebaseLoginHelper
+import java.time.LocalDateTime
 
 class HomeActivity {
     @Composable
-    fun HomePage(modifier: Modifier = Modifier, navController: NavController? = null) {
-        Column(modifier = modifier.fillMaxSize()) {
-            // TODO: Add a greeting based on the time of day and logged in user.
-            val greeting = "Good Morning, Tom"
-            Text(
-                text = greeting,
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.h4
-            )
-            CalendarView().Calendar()
+    fun HomePage(navController: NavController) {
+        //Get the current user from the EmailPasswordActivity class
+        val user = FirebaseLoginHelper().getCurrentUser()
+        //Display the user's email
+        Text(text = "Welcome ${user?.email}")
+        if (user != null) {
+            //Get the user's information from the database
+
+            FirestoreHelper().userExists(user.uid, user.metadata!!.creationTimestamp) {userExists ->
+                if (userExists) {
+                    FirestoreHelper().addEvent(user.uid, FirestoreEvent(
+                        name = "Test Event",
+                        startTime = LocalDateTime.now(),
+                        endTime = LocalDateTime.now(),
+                        location = "Test Location",
+                        description = "Test Description",
+                        timeZone = "Test Timezone",
+                        importance = 1,
+                        attendees = null
+                    ))
+
+                }
+            }
         }
-    }
-    @Preview(showSystemUi = true)
-    @Composable
-    fun CalendarAppPreview() {
-        HomePage()
     }
 }

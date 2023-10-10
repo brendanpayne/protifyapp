@@ -1,5 +1,6 @@
 package com.protify.protifyapp
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -7,7 +8,6 @@ import java.util.UUID
 
 class FirestoreHelper {
     private val db: FirebaseFirestore = Firebase.firestore
-
 
     fun userExists(uid: String, dateCreated: Long, callback: (Boolean) -> Unit) {
         // [START get_document]
@@ -54,8 +54,10 @@ class FirestoreHelper {
                 .document(UUID.randomUUID().toString())
                 .set(FirestoreEventEntry)
                 .addOnSuccessListener { documentReference ->
+                    Log.d("GoogleFirestore", "DocumentSnapshot added with ID: ${documentReference}")
                 }
                 .addOnFailureListener { e ->
+                    Log.d("GoogleFirestore", "Error adding document", e)
                 }
 
     }

@@ -1,4 +1,4 @@
-package com.protify.protifyapp
+package com.protify.protifyapp.features.login
 
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.AuthResult
