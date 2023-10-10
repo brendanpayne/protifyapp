@@ -3,6 +3,7 @@ package com.protify.protifyapp
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
+import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import java.time.LocalDateTime
 
 class HomeActivity {

@@ -15,6 +15,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.protify.protifyapp.features.login.LoginActivity
+import com.protify.protifyapp.features.login.RegisterActivity
 import com.protify.protifyapp.ui.theme.ProtifyTheme
 
 class MainActivity : ComponentActivity() {
