@@ -13,24 +13,32 @@ class HomeActivity {
         val user = FirebaseLoginHelper().getCurrentUser()
         //Display the user's email
         Text(text = "Welcome ${user?.email}")
+
+        var networkManager = NetworkManager(navController.context)
+        networkManager.startListening()
+        var test = networkManager.isConnected()
         if (user != null) {
             //Get the user's information from the database
+            FirestoreHelper().toggleOfflineOnline(networkManager.isConnected()) {hasRan ->
+                if (hasRan) {
+                    FirestoreHelper().userExists(user.uid, user.metadata!!.creationTimestamp) {userExists ->
+                        if (userExists) {
+                            FirestoreHelper().addEvent(user.uid, FirestoreEvent(
+                                name = "Test Event",
+                                startTime = LocalDateTime.now(),
+                                endTime = LocalDateTime.now(),
+                                location = "Test Location",
+                                description = "Test Description",
+                                timeZone = "Test Timezone",
+                                importance = 1,
+                                attendees = null
+                            ))
 
-            FirestoreHelper().userExists(user.uid, user.metadata!!.creationTimestamp) {userExists ->
-                if (userExists) {
-                    FirestoreHelper().addEvent(user.uid, FirestoreEvent(
-                        name = "Test Event",
-                        startTime = LocalDateTime.now(),
-                        endTime = LocalDateTime.now(),
-                        location = "Test Location",
-                        description = "Test Description",
-                        timeZone = "Test Timezone",
-                        importance = 1,
-                        attendees = null
-                    ))
-
+                        }
+                    }
                 }
             }
+
         }
     }
 }
