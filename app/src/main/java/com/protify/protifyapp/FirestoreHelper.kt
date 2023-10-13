@@ -2,6 +2,7 @@ package com.protify.protifyapp
 
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import java.util.UUID
@@ -54,11 +55,54 @@ class FirestoreHelper {
                 .document(UUID.randomUUID().toString())
                 .set(FirestoreEventEntry)
                 .addOnSuccessListener { documentReference ->
-                    Log.d("GoogleFirestore", "DocumentSnapshot added with ID: ${documentReference}")
+                    Log.d("GoogleFirestore", "DocumentSnapshot added successfully")
                 }
                 .addOnFailureListener { e ->
                     Log.d("GoogleFirestore", "Error adding document", e)
                 }
 
+    }
+    fun toggleOfflineOnline(isConnected: Boolean, callback: (Boolean) -> Unit) {
+        // [START disable_network]
+        db.disableNetwork()
+            .addOnCompleteListener {
+                Log.d("GoogleFirestore", "Network disabled")
+                if (!isConnected) {
+                    offlineListener("test")
+                    callback(true)
+                }
+            }
+        // [END disable_network]
+
+        // [START enable_network]
+        if(isConnected) {
+            db.enableNetwork()
+                .addOnSuccessListener {
+                    Log.d("GoogleFirestore", "Network enabled")
+                    callback(true)
+                }
+                .addOnFailureListener { e ->
+                    Log.w("GoogleFirestore", "Error enabling network", e)
+                    callback(true)
+                }
+        }
+
+        // [END enable_network]
+    }
+    private fun offlineListener(uid: String) {
+        // [START offline_listener]
+        db.collection("users")
+            .document(uid)
+            .addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, e ->
+                if (e != null) {
+                    Log.w("GoogleFirestore", "Listen failed.", e)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null && snapshot.metadata.isFromCache) {
+                    Log.d("GoogleFirestore", "Data fetched from local cache")
+                } else {
+                    Log.d("GoogleFirestore", "Data fetched from server")
+                }
+            }
     }
 }
