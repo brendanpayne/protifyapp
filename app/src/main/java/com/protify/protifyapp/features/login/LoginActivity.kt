@@ -1,4 +1,4 @@
-package com.protify.protifyapp
+package com.protify.protifyapp.features.login
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
