@@ -5,9 +5,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import java.util.UUID
 
-class FirestoreHelper {
+class FirestoreHelper() {
     private val db: FirebaseFirestore = Firebase.firestore
 
     fun userExists(uid: String, dateCreated: Long, callback: (Boolean) -> Unit) {
@@ -16,6 +15,8 @@ class FirestoreHelper {
         docRef.get()
             .addOnSuccessListener { document ->
                 if (document.exists()) {
+                    offlineListener(uid)
+                    Log.d("GoogleFirestore", "User exists in Firestore. Offline listener added")
                     callback(true)
                 } else {
                     createUserDocument(uid, dateCreated)
@@ -31,8 +32,12 @@ class FirestoreHelper {
         db.collection("users").document(uid)
             .set(user)
             .addOnSuccessListener { documentReference ->
+                userExists(uid, dateCreated) { userExists ->
+                    Log.d("GoogleFirestore", "User added successfully to Firestore with uid: $uid")
+                }
             }
             .addOnFailureListener { e ->
+                Log.d("GoogleFirestore", "Error adding user to Firestore", e)
             }
     }
     fun addEvent (uid: String, event: FirestoreEvent) {
@@ -50,26 +55,22 @@ class FirestoreHelper {
                 .collection("events")
                 .document(event.startTime.year.toString())
                 .collection(event.startTime.month.toString())
-                .document(event.startTime.dayOfMonth.toString())
-                .collection("events")
-                .document(UUID.randomUUID().toString())
+                .document()
                 .set(FirestoreEventEntry)
                 .addOnSuccessListener { documentReference ->
-                    Log.d("GoogleFirestore", "DocumentSnapshot added successfully")
+                    Log.d("GoogleFirestore", "Document added successfully")
                 }
                 .addOnFailureListener { e ->
                     Log.d("GoogleFirestore", "Error adding document", e)
                 }
 
     }
-    fun toggleOfflineOnline(isConnected: Boolean, callback: (Boolean) -> Unit) {
+    fun toggleOfflineOnline(isConnected: Boolean) {
         // [START disable_network]
+        if (!isConnected) {
         db.disableNetwork()
             .addOnCompleteListener {
                 Log.d("GoogleFirestore", "Network disabled")
-                if (!isConnected) {
-                    offlineListener("test")
-                    callback(true)
                 }
             }
         // [END disable_network]
@@ -79,11 +80,9 @@ class FirestoreHelper {
             db.enableNetwork()
                 .addOnSuccessListener {
                     Log.d("GoogleFirestore", "Network enabled")
-                    callback(true)
                 }
                 .addOnFailureListener { e ->
                     Log.w("GoogleFirestore", "Error enabling network", e)
-                    callback(true)
                 }
         }
 
