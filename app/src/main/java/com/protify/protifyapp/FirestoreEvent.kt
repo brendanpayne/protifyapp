@@ -3,7 +3,7 @@ package com.protify.protifyapp
 import android.provider.CalendarContract.Attendees
 import java.time.LocalDateTime
 
-data class FirestoreEvent(
+class FirestoreEvent(
     val name: String,
     val startTime: LocalDateTime,
     val endTime: LocalDateTime,
@@ -15,29 +15,33 @@ data class FirestoreEvent(
 
 
 
-)
-fun validateEvent(event: FirestoreEvent): List<Error> {
-    val errors = mutableListOf<Error>()
-    validateName(event.name)?.let { errors.add(it) }
-    event.description?.let { validateDescription(it)?.let { errors.add(it) } }
-    event.importance?.let { validateImportance(it)?.let { errors.add(it) } }
-    return errors
-}
-private fun validateName(name: String): Error? {
-    if (name.length > 50) {
-        return Error("Name is too long")
+) {
+    fun validateEvent(event: FirestoreEvent): List<Error> {
+        val errors = mutableListOf<Error>()
+        validateName(event.name)?.let { errors.add(it) }
+        event.description?.let { validateDescription(it)?.let { errors.add(it) } }
+        event.importance?.let { validateImportance(it)?.let { errors.add(it) } }
+        return errors
     }
-    return null
-}
-private fun validateDescription(description: String): Error? {
-    if (description.length > 250) {
-        return Error("Description is too long")
+
+    private fun validateName(name: String): Error? {
+        if (name.length > 50) {
+            return Error("Name is too long")
+        }
+        return null
     }
-    return null
-}
-private fun validateImportance(importance: Int): Error? {
-    if (importance < 1 || importance > 5) {
-        return Error("Importance must be between 1 and 5")
+
+    private fun validateDescription(description: String): Error? {
+        if (description.length > 250) {
+            return Error("Description is too long")
+        }
+        return null
     }
-    return null
+
+    private fun validateImportance(importance: Int): Error? {
+        if (importance < 1 || importance > 5) {
+            return Error("Importance must be between 1 and 5")
+        }
+        return null
+    }
 }
