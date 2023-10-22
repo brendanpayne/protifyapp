@@ -30,7 +30,6 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colors.background
                 ) {
                     //Greeting("Android")
-                    var state = false
                     val navController = rememberNavController()
                    NavHost(navController = navController, startDestination = "main") {
                           composable("main") {
@@ -44,10 +43,18 @@ class MainActivity : ComponentActivity() {
                               }
                           }
                        composable("register") {
-                           RegisterActivity().LandingPage(navController = navController)
+                           RegisterActivity().LandingPage() {
+                               LoginActivity().navigateToHomePage(
+                                   navController = navController
+                               )
+                           }
                    }
                        composable("login") {
-                        LoginActivity().LoginPage(navController = navController)
+                        LoginActivity().LoginPage {
+                            LoginActivity().navigateToHomePage(
+                                navController = navController
+                            )
+                        }
                        }
                        composable("home") {
                            HomeActivity().HomePage(navController = navController)

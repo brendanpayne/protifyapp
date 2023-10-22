@@ -1,13 +1,14 @@
 package com.protify.protifyapp.features.login
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.navigation.NavController
 
 class RegisterActivity {
 
@@ -15,7 +16,8 @@ class RegisterActivity {
      var password = "testpassword"
      val firebaseLoginHelper = FirebaseLoginHelper()
     @Composable
-    fun LandingPage(navController : NavController) {
+    fun LandingPage(navigateToHomePage: () -> Unit) {
+        val context = LocalContext.current
         Column {
             TextField(
                 value = email,
@@ -31,11 +33,13 @@ class RegisterActivity {
             Button(onClick = { firebaseLoginHelper.createAccount(email, password)
                 .addOnCompleteListener {task ->
                     if(task.isSuccessful) {
-                        navController.navigate("home")
+                        Log.d("RegisterActivity", task.result?.user!!.uid)
+                        navigateToHomePage()
                     }
                     else {
                         task.exception?.localizedMessage?.let {
-                            Toast.makeText( navController.context, it, Toast.LENGTH_SHORT).show()
+                            Log.d("RegisterActivity", it)
+                            Toast.makeText( context, it, Toast.LENGTH_SHORT).show()
                         }
                     }
                 }}) {

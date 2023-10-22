@@ -6,15 +6,17 @@ import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.navigation.NavController
 
 class LoginActivity {
-    var email = "tommy.mcreynolds@gmail.com"
+    var email = "tommy.mcreynolds1@gmail.com"
     var password = "testpassword"
     val firebaseLoginHelper = FirebaseLoginHelper()
     @Composable
-    fun LoginPage(navController : NavController) {
+    fun LoginPage(navigateToHomePage: () -> Unit) {
+        val context = LocalContext.current
         Column {
             TextField(
                 value = email,
@@ -32,14 +34,16 @@ class LoginActivity {
                     if (task.isSuccessful) {
                         // Sign in success, update UI with the signed-in user's information
                         task.result?.user?.let {
-                            navController.navigate("home")
+                            //navController.navigate("home")
+                            navigateToHomePage()
                         }
                     } else {
                        Toast.makeText(
-                           navController.context,
+                           context,
                            "Login Failed",
                            Toast.LENGTH_SHORT,
                        ).show()
+                        navigateToHomePage()
                     }
                 }
             }) {
@@ -48,5 +52,8 @@ class LoginActivity {
 
         }
 
+    }
+    fun navigateToHomePage(navController: NavController) {
+        navController.navigate("home")
     }
 }
