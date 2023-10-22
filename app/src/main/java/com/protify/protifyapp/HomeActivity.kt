@@ -38,7 +38,7 @@ class HomeActivity {
         }
                     FirestoreHelper().userExists(user!!.uid, user.metadata!!.creationTimestamp) {userExists ->
                         if (userExists) {
-                            FirestoreHelper().addEvent(user.uid, FirestoreEvent(
+                            FirestoreHelper().createEvent(user.uid, FirestoreEvent(
                                 name = "Test Event",
                                 startTime = LocalDateTime.now(),
                                 endTime = LocalDateTime.now(),

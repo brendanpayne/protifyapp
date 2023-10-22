@@ -40,29 +40,34 @@ class FirestoreHelper() {
                 Log.d("GoogleFirestore", "Error adding user to Firestore", e)
             }
     }
-    fun addEvent (uid: String, event: FirestoreEvent) {
-            val FirestoreEventEntry = hashMapOf(
-                "name" to event.name,
-                "startTime" to event.startTime,
-                "endTime" to event.endTime,
-                "location" to event.location,
-                "description" to event.description,
-                "timeZone" to event.timeZone,
-                "importance" to event.importance,
-                "attendees" to event.attendees,        )
-            db.collection("users")
-                .document(uid)
-                .collection("events")
-                .document(event.startTime.year.toString())
-                .collection(event.startTime.month.toString())
-                .document()
-                .set(FirestoreEventEntry)
-                .addOnSuccessListener { documentReference ->
-                    Log.d("GoogleFirestore", "Document added successfully")
-                }
-                .addOnFailureListener { e ->
-                    Log.d("GoogleFirestore", "Error adding document", e)
-                }
+    fun createEvent (uid: String, event: FirestoreEvent) {
+            if (event.validateEvent(event).isEmpty()) {
+                val FirestoreEventEntry = hashMapOf(
+                    "name" to event.name,
+                    "startTime" to event.startTime,
+                    "endTime" to event.endTime,
+                    "location" to event.location,
+                    "description" to event.description,
+                    "timeZone" to event.timeZone,
+                    "importance" to event.importance,
+                    "attendees" to event.attendees,        )
+                db.collection("users")
+                    .document(uid)
+                    .collection("events")
+                    .document(event.startTime.year.toString())
+                    .collection(event.startTime.month.toString())
+                    .document()
+                    .set(FirestoreEventEntry)
+                    .addOnSuccessListener { documentReference ->
+                        Log.d("GoogleFirestore", "Document added successfully")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.d("GoogleFirestore", "Error adding document", e)
+                    }
+            } else {
+                Log.d("GoogleFirestore", "Event failed validation with errors: " + event.validateEvent(event))
+            }
+
 
     }
     fun toggleOfflineOnline(isConnected: Boolean) {
