@@ -12,12 +12,17 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 class RegisterActivity {
 
-     var email = "tommy.mcreynolds@gmail.com"
-     var password = "testpassword"
+     //var email = "tommy.mcreynolds@gmail.com"
+     //var password = "testpassword"
+    var email = ""
+    var password = ""
      val firebaseLoginHelper = FirebaseLoginHelper()
+
+
     @Composable
     fun LandingPage(navigateToHomePage: () -> Unit) {
         val context = LocalContext.current
+        Log.d("RegisterActivity", "LandingPage")
         Column {
             TextField(
                 value = email,
@@ -30,19 +35,19 @@ class RegisterActivity {
                 label = { Text("Password") },
                 visualTransformation = PasswordVisualTransformation()
             )
-            Button(onClick = { firebaseLoginHelper.createAccount(email, password)
-                .addOnCompleteListener {task ->
-                    if(task.isSuccessful) {
-                        Log.d("RegisterActivity", task.result?.user!!.uid)
+            Button(onClick = {
+                firebaseLoginHelper.createAccountCallback(email, password) { success, failure ->
+                    if(success) {
                         navigateToHomePage()
                     }
                     else {
-                        task.exception?.localizedMessage?.let {
-                            Log.d("RegisterActivity", it)
-                            Toast.makeText( context, it, Toast.LENGTH_SHORT).show()
+                        if (failure != null) {
+                            Toast.makeText(context, failure, Toast.LENGTH_SHORT).show()
+                            Log.d("RegisterActivity", failure)
                         }
                     }
-                }}) {
+                }
+            }) {
                 Text("Create Account")
             }
         }

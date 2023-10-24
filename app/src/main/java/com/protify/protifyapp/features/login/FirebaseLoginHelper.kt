@@ -26,4 +26,13 @@ class FirebaseLoginHelper {
         //This is for passing the user's info to the home page
         return auth.currentUser
     }
-}
+    fun createAccountCallback(email: String, password: String, callback: (Boolean, String?)-> Unit) {
+    auth.createUserWithEmailAndPassword(email, password)
+        .addOnSuccessListener { result ->
+            callback(true, null)
+        }
+        .addOnFailureListener { exception ->
+            callback(false, exception.localizedMessage)
+            }
+        }
+    }
