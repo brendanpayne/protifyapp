@@ -1,20 +1,28 @@
 package com.protify.protifyapp
 
-import androidx.compose.material.Text
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.protify.protifyapp.features.calendar.CalendarView
 
 class HomeActivity {
     @Composable
-    fun HomePage(navController: NavController) {
-        //Get the current user from the EmailPasswordActivity class
-        val user = FirebaseLoginHelper().getCurrentUser()
-        //Display the user's email
-        Text(text = "Welcome ${user?.email}")
-        if (user != null) {
-            //Get the user's information from the database
-
-            FirestoreHelper().userExists(user.uid, user.metadata!!.creationTimestamp)
+    fun HomePage(modifier: Modifier = Modifier, navController: NavController? = null) {
+        Column(modifier = modifier.fillMaxSize()) {
+            CalendarView().Header()
+            CalendarView().CalendarContent()
         }
+    }
+    @Preview(showSystemUi = true)
+    @Composable
+    fun CalendarAppPreview() {
+        HomePage(
+            modifier = Modifier.padding(16.dp)
+        )
     }
 }
