@@ -1,20 +1,24 @@
 package com.protify.protifyapp.features.calendar
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.*
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.protify.protifyapp.utils.EventUtils
+import com.protify.protifyapp.utils.DateUtils
 
 class CalendarView {
-    private val eventUtils = EventUtils()
-    private var currentDate: String = eventUtils.parseCurrentDate()
+    private val dateUtils = DateUtils()
+    private var currentDate: String = dateUtils.formatDate(dateUtils.getCurrentDate())
     @Composable
     fun Header() {
         Row{
@@ -47,26 +51,32 @@ class CalendarView {
 
     @Composable
     fun CalendarItem(day: String, date: String) {
-        Card(
-            modifier = Modifier
-                .padding(vertical = 4.dp, horizontal = 4.dp)
-        ) {
-            Column(
+        Column {
+            Text(
+                text = day,
                 modifier = Modifier
-                    .width(40.dp)
-                    .height(48.dp)
-                    .padding(4.dp)
+                    .padding(vertical = 4.dp, horizontal = 4.dp)
+                    .align(Alignment.CenterHorizontally),
+                style = MaterialTheme.typography.body2,
+                textAlign = TextAlign.Center,
+            )
+            Card(
+                modifier = Modifier.padding(vertical = 4.dp, horizontal = 4.dp),
+                shape = RoundedCornerShape(20.dp),
             ) {
-                Text(
-                    text = day,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    style = MaterialTheme.typography.body1
-                )
-                Text(
-                    text = date,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    style = MaterialTheme.typography.body2
-                )
+                Column(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(40.dp)
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        text = date,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        style = MaterialTheme.typography.body2,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
     }
@@ -74,8 +84,27 @@ class CalendarView {
     @Composable
     fun  CalendarContent() {
         LazyRow {
-            items(items = List(7) { Pair("Sun", "1") }) { date ->
+            items(items = List(7) { Pair("S", "1") }) { date ->
                 CalendarItem(date.first, date.second)
+            }
+        }
+    }
+
+    @Composable
+    fun Calendar() {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(150.dp)
+                .background(
+                    color = Color(0xFFF5F5F5)
+                )
+        ) {
+            Column (
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Header()
+                CalendarContent()
             }
         }
     }
