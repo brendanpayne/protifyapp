@@ -1,6 +1,7 @@
 package com.protify.protifyapp.utils
 
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -22,5 +23,11 @@ class DateUtils {
 
     fun getDifferenceBetweenDates(date1: Date, date2: Date): Int {
         return 0
+    }
+
+    companion object {
+        fun getDayOfWeek(date: LocalDate): String {
+            return SimpleDateFormat("E", Locale.getDefault()).format(date)
+        }
     }
 }

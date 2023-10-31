@@ -1,16 +1,17 @@
 package com.protify.protifyapp.features.calendar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.outlined.KeyboardArrowRight
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.*
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -20,18 +21,22 @@ class CalendarView {
     private val dateUtils = DateUtils()
     private var currentDate: String = dateUtils.formatDate(dateUtils.getCurrentDate())
     @Composable
-    fun Header() {
+    fun CalendarHeader(data: CalendarUiModel) {
         Row{
             Text(
-                text = currentDate,
+                text = if (data.selectedDate.isToday) "Today" else data.selectedDate.date.toString(),
                 modifier = Modifier
                     .padding(16.dp)
-                    .clickable(onClick = { /*TODO: When Clicking on the Date do something*/ })
+                    .clickable(indication = null, interactionSource = MutableInteractionSource(),
+                        onClick = {
+                        // TODO: When Clicking on the Date, toggle month view
+
+                    })
                     .weight(1f)
                     .align(Alignment.CenterVertically)
             )
             IconButton(
-                onClick = { /*TODO: When Clicking on the Left Arrow do something*/ }
+                onClick = { TODO("Cycle through previous dates.") }
             ) {
                 Icon(
                     imageVector = Icons.Outlined.KeyboardArrowLeft,
@@ -39,7 +44,7 @@ class CalendarView {
                 )
             }
             IconButton(
-                onClick = { /*TODO: When Clicking on the Right Arrow do something*/ }
+                onClick = { TODO("Cycle through future dates.") }
             ) {
                 Icon(
                     imageVector = Icons.Outlined.KeyboardArrowRight,
@@ -49,20 +54,31 @@ class CalendarView {
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun CalendarItem(day: String, date: String) {
+    fun CalendarItem(date: CalendarUiModel.Date) {
         Column {
             Text(
-                text = day,
+                text = date.day,
                 modifier = Modifier
                     .padding(vertical = 4.dp, horizontal = 4.dp)
                     .align(Alignment.CenterHorizontally),
-                style = MaterialTheme.typography.body2,
+                style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
             )
-            Card(
+            ElevatedCard(
+                onClick = {
+                    // TODO: When Clicking on the Date, highlight the date and show the events for that date
+                },
                 modifier = Modifier.padding(vertical = 4.dp, horizontal = 4.dp),
                 shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = if (date.isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.secondary
+                    },
+                )
             ) {
                 Column(
                     modifier = Modifier
@@ -71,9 +87,9 @@ class CalendarView {
                         .padding(10.dp)
                 ) {
                     Text(
-                        text = date,
+                        text = date.date.dayOfMonth.toString(),
                         modifier = Modifier.align(Alignment.CenterHorizontally),
-                        style = MaterialTheme.typography.body2,
+                        style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
                     )
                 }
@@ -82,16 +98,18 @@ class CalendarView {
     }
 
     @Composable
-    fun  CalendarContent() {
+    fun  CalendarContent(data: CalendarUiModel) {
         LazyRow {
-            items(items = List(7) { Pair("S", "1") }) { date ->
-                CalendarItem(date.first, date.second)
+            items(items = data.visibleDates) { date ->
+                CalendarItem(date)
             }
         }
     }
 
     @Composable
     fun Calendar() {
+        val dataSource = CalendarDataSource()
+        val calendarUiModel = dataSource.getData(lastSelectedDate = dataSource.today)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -103,8 +121,8 @@ class CalendarView {
             Column (
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Header()
-                CalendarContent()
+                CalendarHeader(data = calendarUiModel)
+                CalendarContent(data = calendarUiModel)
             }
         }
     }
