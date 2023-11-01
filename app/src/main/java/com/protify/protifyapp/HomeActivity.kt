@@ -1,12 +1,14 @@
 package com.protify.protifyapp
 
-import androidx.compose.material.Text
+import android.util.Log
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import java.time.LocalDateTime
@@ -15,14 +17,21 @@ class HomeActivity {
     @Composable
     fun HomePage(navController: NavController) {
         //Get the current user from the EmailPasswordActivity class
-        var firestoreHelper = FirestoreHelper()
+        val firestoreHelper = FirestoreHelper()
         val user = FirebaseLoginHelper().getCurrentUser()
         //Display the user's email
-        Text(text = "Welcome ${user?.email}")
+        Log.d("HomeActivity", "User email: ${user?.email}")
+        Column {
+            Text(
+                text = "Good Morning, ${user?.email}!",
+                modifier = androidx.compose.ui.Modifier.padding(16.dp),
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
 
-        var networkManager = NetworkManager(navController.context)
+        val networkManager = NetworkManager(navController.context)
 
-        var isConnected by remember { mutableStateOf(false) }
+        val isConnected by remember { mutableStateOf(false) }
         LaunchedEffect(networkManager) {
             networkManager.startListening()
         }

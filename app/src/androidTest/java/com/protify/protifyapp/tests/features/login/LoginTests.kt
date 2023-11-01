@@ -1,9 +1,9 @@
 package com.protify.protifyapp.tests.features.login
 
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import com.protify.protifyapp.features.login.RegisterActivity
+import androidx.compose.ui.test.*
+import com.protify.protifyapp.AccountActivity
+import com.protify.protifyapp.ui.theme.ProtifyTheme
 import org.junit.Rule
 import org.junit.Test
 
@@ -12,17 +12,36 @@ class LoginTests {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun testRegistration() {
-        //Render Register Page
-        composeTestRule.setContent { RegisterActivity().LandingPage {} }
-        //Enter Email into field
-        //composeTestRule.onNodeWithText("Email").performTextInput("test@gmail.com")
-        //Enter Password into field
-        //composeTestRule.onNodeWithText("Password").performTextInput("testpassword")
-        //Click Create Account Button
+    fun testLogin() {
+        // Given
+        val testEmail = "test@email.com"
+        val testPassword = "Password!"
 
-        composeTestRule.onNodeWithText("Create Account").performClick()
+        // When
+        loginToTestAccount(testEmail, testPassword)
 
+        // Then
+        composeTestRule.onNode(hasText("Good Morning, ${testEmail}!")).assertIsDisplayed()
+    }
 
+    @OptIn(ExperimentalTestApi::class)
+    private fun loginToTestAccount(testEmail: String, testPassword: String) {
+        composeTestRule.setContent {
+            ProtifyTheme {
+                AccountActivity().AccountPage()
+            }
+        }
+
+        composeTestRule.onNodeWithText("Existing User").performClick()
+
+        composeTestRule.onNodeWithText("Email").performClick()
+        composeTestRule.onNodeWithText("Email").performTextInput(testEmail)
+        composeTestRule.onNodeWithText("Password").performClick()
+        composeTestRule.onNodeWithText("Password").performTextInput(testPassword)
+
+        composeTestRule.onNodeWithText("Login").performClick()
+
+        composeTestRule.waitUntilDoesNotExist(hasText("Login"))
     }
 }
+
