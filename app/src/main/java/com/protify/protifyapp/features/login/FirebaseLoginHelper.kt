@@ -1,5 +1,6 @@
 package com.protify.protifyapp.features.login
 
+import android.util.Log
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
@@ -32,7 +33,17 @@ class FirebaseLoginHelper {
             callback(true, null)
         }
         .addOnFailureListener { exception ->
+            Log.d("FirebaseLoginHelper", exception.localizedMessage)
             callback(false, exception.localizedMessage)
             }
         }
+    fun signInCallback(email: String, password: String, callback: (Boolean, String?)-> Unit) {
+        auth.signInWithEmailAndPassword(email, password)
+            .addOnSuccessListener { result ->
+                callback(true, null)
+            }
+            .addOnFailureListener { exception ->
+                callback(false, exception.localizedMessage)
+            }
+    }
     }
