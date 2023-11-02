@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.protify.protifyapp.features.events.AddEvent
 import com.protify.protifyapp.features.login.LoginActivity
 import com.protify.protifyapp.features.login.RegisterActivity
 
@@ -49,7 +50,17 @@ class AccountActivity {
                     }
                 }
                 composable("home") {
-                    HomeActivity().HomePage(navController = navController)
+                    HomeActivity().HomePage {
+                        HomeActivity().navigateToAddEvent(
+                            navController = navController)
+                    }
+                }
+                composable("addEvent") {
+                    AddEvent().AddEventPage {
+                        AddEvent().navigateBack(
+                            navController = navController
+                        )
+                    }
                 }
             }
         }
