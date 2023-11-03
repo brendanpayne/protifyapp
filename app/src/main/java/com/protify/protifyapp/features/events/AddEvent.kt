@@ -2,7 +2,10 @@ package com.protify.protifyapp.features.events
 
 import android.app.TimePickerDialog
 import android.provider.CalendarContract
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -11,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.protify.protifyapp.FirestoreHelper
@@ -35,13 +38,15 @@ class AddEvent {
 
     private var name: String by mutableStateOf("")
     private var startTime: LocalDateTime by mutableStateOf(LocalDateTime.now())
-    private var endTime: LocalDateTime by mutableStateOf(LocalDateTime.now())
+    private var endTime: LocalDateTime by mutableStateOf(LocalDateTime.MAX)
     private var location: String? by mutableStateOf("")
     private var description: String? by mutableStateOf("")
     private var timeZone: String? by mutableStateOf("")
     private var importance: Int by mutableIntStateOf(0)
     private var attendees: CalendarContract.Attendees? by mutableStateOf(null)
     private var formattedStartTime: String by mutableStateOf("")
+    private var formattedEndTime: String by mutableStateOf("")
+    private var dateError: Boolean by mutableStateOf(false)
 
     private fun updateName(newName: String) {
         name = newName
@@ -51,22 +56,69 @@ class AddEvent {
         startTime = newStartTime
         formattedStartTime(newStartTime)
     }
+    private fun updateEndTime(month: Int, dayOfMonth: Int, year: Int, hour: Int, minute: Int ) {
+        var newEndTime = LocalDateTime.of(year, month, dayOfMonth, hour, minute)
+        endTime = newEndTime
+        formattedEndTime(newEndTime)
+    }
     private fun formattedStartTime(startTime: LocalDateTime) {
         val year = startTime.year
         val month = startTime.monthValue
         val dayOfMonth = startTime.dayOfMonth
         var hour = startTime.hour
-        val minute = startTime.minute
+        var minute = startTime.minute
 
+        if (formattedEndTime != "" || formattedEndTime != null) {
+            if (startTime.isAfter(endTime) && formattedEndTime != "Start time cannot be after end time") {
+                dateError = true
+                //formattedStartTime = "Start time cannot be after end time"
+                return
+            }
+        }
+        dateError = false
         if (hour > 12) {
             hour -= 12
-            formattedStartTime = "$month/$dayOfMonth/$year $hour:$minute PM"
+            formattedStartTime = if (minute < 10) {
+                "$month/$dayOfMonth/$year $hour:0$minute PM"
+            } else {
+                "$month/$dayOfMonth/$year $hour:$minute PM"
+            }
         } else {
-            formattedStartTime = "$month/$dayOfMonth/$year $hour:$minute AM"
+            formattedStartTime = if (minute < 10) {
+                "$month/$dayOfMonth/$year $hour:0$minute AM"
+            } else {
+                "$month/$dayOfMonth/$year $hour:$minute AM"
+            }
         }
     }
-    private fun updateEndTime(newEndTime: LocalDateTime) {
-        endTime = newEndTime
+    private fun formattedEndTime(endTime: LocalDateTime) {
+        val year = endTime.year
+        val month = endTime.monthValue
+        val dayOfMonth = endTime.dayOfMonth
+        var hour = endTime.hour
+        val minute = endTime.minute
+
+        if (formattedStartTime != "" || formattedStartTime != null) {
+            if (startTime.isAfter(endTime) && formattedStartTime != "Start time cannot be after end time") {
+                dateError = true
+                //formattedEndTime = "Start time cannot be after end time"
+                return
+            }
+        }
+        dateError = false
+        if (hour > 12) {
+            hour -= 12
+            formattedEndTime = if (minute < 10) {
+                "$month/$dayOfMonth/$year $hour:0$minute PM"
+            } else {
+                "$month/$dayOfMonth/$year $hour:$minute PM"
+            }
+            formattedEndTime = if (minute < 10) {
+                "$month/$dayOfMonth/$year $hour:0$minute PM"
+            } else {
+                "$month/$dayOfMonth/$year $hour:$minute PM"
+            }
+        }
     }
     private fun updateLocation(newLocation: String) {
         location = newLocation
@@ -159,44 +211,151 @@ class AddEvent {
                         onValueChange = { name -> updateName(name) },
                         label = { Text("Event Name") },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next)
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                     )
                 }
                 item {
-                    Button(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
+                    Row {
+                        Button(
+                            modifier = Modifier
+                                .weight(5f)
+                                .padding(vertical = 16.dp, horizontal = 8.dp),
 
-                        onClick = {
-                            datePickerDialog.show()
-                            datePickerDialog.setOnDateSetListener { view, year, month, dayOfMonth ->
-                                selectedDate.value = "$month/$dayOfMonth/$year"
-                                selectedMonth = month
-                                selectedDayOfMonth = dayOfMonth
-                                selectedYear = year
-                                timePickerDialog.show()
-                                timePickerDialog.setOnDismissListener { view ->
-                                    //If the user has selected a date and time, update the start time
-                                    if (selectedTime.value != "" && selectedDate.value != "") {
-                                        updateStartTime(selectedMonth, selectedDayOfMonth, selectedYear, selectedHour, selectedMinute)
+                            onClick = {
+                                datePickerDialog.show()
+                                datePickerDialog.setOnDateSetListener { view, year, month, dayOfMonth ->
+                                    selectedDate.value = "$month/$dayOfMonth/$year"
+                                    selectedMonth = month + 1
+                                    selectedDayOfMonth = dayOfMonth
+                                    selectedYear = year
+                                    timePickerDialog.show()
+                                    timePickerDialog.setOnDismissListener { view ->
+                                        //If the user has selected a date and time, update the start time
+                                        if (selectedTime.value != "" && selectedDate.value != "") {
+                                            updateStartTime(selectedMonth, selectedDayOfMonth, selectedYear, selectedHour, selectedMinute)
+                                        }
                                     }
                                 }
                             }
+                        ) {
+                            Text("Select Start Time")
                         }
-                    ) {
-                        Text("Select Start Time")
+                        OutlinedTextField(
+                            value = formattedStartTime,
+                            //This displays the formatted version of the start time
+                            onValueChange = { formattedStartTime(startTime) },
+                            label = { Text("Start Time") },
+                            modifier = Modifier
+                                .weight(5f)
+                                .padding(vertical = 16.dp, horizontal = 8.dp),
+                            enabled = false,
+                            supportingText = {
+                                if (dateError) {
+                                    Text(
+                                        modifier = Modifier.fillMaxSize(),
+                                        text = "Start time cannot be after end time",
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        )
                     }
+
+                }
+
+                item {
+                    Row {
+                        Button(
+                            modifier = Modifier
+                                .weight(5f)
+                                .padding(vertical = 16.dp, horizontal = 8.dp),
+
+                            onClick = {
+                                datePickerDialog.show()
+                                datePickerDialog.setOnDateSetListener { _, year, month, dayOfMonth ->
+                                    selectedDate.value = "$month/$dayOfMonth/$year"
+                                    selectedMonth = month + 1
+                                    selectedDayOfMonth = dayOfMonth
+                                    selectedYear = year
+                                    timePickerDialog.show()
+                                    timePickerDialog.setOnDismissListener {
+                                        //If the user has selected a date and time, update the end time
+                                        if (selectedTime.value != "" && selectedDate.value != "") {
+                                            updateEndTime(selectedMonth, selectedDayOfMonth, selectedYear, selectedHour, selectedMinute)
+                                        }
+                                    }
+                                }
+                            }
+                        ) {
+                            Text("Select End Time")
+                        }
+                        OutlinedTextField(
+                            value = formattedEndTime,
+                            //This displays the formatted version of the end time
+                            onValueChange = { formattedEndTime(endTime) },
+                            label = { Text("End Time") },
+                            modifier = Modifier
+                                .weight(5f)
+                                .padding(vertical = 16.dp, horizontal = 8.dp),
+                            enabled = false,
+                            supportingText = {
+                                if (dateError) {
+                                    Text(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        text = "Start time cannot be after end time",
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        )
+                    }
+
                 }
                 item {
                     OutlinedTextField(
-                        value = formattedStartTime,
-                        //This displays the formatted version of the start time
-                        onValueChange = { formattedStartTime(startTime) },
-                        label = { Text("Start Time") },
-                        enabled = false
+                        value = location ?: "",
+                        onValueChange = { location -> updateLocation(location) },
+                        label = { Text("Location") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        supportingText = {
+                            Text(
+                                text = "Optional",
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                        }
                     )
                 }
+                item {
+                    OutlinedTextField(
+                        value = description ?: "",
+                        onValueChange = { description -> updateDescription(description) },
+                        label = { Text("Description") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .height(200.dp),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = if (description?.length!! > 250) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                            unfocusedBorderColor = if (description?.length!! > 250) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                        ),
+                        supportingText = {
+                            if (description?.length!! > 250) {
+                                Text(
+                                    text = "${description!!.length}/250",
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            } else {
+                                Text(
+                                    text = "Optional",
+                                    color = MaterialTheme.colorScheme.outline,
+                                )
+                            }
+                        }
+                    )
+                }
+
                 item {
                     Button(
                         modifier = Modifier
