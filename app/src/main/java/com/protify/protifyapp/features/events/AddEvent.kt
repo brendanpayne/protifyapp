@@ -1,7 +1,9 @@
 package com.protify.protifyapp.features.events
 
 import android.app.TimePickerDialog
+import android.icu.util.TimeZone
 import android.provider.CalendarContract
+import android.widget.ScrollView
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,12 +13,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,7 +46,7 @@ class AddEvent {
     private var endTime: LocalDateTime by mutableStateOf(LocalDateTime.MAX)
     private var location: String? by mutableStateOf("")
     private var description: String? by mutableStateOf("")
-    private var timeZone: String? by mutableStateOf("")
+    private var timeZone: TimeZone? by mutableStateOf(null)
     private var importance: Int by mutableIntStateOf(0)
     private var attendees: CalendarContract.Attendees? by mutableStateOf(null)
     private var formattedStartTime: String by mutableStateOf("")
@@ -126,7 +131,7 @@ class AddEvent {
     private fun updateDescription(newDescription: String) {
         description = newDescription
     }
-    private fun updateTimeZone(newTimeZone: String) {
+    private fun updateTimeZone(newTimeZone: TimeZone) {
         timeZone = newTimeZone
     }
     private fun updateImportance(newImportance: Int) {
@@ -171,6 +176,9 @@ class AddEvent {
                 selectedMinute = minute
             }, hour, minute, false
         )
+        //Time Zone
+        val timeZoneNames = TimeZone.getAvailableIDs().take(10)
+        var expandedTimeZone = false
         //Get network state so we can toggle Firestore offline/online
         val isConnected by remember { mutableStateOf(false) }
         LaunchedEffect(networkManager) {
@@ -191,6 +199,7 @@ class AddEvent {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
+            ScrollView(LocalContext.current)
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -211,7 +220,25 @@ class AddEvent {
                         onValueChange = { name -> updateName(name) },
                         label = { Text("Event Name") },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = if (name.length > 50) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                            unfocusedBorderColor = if (name.length > 50) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                        ),
+                        supportingText = {
+                            if (name.length > 50) {
+                                Text(
+                                    text = "${name.length}/50",
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                            if(name.isEmpty()) {
+                                Text(
+                                    text = "Required",
+                                    color = MaterialTheme.colorScheme.outline,
+                                )
+                            }
+                        }
                     )
                 }
                 item {
@@ -249,12 +276,22 @@ class AddEvent {
                                 .weight(5f)
                                 .padding(vertical = 16.dp, horizontal = 8.dp),
                             enabled = false,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = if (formattedStartTime == "") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                                unfocusedBorderColor = if (formattedStartTime == "") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                            ),
                             supportingText = {
                                 if (dateError) {
                                     Text(
                                         modifier = Modifier.fillMaxSize(),
                                         text = "Start time cannot be after end time",
                                         color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                                if (formattedStartTime == "") {
+                                    Text(
+                                        text = "Required",
+                                        color = MaterialTheme.colorScheme.outline,
                                     )
                                 }
                             }
@@ -298,12 +335,22 @@ class AddEvent {
                                 .weight(5f)
                                 .padding(vertical = 16.dp, horizontal = 8.dp),
                             enabled = false,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = if (formattedEndTime == "") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                                unfocusedBorderColor = if (formattedEndTime == "") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                            ),
                             supportingText = {
                                 if (dateError) {
                                     Text(
                                         modifier = Modifier.fillMaxWidth(),
                                         text = "Start time cannot be after end time",
                                         color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                                if (formattedEndTime == "") {
+                                    Text(
+                                        text = "Required",
+                                        color = MaterialTheme.colorScheme.outline,
                                     )
                                 }
                             }
@@ -355,7 +402,39 @@ class AddEvent {
                         }
                     )
                 }
+                item {
+                    ExposedDropdownMenuBox(
+                        expanded = expandedTimeZone,
+                        onExpandedChange = { expandedTimeZone = !expandedTimeZone },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        content = {
+                            TextField(
+                                value = "test",
+                                onValueChange = {},
+                                readOnly = true,
+                                modifier = Modifier.menuAnchor()
 
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expandedTimeZone,
+                                onDismissRequest = { expandedTimeZone = false }
+                            ) {
+                                timeZoneNames.forEach { item ->
+                                    DropdownMenuItem(
+                                        text = { Text(item) },
+                                        onClick = {
+                                            updateTimeZone(TimeZone.getTimeZone(item))
+                                            expandedTimeZone = false
+                                                  }
+                                    )
+                                }
+                            }
+
+                        }
+                    )
+                }
                 item {
                     Button(
                         modifier = Modifier
