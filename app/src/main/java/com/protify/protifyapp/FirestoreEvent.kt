@@ -11,7 +11,7 @@ class FirestoreEvent(
     val description: String?,
     val timeZone: String?, //TODO: Create a timezone object
     val importance: Int?,
-    val attendees: Attendees?
+    val attendees: List<Attendees>?
 
 
 
@@ -27,6 +27,9 @@ class FirestoreEvent(
     private fun validateName(name: String): Error? {
         if (name.length > 50) {
             return Error("Name is too long")
+        }
+        if (name == "") {
+            return Error("Name cannot be empty")
         }
         return null
     }
