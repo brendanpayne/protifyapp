@@ -4,6 +4,7 @@ import android.app.TimePickerDialog
 import android.icu.util.TimeZone
 import android.provider.CalendarContract
 import android.widget.ScrollView
+import android.widget.Toast
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -35,8 +37,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.NetworkManager
+import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import java.time.LocalDateTime
 
 class AddEvent {
@@ -46,9 +50,10 @@ class AddEvent {
     private var endTime: LocalDateTime by mutableStateOf(LocalDateTime.MAX)
     private var location: String? by mutableStateOf("")
     private var description: String? by mutableStateOf("")
-    private var timeZone: TimeZone? by mutableStateOf(null)
-    private var importance: Int by mutableIntStateOf(0)
-    private var attendees: CalendarContract.Attendees? by mutableStateOf(null)
+    //private var timeZone: TimeZone? by mutableStateOf(TimeZone.getTimeZone("America/New_York"))
+    private var timeZone: TimeZone? by mutableStateOf(TimeZone.getDefault())
+    private var importance: Int by mutableIntStateOf(3)
+    private var attendees: List<CalendarContract.Attendees>? by mutableStateOf(listOf())
     private var formattedStartTime: String by mutableStateOf("")
     private var formattedEndTime: String by mutableStateOf("")
     private var dateError: Boolean by mutableStateOf(false)
@@ -137,11 +142,11 @@ class AddEvent {
     private fun updateImportance(newImportance: Int) {
         importance = newImportance
     }
-    private fun updateAttendees(newAttendees: CalendarContract.Attendees) {
+    private fun updateAttendees(newAttendees: List<CalendarContract.Attendees>) {
         attendees = newAttendees
     }
-    private fun dateTimeFormatter(date: String, time: String) {
-
+    private fun isTimeSelected(): Boolean {
+        return formattedStartTime != "" && formattedEndTime != ""
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -149,6 +154,10 @@ class AddEvent {
     fun AddEventPage(navigateBack: () -> Unit) {
 
         val context = LocalContext.current
+        val user = FirebaseLoginHelper().getCurrentUser()?.uid
+        var requiredEmpty by remember { mutableStateOf(false) }
+        val startTimeEmpty by remember { mutableStateOf(true) }
+        val endTimeEmpty by remember { mutableStateOf(true) }
         val networkManager = NetworkManager(context)
         //Date Picker Dialog
         val dayOfMonth = LocalDateTime.now().dayOfMonth
@@ -177,8 +186,26 @@ class AddEvent {
             }, hour, minute, false
         )
         //Time Zone
-        val timeZoneNames = TimeZone.getAvailableIDs().take(10)
-        var expandedTimeZone = false
+        val timeZoneNames = TimeZone.getAvailableIDs()
+        val americanTimeZoneNames = listOf(
+            "America/New_York",
+            "America/Chicago",
+            "America/Denver",
+            "America/Los_Angeles",
+            "America/Anchorage",
+            "America/Adak",
+            "Pacific/Honolulu"
+        ).sorted()
+        var expandedTimeZone by remember { mutableStateOf(false) }
+        //Importance
+        val importanceNames = listOf(
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+        )
+        var expandedImportance by remember { mutableStateOf(false) }
         //Get network state so we can toggle Firestore offline/online
         val isConnected by remember { mutableStateOf(false) }
         LaunchedEffect(networkManager) {
@@ -217,13 +244,25 @@ class AddEvent {
                 item {
                     OutlinedTextField(
                         value = name,
-                        onValueChange = { name -> updateName(name) },
+                        onValueChange = {
+                                name -> updateName(name)
+                                        },
                         label = { Text("Event Name") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = if (name.length > 50) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
-                            unfocusedBorderColor = if (name.length > 50) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                            unfocusedBorderColor = if (name.length > 50 || (name.isEmpty() && requiredEmpty)) {
+                                MaterialTheme.colorScheme.error
+                            }
+
+                            else {
+                                MaterialTheme.colorScheme.outline
+                            },
+                            focusedBorderColor = if (name.length > 50) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.outline
+                            },
                         ),
                         supportingText = {
                             if (name.length > 50) {
@@ -277,8 +316,7 @@ class AddEvent {
                                 .padding(vertical = 16.dp, horizontal = 8.dp),
                             enabled = false,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = if (formattedStartTime == "") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
-                                unfocusedBorderColor = if (formattedStartTime == "") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                                disabledBorderColor = if ((formattedStartTime == "" && requiredEmpty) || dateError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
                             ),
                             supportingText = {
                                 if (dateError) {
@@ -288,7 +326,7 @@ class AddEvent {
                                         color = MaterialTheme.colorScheme.error
                                     )
                                 }
-                                if (formattedStartTime == "") {
+                                if (formattedStartTime == "" && !dateError) {
                                     Text(
                                         text = "Required",
                                         color = MaterialTheme.colorScheme.outline,
@@ -336,8 +374,7 @@ class AddEvent {
                                 .padding(vertical = 16.dp, horizontal = 8.dp),
                             enabled = false,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = if (formattedEndTime == "") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
-                                unfocusedBorderColor = if (formattedEndTime == "") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                                disabledBorderColor = if ((formattedEndTime == "" && requiredEmpty) || dateError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
                             ),
                             supportingText = {
                                 if (dateError) {
@@ -347,7 +384,7 @@ class AddEvent {
                                         color = MaterialTheme.colorScheme.error
                                     )
                                 }
-                                if (formattedEndTime == "") {
+                                if (formattedEndTime == "" && !dateError) {
                                     Text(
                                         text = "Required",
                                         color = MaterialTheme.colorScheme.outline,
@@ -411,17 +448,25 @@ class AddEvent {
                             .padding(16.dp),
                         content = {
                             TextField(
-                                value = "test",
+                                value = timeZone?.displayName ?: "",
                                 onValueChange = {},
+                                label = { Text("Time Zone") },
                                 readOnly = true,
-                                modifier = Modifier.menuAnchor()
+                                modifier = Modifier.menuAnchor(),
+                                trailingIcon =  {ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedTimeZone)},
+                                supportingText = {
+                                    Text(
+                                        text = "Optional",
+                                        color = MaterialTheme.colorScheme.outline,
+                                    )
+                                }
 
                             )
                             ExposedDropdownMenu(
                                 expanded = expandedTimeZone,
                                 onDismissRequest = { expandedTimeZone = false }
                             ) {
-                                timeZoneNames.forEach { item ->
+                                americanTimeZoneNames.forEach { item ->
                                     DropdownMenuItem(
                                         text = { Text(item) },
                                         onClick = {
@@ -434,6 +479,104 @@ class AddEvent {
 
                         }
                     )
+                }
+                item {
+                    ExposedDropdownMenuBox(
+                        expanded = expandedImportance,
+                        onExpandedChange = { expandedImportance = !expandedImportance },
+                    ) {
+                        TextField(
+                            value = importance.toString(),
+                            onValueChange = {},
+                            label = { Text("Importance") },
+                            readOnly = true,
+                            modifier = Modifier.menuAnchor(),
+                            trailingIcon =  {ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedImportance)},
+                            supportingText = {
+                                Text(
+                                    text = "Optional",
+                                    color = MaterialTheme.colorScheme.outline,
+                                )
+                            }
+
+
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expandedImportance,
+                            onDismissRequest = { expandedImportance = false }
+                        ) {
+                            importanceNames.forEach { item ->
+                                DropdownMenuItem(
+                                    text = { Text(item) },
+                                    onClick = {
+                                        updateImportance(item.toInt())
+                                        expandedImportance = false
+                                    }
+                                )
+                            }
+                        }
+
+                    }
+                }
+                item {
+                    OutlinedTextField(
+                        value = attendees.toString(),
+                        onValueChange = { TODO() },
+                        label = { Text("Attendees") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .height(200.dp),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        supportingText = {
+                            Text(
+                                text = "Optional",
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                        }
+                    )
+                }
+                item {
+                    Button(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        onClick = {
+                            var firestoreEvent:FirestoreEvent = FirestoreEvent(
+                                attendees = attendees,
+                                description = description,
+                                endTime = endTime,
+                                startTime = startTime,
+                                timeZone = timeZone?.displayName,
+                                name = name,
+                                importance = importance,
+                                location = location
+                            )
+                            val errors = firestoreEvent.validateEvent(firestoreEvent)
+                            if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {
+                                FirestoreHelper().createEvent(user, firestoreEvent)
+                                Toast.makeText(context, "Event added successfully", Toast.LENGTH_LONG).show()
+                                navigateBack()
+                            }
+                            if (user == null) {
+                                Toast.makeText(context, "You are logged out. Please log in and try again", Toast.LENGTH_LONG).show()
+                            }
+                            if (!isTimeSelected()) {
+                                Toast.makeText(context, "Please select a valid start and end time", Toast.LENGTH_LONG).show()
+                            }
+                            if (dateError) {
+                                Toast.makeText(context, "Start time cannot be after end time", Toast.LENGTH_LONG).show()
+                            }
+                            else {
+                                requiredEmpty = true
+                                errors.forEach { error ->
+                                    Toast.makeText(context, error.localizedMessage, Toast.LENGTH_LONG).show()
+                                }
+                            }
+
+                        }) {
+                        Text("Add Event")
+                    }
                 }
                 item {
                     Button(
