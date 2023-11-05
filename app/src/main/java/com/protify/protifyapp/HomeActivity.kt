@@ -15,7 +15,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
-import java.time.LocalDateTime
 
 class HomeActivity {
     @Composable
@@ -53,21 +52,6 @@ class HomeActivity {
 
             }
         }
-                    FirestoreHelper().userExists(user!!.uid, user.metadata!!.creationTimestamp) {userExists ->
-                        if (userExists) {
-                            FirestoreHelper().createEvent(user.uid, FirestoreEvent(
-                                name = "Test Event",
-                                startTime = LocalDateTime.now(),
-                                endTime = LocalDateTime.now(),
-                                location = "Test Location",
-                                description = "Test Description",
-                                timeZone = "Test Timezone",
-                                importance = 1,
-                                attendees = null
-                            ))
-
-                        }
-                    }
             }
     fun navigateToAddEvent(navController: NavController) {
         navController.navigate("addEvent")
