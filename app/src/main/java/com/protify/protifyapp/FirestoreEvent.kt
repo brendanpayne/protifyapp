@@ -1,6 +1,6 @@
 package com.protify.protifyapp
 
-import android.provider.CalendarContract.Attendees
+import android.provider.CalendarContract
 import java.time.LocalDateTime
 
 class FirestoreEvent(
@@ -11,7 +11,7 @@ class FirestoreEvent(
     val description: String?,
     val timeZone: String?, //TODO: Create a timezone object
     val importance: Int?,
-    val attendees: List<Attendees>?
+    val attendees: List<CalendarContract.Attendees>?
 
 
 
