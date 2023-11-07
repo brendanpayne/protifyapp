@@ -1,10 +1,14 @@
 package com.protify.protifyapp.features.events
 
 import android.app.TimePickerDialog
+import android.content.ContentUris
 import android.icu.util.TimeZone
 import android.provider.CalendarContract
+import android.provider.ContactsContract
 import android.widget.ScrollView
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,11 +17,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -37,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.protify.protifyapp.Attendee
 import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.NetworkManager
@@ -57,6 +65,8 @@ class AddEvent {
     private var formattedStartTime: String by mutableStateOf("")
     private var formattedEndTime: String by mutableStateOf("")
     private var dateError: Boolean by mutableStateOf(false)
+    private var contactList: List<Attendee> by mutableStateOf(listOf())
+    private var contactNames: List<String> by mutableStateOf(listOf())
 
     private fun updateName(newName: String) {
         name = newName
@@ -148,6 +158,14 @@ class AddEvent {
     private fun isTimeSelected(): Boolean {
         return formattedStartTime != "" && formattedEndTime != ""
     }
+    private fun updateAttendeeList(name: String, number: String, email: String) {
+        Attendee(name, email, number).let { attendee ->
+            contactList = contactList + attendee
+        }
+    }
+    private fun updateContactNames(name: String) {
+        contactNames = contactNames + name
+    }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -156,8 +174,6 @@ class AddEvent {
         val context = LocalContext.current
         val user = FirebaseLoginHelper().getCurrentUser()?.uid
         var requiredEmpty by remember { mutableStateOf(false) }
-        val startTimeEmpty by remember { mutableStateOf(true) }
-        val endTimeEmpty by remember { mutableStateOf(true) }
         val networkManager = NetworkManager(context)
         //Date Picker Dialog
         val dayOfMonth = LocalDateTime.now().dayOfMonth
@@ -206,6 +222,57 @@ class AddEvent {
             "5"
         )
         var expandedImportance by remember { mutableStateOf(false) }
+        //Contacts Launcher
+        var contactName by remember {
+            mutableStateOf("")
+        }
+        var contactEmail by remember {
+            mutableStateOf("")
+        }
+        var contactNumber by remember {
+            mutableStateOf("")
+        }
+        val permission = android.Manifest.permission.READ_CONTACTS
+        var contactsGranted by remember { mutableStateOf(false) }
+        val requestPermissionsLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission(),
+            onResult = { isGranted ->
+                if (isGranted) {
+                    contactsGranted = true
+                }
+            }
+        )
+        val contactsLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.PickContact(),
+            onResult = {
+                if (it != null) {
+                    val contactId = ContentUris.parseId(it)
+                    val cursor = context.contentResolver.query(
+                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                        null,
+                        ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=?",
+                        arrayOf(contactId.toString()),
+                        null,
+                    )
+                    if (cursor != null && cursor.moveToFirst()) {
+                        val numberIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                        val nameIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                        val emailIndex = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.ADDRESS)
+                        contactNumber = cursor.getString(numberIndex) ?: ""
+                        contactName = cursor.getString(nameIndex) ?: ""
+                        contactEmail = cursor.getString(emailIndex) ?: ""
+                        if (contactName == "") {
+                            Toast.makeText(context, "Contact must have a name", Toast.LENGTH_LONG).show()
+                        }
+                        else {
+                            updateAttendeeList(contactName, contactNumber, contactEmail)
+                            updateContactNames(contactName)
+                        }
+                        cursor.close()
+                    }
+                }
+            }
+        )
         //Get network state so we can toggle Firestore offline/online
         val isConnected by remember { mutableStateOf(false) }
         LaunchedEffect(networkManager) {
@@ -519,9 +586,29 @@ class AddEvent {
                     }
                 }
                 item {
+                    Button(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        onClick = {
+                            if (contactsGranted) {
+                                contactsLauncher.launch(null)
+                            } else {
+                                requestPermissionsLauncher.launch(permission)
+                                if (contactsGranted) {
+                                    contactsLauncher.launch(null)
+                                }
+                            }
+                        }
+                    ) {
+                        Text("Add Attendees")
+                    }
+                }
+                item {
                     OutlinedTextField(
-                        value = attendees.toString(),
-                        onValueChange = { TODO() },
+                        value = contactNames.toString(),
+                        onValueChange = {  },
+                        readOnly = true,
                         label = { Text("Attendees") },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -533,6 +620,27 @@ class AddEvent {
                                 text = "Optional",
                                 color = MaterialTheme.colorScheme.outline,
                             )
+                        },
+                        trailingIcon = {
+                            Row {
+                                for (name in contactNames) {
+                                    Text(name)
+                                        Button(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(16.dp),
+                                            onClick = {
+                                                contactNames = contactNames - name
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Delete",
+                                                tint = MaterialTheme.colorScheme.onSurface,
+                                            )
+                                        }
+                                }
+                            }
                         }
                     )
                 }
@@ -560,6 +668,7 @@ class AddEvent {
                             }
                             if (user == null) {
                                 Toast.makeText(context, "You are logged out. Please log in and try again", Toast.LENGTH_LONG).show()
+                                //Add redirection to login screen
                             }
                             if (!isTimeSelected()) {
                                 Toast.makeText(context, "Please select a valid start and end time", Toast.LENGTH_LONG).show()
