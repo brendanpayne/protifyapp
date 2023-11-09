@@ -19,11 +19,19 @@ class FirestoreHelper() {
                     Log.d("GoogleFirestore", "User exists in Firestore. Offline listener added")
                     callback(true)
                 } else {
-                    createUserDocument(uid, dateCreated)
+                    createUserDocument(uid, dateCreated) { userDocumentAdded ->
+                        if (userDocumentAdded) {
+                            offlineListener(uid)
+                            Log.d("GoogleFirestore", "User added to Firestore. Offline listener added")
+                            callback(true)
+                        } else {
+                            callback(false)
+                        }
+                    }
                 }
             }
     }
-    private fun createUserDocument(uid: String, dateCreated: Long) {
+    private fun createUserDocument(uid: String, dateCreated: Long, callback: (Boolean) -> Unit) {
         // [START add_document]
         val user = hashMapOf(
             "dateCreated" to dateCreated,
@@ -34,10 +42,12 @@ class FirestoreHelper() {
             .addOnSuccessListener { documentReference ->
                 userExists(uid, dateCreated) { userExists ->
                     Log.d("GoogleFirestore", "User added successfully to Firestore with uid: $uid")
+                    callback(true)
                 }
             }
             .addOnFailureListener { e ->
                 Log.d("GoogleFirestore", "Error adding user to Firestore", e)
+                callback(false)
             }
     }
     fun createEvent (uid: String, event: FirestoreEvent) {
