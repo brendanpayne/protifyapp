@@ -1,4 +1,4 @@
-package com.protify.protifyapp
+package com.protify.protifyapp.features.events
 
 class Attendee(
     var name: String,
