@@ -25,6 +25,10 @@ class DateUtils {
         return 0
     }
 
+    fun formatTime(time: String): Any {
+        return time
+    }
+
     companion object {
         fun getDayOfWeek(date: LocalDate): String {
             return SimpleDateFormat("E", Locale.getDefault()).format(date)

@@ -44,7 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.protify.protifyapp.Attendee
+import com.protify.protifyapp.features.events.Attendee
 import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.NetworkManager

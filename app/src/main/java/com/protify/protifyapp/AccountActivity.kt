@@ -52,7 +52,8 @@ class AccountActivity {
                 composable("home") {
                     HomeActivity().HomePage {
                         HomeActivity().navigateToAddEvent(
-                            navController = navController)
+                            navController = navController
+                        )
                     }
                 }
                 composable("addEvent") {
