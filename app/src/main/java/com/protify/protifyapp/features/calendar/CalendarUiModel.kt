@@ -16,7 +16,7 @@ class CalendarUiModel(
         val isToday: Boolean,
         val hasEvents: Boolean,
     ) {
-        val events: List<Event> = listOf()
+        var events: List<Event> = listOf()
         val day: String = date.format(DateTimeFormatter.ofPattern("E"))
     }
 }
