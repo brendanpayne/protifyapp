@@ -18,6 +18,7 @@ import com.protify.protifyapp.features.calendar.CalendarUiModel
 import com.protify.protifyapp.features.calendar.CalendarView
 import com.protify.protifyapp.features.events.EventView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
+import com.protify.protifyapp.ui.theme.ProtifyTheme
 
 class HomeActivity {
         @Composable
@@ -56,7 +57,9 @@ class HomeActivity {
         @Preview(showSystemUi = true)
         @Composable
         fun CalendarAppPreview() {
-            HomePage(navigateToAddEvent = {})
+            ProtifyTheme {
+                HomePage(navigateToAddEvent = {})
+            }
         }
 
     fun navigateToAddEvent(navController: NavHostController) {

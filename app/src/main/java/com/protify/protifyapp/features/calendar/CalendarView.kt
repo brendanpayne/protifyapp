@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import com.protify.protifyapp.features.events.EventView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.utils.DateUtils
@@ -151,7 +152,13 @@ class CalendarView {
                 CalendarContent(data = calendarUiModel) { date ->
                     calendarUiModel = dataSource.getData(startDate = calendarUiModel.startDate.date, lastSelectedDate = date.date)
                     isLoadingEvents = true
-                    dataSource.getFirestoreEvents(FirebaseLoginHelper().getCurrentUser()!!.uid, FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp, date.date.month.toString(), date.date.dayOfMonth.toString(), date.date.year.toString()) { events ->
+                    dataSource.getFirestoreEvents(
+                        FirebaseLoginHelper().getCurrentUser()!!.uid,
+                        FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
+                        date.date.month.toString(),
+                        date.date.dayOfMonth.toString(),
+                        date.date.year.toString()
+                    ) { events ->
                         if (events.isNotEmpty()) {
                              calendarUiModel.selectedDate.events = events
                         }
@@ -161,9 +168,11 @@ class CalendarView {
                 }
             }
         }
-        if (!isLoadingEvents) {
-            EventView().EventCard(calendarUiModel, navigateToAddEvent)
-        }
-        //EventView().EventCard(calendarUiModel, navigateToAddEvent)
+        EventView().EventCard(calendarUiModel, navigateToAddEvent, isLoadingEvents)
     }
+
+    fun navigateToEventDetails(navController: NavHostController, calendarUiModel: CalendarUiModel) {
+        navController.navigate("eventDetails/${calendarUiModel.selectedDate.date}/${calendarUiModel.selectedDate.events[0].id}")
+    }
+
 }

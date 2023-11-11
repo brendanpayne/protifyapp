@@ -18,7 +18,7 @@ class CalendarDataSource {
 
 
     fun getData(startDate: LocalDate = today, lastSelectedDate: LocalDate): CalendarUiModel {
-        val firstDayOfWeek = startDate.with(DayOfWeek.SUNDAY)
+        val firstDayOfWeek = startDate.with(DayOfWeek.MONDAY)
         val endDayOfWeek = firstDayOfWeek.plusDays(7)
         val visibleDates = getDatesBetween(firstDayOfWeek, endDayOfWeek)
         return toUiModel(visibleDates, lastSelectedDate)
@@ -82,8 +82,5 @@ class CalendarDataSource {
         isToday = date.isEqual(today),
         date = date,
         hasEvents = true,
-
     )
-
-
 }
