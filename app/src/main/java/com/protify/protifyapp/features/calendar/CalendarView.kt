@@ -122,6 +122,7 @@ class CalendarView {
     fun Calendar(navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
         var calendarUiModel by remember { mutableStateOf(dataSource.getData(lastSelectedDate = dataSource.today))}
+        var isLoadingEvents by remember { mutableStateOf(true)}
         //var calendarUiModel = dataSource.getData(lastSelectedDate = dataSource.today)
 
         Box(
@@ -149,15 +150,20 @@ class CalendarView {
                 )
                 CalendarContent(data = calendarUiModel) { date ->
                     calendarUiModel = dataSource.getData(startDate = calendarUiModel.startDate.date, lastSelectedDate = date.date)
-                    dataSource.getFirestoreEvents(FirebaseLoginHelper().getCurrentUser()!!.uid, FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp, "december", "343", "2023") { events ->
+                    isLoadingEvents = true
+                    dataSource.getFirestoreEvents(FirebaseLoginHelper().getCurrentUser()!!.uid, FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp, date.date.month.toString(), date.date.dayOfMonth.toString(), date.date.year.toString()) { events ->
                         if (events.isNotEmpty()) {
-                            calendarUiModel.selectedDate.events = events
+                             calendarUiModel.selectedDate.events = events
                         }
+                        isLoadingEvents = false
                     }
 
                 }
             }
         }
-        EventView().EventCard(calendarUiModel, navigateToAddEvent)
+        if (!isLoadingEvents) {
+            EventView().EventCard(calendarUiModel, navigateToAddEvent)
+        }
+        //EventView().EventCard(calendarUiModel, navigateToAddEvent)
     }
 }
