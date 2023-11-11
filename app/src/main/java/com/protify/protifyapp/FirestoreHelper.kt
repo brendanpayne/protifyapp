@@ -5,6 +5,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import com.protify.protifyapp.features.events.Attendee
+import java.time.LocalDateTime
 
 class FirestoreHelper() {
     private val db: FirebaseFirestore = Firebase.firestore
@@ -117,6 +119,62 @@ class FirestoreHelper() {
                 } else {
                     Log.d("GoogleFirestore", "Data fetched from server")
                 }
+            }
+    }
+    fun getEvents(uid: String, day: String, month: String, year: String, callback: (List<FirestoreEvent>) -> Unit) {
+        val upperMonth = month.uppercase()
+        db.collection("users")
+            .document(uid)
+            .collection("events")
+            .document(year)
+            .collection(upperMonth)
+            .get()
+            .addOnSuccessListener { result ->
+                val events = mutableListOf<FirestoreEvent>()
+                for (document in result) {
+                    Log.d("GoogleFirestore", "${document.id} => ${document.data}")
+                    if (!result.isEmpty) {
+                        var testAttendee: Attendee = Attendee(
+                            name = "Test",
+                            email = "Test",
+                            phoneNumber = "Test"
+                        )
+                        val attendeeList: List<Attendee> = listOf(testAttendee)
+                        var startTimeHashMap = document.data["startTime"] as HashMap<*, *>
+                        var endTimeHashMap = document.data["endTime"] as HashMap<*, *>
+                        val startTime = LocalDateTime.of(
+                            (startTimeHashMap["year"] as Long).toInt(),
+                            (startTimeHashMap["monthValue"] as Long).toInt(),
+                            (startTimeHashMap["dayOfMonth"] as Long).toInt(),
+                            (startTimeHashMap["hour"] as Long).toInt(),
+                            (startTimeHashMap["minute"] as Long).toInt()
+                        )
+                        val endTime = LocalDateTime.of(
+                            (endTimeHashMap["year"] as Long).toInt(),
+                            (endTimeHashMap["monthValue"] as Long).toInt(),
+                            (endTimeHashMap["dayOfMonth"] as Long).toInt(),
+                            (endTimeHashMap["hour"] as Long).toInt(),
+                            (endTimeHashMap["minute"] as Long).toInt()
+                        )
+                        events.add(
+                            FirestoreEvent(
+                            name = document.data["name"].toString(),
+                            startTime = startTime as LocalDateTime,
+                            endTime = endTime as LocalDateTime,
+                            location = document.data["location"].toString(),
+                            description = document.data["description"].toString(),
+                            timeZone = document.data["timeZone"].toString(),
+                            importance = (document.data["importance"] as Long).toInt(),
+                            attendees = attendeeList
+
+                        )
+                        )
+                    }
+                }
+                callback(events)
+            }
+            .addOnFailureListener { exception ->
+                Log.w("GoogleFirestore", "Error getting documents.", exception)
             }
     }
 }
