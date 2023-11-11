@@ -128,6 +128,7 @@ class FirestoreHelper() {
             .collection("events")
             .document(year)
             .collection(upperMonth)
+            .whereEqualTo("startTime.dayOfMonth", day.toInt())
             .get()
             .addOnSuccessListener { result ->
                 val events = mutableListOf<FirestoreEvent>()
