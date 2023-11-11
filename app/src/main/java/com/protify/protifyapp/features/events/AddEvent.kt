@@ -131,12 +131,14 @@ class AddEvent {
             } else {
                 "$month/$dayOfMonth/$year $hour:$minute PM"
             }
+        } else {
             formattedEndTime = if (minute < 10) {
-                "$month/$dayOfMonth/$year $hour:0$minute PM"
+                "$month/$dayOfMonth/$year $hour:0$minute AM"
             } else {
-                "$month/$dayOfMonth/$year $hour:$minute PM"
+                "$month/$dayOfMonth/$year $hour:$minute AM"
             }
         }
+
     }
     private fun updateLocation(newLocation: String) {
         location = newLocation
