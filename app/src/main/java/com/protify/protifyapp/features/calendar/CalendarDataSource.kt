@@ -1,7 +1,10 @@
 package com.protify.protifyapp.features.calendar
 
+import com.protify.protifyapp.FirestoreEvent
+import com.protify.protifyapp.FirestoreHelper
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.stream.Collectors
 import java.util.stream.Stream
@@ -41,11 +44,40 @@ class CalendarDataSource {
             },
         )
     }
+ fun getFirestoreEvents(uid: String, dateCreated: Long, month: String, day: String, year: String, callback: (List<Event>) -> Unit) {
+        FirestoreHelper().userExists(uid,dateCreated) { userExists ->
+            if (userExists) {
+                FirestoreHelper().getEvents(uid, day, month, year) { events ->
+                    if (events.isNotEmpty()) {
+                        val convertedEvents = mutableListOf<Event>()
+                        events.forEach {
+                            convertedEvents.add(convertFirestoreEvent(it))
+                        }
+                        callback(convertedEvents)
+                    }
+                }
+            }
+        }
+    }
+    private fun convertFirestoreEvent (firestoreEvent: FirestoreEvent): Event {
+        val convertedEvent = Event()
+        convertedEvent.attendees = firestoreEvent.attendees!!
+        convertedEvent.description = firestoreEvent.description!!
+        convertedEvent.endTime = firestoreEvent.endTime.format(DateTimeFormatter.ofPattern("h:mm a"))
+        convertedEvent.startTime = firestoreEvent.startTime.format(DateTimeFormatter.ofPattern("h:mm a"))
+        convertedEvent.location = firestoreEvent.location!!
+        convertedEvent.title = firestoreEvent.name!!
+        return convertedEvent
+
+        }
 
     private fun toItemUiModel(date: LocalDate, isSelectedDate: Boolean) = CalendarUiModel.Date(
         isSelected = isSelectedDate,
         isToday = date.isEqual(today),
         date = date,
-        hasEvents = false,
+        hasEvents = true,
+
     )
+
+
 }
