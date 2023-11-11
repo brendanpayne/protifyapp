@@ -55,7 +55,13 @@ class CalendarDataSource {
                         }
                         callback(convertedEvents)
                     }
+                    else {
+                        callback(listOf())
+                    }
                 }
+            }
+            else {
+                callback(listOf())
             }
         }
     }
