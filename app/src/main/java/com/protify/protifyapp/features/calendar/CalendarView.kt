@@ -11,10 +11,15 @@ import androidx.compose.material.icons.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.protify.protifyapp.features.events.EventView
+import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.utils.DateUtils
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -116,7 +121,9 @@ class CalendarView {
     @Composable
     fun Calendar(navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
-        var calendarUiModel = dataSource.getData(lastSelectedDate = dataSource.today)
+        var calendarUiModel by remember { mutableStateOf(dataSource.getData(lastSelectedDate = dataSource.today))}
+        //var calendarUiModel = dataSource.getData(lastSelectedDate = dataSource.today)
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -133,6 +140,7 @@ class CalendarView {
                     onPreviousClickListener = { startDate ->
                         val finalStartDate = startDate.minusDays(1)
                         calendarUiModel = dataSource.getData(startDate = finalStartDate, lastSelectedDate = calendarUiModel.selectedDate.date)
+
                     },
                     onNextClickListener = { endDate ->
                         val finalStartDate = endDate.plusDays(2)
@@ -141,6 +149,12 @@ class CalendarView {
                 )
                 CalendarContent(data = calendarUiModel) { date ->
                     calendarUiModel = dataSource.getData(startDate = calendarUiModel.startDate.date, lastSelectedDate = date.date)
+                    dataSource.getFirestoreEvents(FirebaseLoginHelper().getCurrentUser()!!.uid, FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp, "december", "343", "2023") { events ->
+                        if (events.isNotEmpty()) {
+                            calendarUiModel.selectedDate.events = events
+                        }
+                    }
+
                 }
             }
         }
