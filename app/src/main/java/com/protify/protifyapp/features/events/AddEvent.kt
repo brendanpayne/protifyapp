@@ -3,7 +3,6 @@ package com.protify.protifyapp.features.events
 import android.app.TimePickerDialog
 import android.content.ContentUris
 import android.icu.util.TimeZone
-import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.widget.ScrollView
 import android.widget.Toast
@@ -44,7 +43,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.protify.protifyapp.features.events.Attendee
 import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.NetworkManager
@@ -61,7 +59,7 @@ class AddEvent {
     //private var timeZone: TimeZone? by mutableStateOf(TimeZone.getTimeZone("America/New_York"))
     private var timeZone: TimeZone? by mutableStateOf(TimeZone.getDefault())
     private var importance: Int by mutableIntStateOf(3)
-    private var attendees: List<CalendarContract.Attendees>? by mutableStateOf(listOf())
+    private var attendees: List<Attendee> by mutableStateOf(listOf())
     private var formattedStartTime: String by mutableStateOf("")
     private var formattedEndTime: String by mutableStateOf("")
     private var dateError: Boolean by mutableStateOf(false)
@@ -152,7 +150,7 @@ class AddEvent {
     private fun updateImportance(newImportance: Int) {
         importance = newImportance
     }
-    private fun updateAttendees(newAttendees: List<CalendarContract.Attendees>) {
+    private fun updateAttendees(newAttendees: List<Attendee>) {
         attendees = newAttendees
     }
     private fun isTimeSelected(): Boolean {
