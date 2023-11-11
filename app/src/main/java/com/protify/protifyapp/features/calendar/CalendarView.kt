@@ -10,7 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -116,7 +116,7 @@ class CalendarView {
     @Composable
     fun Calendar(navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
-        var calendarUiModel = dataSource.getData(lastSelectedDate = dataSource.today)
+        var data by remember { mutableStateOf(dataSource.getData(lastSelectedDate = dataSource.today)) }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -129,21 +129,26 @@ class CalendarView {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 CalendarHeader(
-                    data = calendarUiModel,
+                    data = data,
                     onPreviousClickListener = { startDate ->
                         val finalStartDate = startDate.minusDays(1)
-                        calendarUiModel = dataSource.getData(startDate = finalStartDate, lastSelectedDate = calendarUiModel.selectedDate.date)
+                        data = dataSource.getData(startDate = finalStartDate, lastSelectedDate = data.selectedDate.date)
                     },
                     onNextClickListener = { endDate ->
                         val finalStartDate = endDate.plusDays(2)
-                        calendarUiModel = dataSource.getData(startDate = finalStartDate, lastSelectedDate = calendarUiModel.selectedDate.date)
+                        data = dataSource.getData(startDate = finalStartDate, lastSelectedDate = data.selectedDate.date)
                     }
                 )
-                CalendarContent(data = calendarUiModel) { date ->
-                    calendarUiModel = dataSource.getData(startDate = calendarUiModel.startDate.date, lastSelectedDate = date.date)
+                CalendarContent(data = data) { date ->
+                    data = data.copy(
+                        selectedDate = date,
+                        visibleDates = data.visibleDates.map {
+                            it.copy(isSelected = it.date.isEqual(date.date))
+                        }
+                    )
                 }
             }
         }
-        EventView().EventCard(calendarUiModel, navigateToAddEvent)
+        EventView().EventCard(data, navigateToAddEvent)
     }
 }

@@ -8,6 +8,10 @@ class CalendarUiModel(
     var selectedDate: Date,
     var visibleDates: List<Date>,
 ) {
+    fun copy(selectedDate: Date, visibleDates: List<Date>): CalendarUiModel {
+        return CalendarUiModel(selectedDate, visibleDates)
+    }
+
     val startDate: Date = visibleDates.first()
     val endDate: Date = visibleDates.last()
     data class Date(
