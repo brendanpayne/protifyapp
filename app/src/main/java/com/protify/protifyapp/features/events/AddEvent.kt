@@ -8,6 +8,8 @@ import android.widget.ScrollView
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -232,6 +234,7 @@ class AddEvent {
         var contactNumber by remember {
             mutableStateOf("")
         }
+        var expandedContact by remember { mutableStateOf("")}
         val permission = android.Manifest.permission.READ_CONTACTS
         var contactsGranted by remember { mutableStateOf(false) }
         val requestPermissionsLauncher = rememberLauncherForActivityResult(
@@ -605,44 +608,48 @@ class AddEvent {
                     }
                 }
                 item {
-                    OutlinedTextField(
-                        value = contactNames.toString(),
-                        onValueChange = {  },
-                        readOnly = true,
-                        label = { Text("Attendees") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                            .height(200.dp),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        supportingText = {
-                            Text(
-                                text = "Optional",
-                                color = MaterialTheme.colorScheme.outline,
-                            )
-                        },
-                        trailingIcon = {
-                            Row {
-                                for (name in contactNames) {
-                                    Text(name)
-                                        Button(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(16.dp),
-                                            onClick = {
-                                                contactNames = contactNames - name
-                                            }
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Delete,
-                                                contentDescription = "Delete",
-                                                tint = MaterialTheme.colorScheme.onSurface,
-                                            )
+                    Text(
+                        text = "Attendees",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    Row(
+                        modifier =
+                        if (contactList.isEmpty()) {
+                            Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                        } else {
+                            Modifier
+                                .fillMaxSize()
+                                .border(1.dp, MaterialTheme.colorScheme.onSurface)
+                        }
+                    ) {
+                        contactList.forEach() { attendee ->
+                            Button(
+                                onClick = {expandedContact = attendee.name }
+                            ) {
+                                Column {
+                                        Text(attendee.name)
+                                        if (expandedContact == attendee.name) {
+                                            Text(text = "Email Address " + attendee.email)
+                                            Text(text =  "Phone Number " + attendee.phoneNumber)
                                         }
                                 }
+
+
+                            }
+                            Button(
+                                onClick = { contactList = contactList - attendee },
+                            ) {
+                                Icon (
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                )
                             }
                         }
-                    )
+                    }
                 }
                 item {
                     Button(
