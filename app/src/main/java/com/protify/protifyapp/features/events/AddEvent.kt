@@ -8,7 +8,6 @@ import android.widget.ScrollView
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,11 +16,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -608,48 +611,64 @@ class AddEvent {
                     }
                 }
                 item {
-                    Text(
-                        text = "Attendees",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(16.dp)
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
                     )
-                    Row(
-                        modifier =
-                        if (contactList.isEmpty()) {
-                            Modifier
+                    ){
+                        Text(
+                            text = if (contactList.isEmpty()) "No Attendees" else "Attendees",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                        Row(
+                            modifier = Modifier
                                 .fillMaxSize()
                                 .padding(16.dp)
-                        } else {
-                            Modifier
-                                .fillMaxSize()
-                                .border(1.dp, MaterialTheme.colorScheme.onSurface)
-                        }
-                    ) {
-                        contactList.forEach() { attendee ->
-                            Button(
-                                onClick = {expandedContact = attendee.name }
-                            ) {
-                                Column {
-                                        Text(attendee.name)
+                        ) {
+                            contactList.forEach() { attendee ->
+                                Button(
+                                    onClick = {expandedContact = attendee.name }
+                                ) {
+                                    Column {
+                                        Row {
+                                            Text(attendee.name)
+                                            if (expandedContact != attendee.name) {
+                                                Icon(
+                                                    imageVector = Icons.Default.ArrowDropDown,
+                                                    contentDescription = "More Info",
+                                                    tint = MaterialTheme.colorScheme.surface,
+                                                )
+                                            }
+                                        }
+
+
                                         if (expandedContact == attendee.name) {
                                             Text(text = "Email Address " + attendee.email)
                                             Text(text =  "Phone Number " + attendee.phoneNumber)
                                         }
+                                    }
+
+
                                 }
-
-
-                            }
-                            Button(
-                                onClick = { contactList = contactList - attendee },
-                            ) {
-                                Icon (
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                )
+                                Button(
+                                    onClick = { contactList = contactList - attendee },
+                                ) {
+                                    Icon (
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.surface,
+                                    )
+                                }
                             }
                         }
                     }
+
                 }
                 item {
                     Button(
@@ -658,7 +677,7 @@ class AddEvent {
                             .padding(16.dp),
                         onClick = {
                             var firestoreEvent:FirestoreEvent = FirestoreEvent(
-                                attendees = attendees,
+                                attendees = contactList,
                                 description = description,
                                 endTime = endTime,
                                 startTime = startTime,
