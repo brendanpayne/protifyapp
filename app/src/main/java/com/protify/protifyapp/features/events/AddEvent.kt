@@ -267,6 +267,12 @@ class AddEvent {
                         contactNumber = cursor.getString(numberIndex) ?: ""
                         contactName = cursor.getString(nameIndex) ?: ""
                         contactEmail = cursor.getString(emailIndex) ?: ""
+                        if (!contactEmail.contains("@")) {
+                            contactEmail = ""
+                        }
+                        if (contactNumber.contains("@")) {
+                            contactNumber = ""
+                        }
                         if (contactName == "") {
                             Toast.makeText(context, "Contact must have a name", Toast.LENGTH_LONG).show()
                         }
@@ -649,8 +655,12 @@ class AddEvent {
 
 
                                         if (expandedContact == attendee.name) {
-                                            Text(text = "Email Address " + attendee.email)
-                                            Text(text =  "Phone Number " + attendee.phoneNumber)
+                                            if (attendee.phoneNumber != "") {
+                                                Text(text = "Phone Number " + attendee.phoneNumber)
+                                            }
+                                            if (attendee.email != "") {
+                                                Text(text = "Email " + attendee.email)
+                                            }
                                         }
                                     }
 
