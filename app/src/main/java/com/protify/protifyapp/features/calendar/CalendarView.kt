@@ -27,24 +27,79 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 class CalendarView {
+
     private val dateUtils = DateUtils()
     private var currentDate: String = dateUtils.formatDate(dateUtils.getCurrentDate())
+
+    private fun updateMonthViewUI() {
+        // Update UI elements specific to the month view
+        // Show/hide or update specific UI components for the month view
+    }
+
+    private fun fetchDataForMonthView() {
+        // Fetch and update data specific to the month view
+        // Load a month-specific dataset or trigger a network request
+    }
+
+    private fun updateDayViewUI() {
+        // Update UI elements specific to the day view
+        // Show/hide or update specific UI components for the day view
+    }
+
+    private fun fetchDataForDayView() {
+        // Fetch and update data specific to the day view
+        // Load a day-specific dataset or trigger a network request
+    }
+
+
     @Composable
-    fun CalendarHeader(data: CalendarUiModel, onNextClickListener: (LocalDate) -> Unit, onPreviousClickListener: (LocalDate) -> Unit) {
-        Row{
+    fun CalendarHeader(
+        data: CalendarUiModel,
+        onNextClickListener: (LocalDate) -> Unit,
+        onPreviousClickListener: (LocalDate) -> Unit
+    ) {
+        var isMonthView by remember { mutableStateOf(true) }
+
+        Row {
             Text(
-                text = if (data.selectedDate.isToday) {
-                    "Today"
+                text = if (isMonthView) {
+                    "Month View"
                 } else {
-                    data.selectedDate.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
+                    if (data.selectedDate.isToday) {
+                        "Today"
+                    } else {
+                        data.selectedDate.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
+                    }
                 },
                 modifier = Modifier
                     .padding(16.dp)
-                    .clickable(indication = null, interactionSource = MutableInteractionSource(),
+                    .clickable(
+                        indication = null,
+                        interactionSource = MutableInteractionSource(),
                         onClick = {
-                        // TODO: When Clicking on the Date, toggle month view
+                            // Toggle the month view
+                            isMonthView = !isMonthView
 
-                    })
+                            // TODO: Perform actions based on the view mode change
+                            if (isMonthView) {
+                                // Switched to month view
+
+                                // Update UI elements for month view
+                                updateMonthViewUI()
+
+                                // Fetch and update data for month view
+                                fetchDataForMonthView()
+                            } else {
+                                // Switched to another view (e.g., day view)
+
+                                // Update UI elements for day view
+                                updateDayViewUI()
+
+                                // Fetch and update data for day view
+                                fetchDataForDayView()
+                            }
+                        }
+                    )
                     .weight(1f)
                     .align(Alignment.CenterVertically)
             )
@@ -160,7 +215,7 @@ class CalendarView {
                         date.date.year.toString()
                     ) { events ->
                         if (events.isNotEmpty()) {
-                             calendarUiModel.selectedDate.events = events
+                            calendarUiModel.selectedDate.events = events
                         }
                         isLoadingEvents = false
                     }
