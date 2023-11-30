@@ -1,59 +1,68 @@
 package com.protify.protifyapp
 
-import android.util.Log
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import com.protify.protifyapp.features.calendar.CalendarUiModel
+import com.protify.protifyapp.features.calendar.CalendarView
+import com.protify.protifyapp.features.events.EventView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
+import com.protify.protifyapp.ui.theme.ProtifyTheme
 
 class HomeActivity {
-    @Composable
-    fun HomePage(navigateToAddEvent: () -> Unit) {
-        //Get the current user from the EmailPasswordActivity class
-        val firestoreHelper = FirestoreHelper()
-        val user = FirebaseLoginHelper().getCurrentUser()
-        val context = LocalContext.current
-        //Display the user's email
-        Log.d("HomeActivity", "User email: ${user?.email}")
-        Column {
-            Text(
-                text = "Good Morning, ${user?.email}!",
-                modifier = androidx.compose.ui.Modifier.padding(16.dp),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Button(onClick = navigateToAddEvent) {
-                Text("Add Event")
+        @Composable
+        fun HomePage(navigateToAddEvent: () -> Unit) {
+            val firestoreHelper = FirestoreHelper()
+            val user = FirebaseLoginHelper().getCurrentUser()
+            val context = LocalContext.current
+            Column(modifier = Modifier.fillMaxSize()) {
+                // TODO: Add a greeting based on the time of day and logged in user.
+                val greeting = "Good Morning, ${user?.email}!"
+                Text(
+                    text = greeting,
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                CalendarView().Calendar(navigateToAddEvent)
+
             }
-        }
+            val networkManager = NetworkManager(context)
 
-        val networkManager = NetworkManager(context)
+            val isConnected by remember { mutableStateOf(false) }
+            LaunchedEffect(networkManager) {
+                networkManager.startListening()
+            }
+            LaunchedEffect(isConnected) {
+                networkManager.setNetworkChangeListener {
+                    if(it) {
+                        firestoreHelper.toggleOfflineOnline(true)
+                    } else {
+                        firestoreHelper.toggleOfflineOnline(false)
+                    }
 
-        val isConnected by remember { mutableStateOf(false) }
-        LaunchedEffect(networkManager) {
-            networkManager.startListening()
-        }
-        LaunchedEffect(isConnected) {
-            networkManager.setNetworkChangeListener {
-                if(it) {
-                    firestoreHelper.toggleOfflineOnline(true)
-                } else {
-                    firestoreHelper.toggleOfflineOnline(false)
                 }
-
             }
         }
+        @Preview(showSystemUi = true)
+        @Composable
+        fun CalendarAppPreview() {
+            ProtifyTheme {
+                HomePage(navigateToAddEvent = {})
             }
-    fun navigateToAddEvent(navController: NavController) {
+        }
+
+    fun navigateToAddEvent(navController: NavHostController) {
         navController.navigate("addEvent")
     }
 }

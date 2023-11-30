@@ -7,11 +7,16 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.protify.protifyapp.features.events.AddEvent
+import com.protify.protifyapp.features.events.EventDetails
+import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.features.login.LoginActivity
 import com.protify.protifyapp.features.login.RegisterActivity
 
@@ -24,6 +29,9 @@ class AccountActivity {
         ) {
             //Greeting("Android")
             val navController = rememberNavController()
+            val currentUser by remember {
+                mutableStateOf(FirebaseLoginHelper().getCurrentUser())
+            }
             NavHost(navController = navController, startDestination = "main") {
                 composable("main") {
                     Row {
@@ -52,7 +60,8 @@ class AccountActivity {
                 composable("home") {
                     HomeActivity().HomePage {
                         HomeActivity().navigateToAddEvent(
-                            navController = navController)
+                            navController = navController
+                        )
                     }
                 }
                 composable("addEvent") {
@@ -62,6 +71,19 @@ class AccountActivity {
                         )
                     }
                 }
+                /*
+                composable("eventDetails/{date}/{eventId}") { backStackEntry ->
+                    val date = backStackEntry.arguments?.getString("date")
+                    val eventId = backStackEntry.arguments?.getString("eventId")
+                    EventDetails().EventDetailsPage(
+                        date = date!!,
+                        eventId = eventId!!
+                    )
+                }
+                 */
+            }
+            if (currentUser != null) {
+                navController.navigate("home")
             }
         }
     }

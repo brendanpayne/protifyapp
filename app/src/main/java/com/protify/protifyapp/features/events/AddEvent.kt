@@ -3,12 +3,12 @@ package com.protify.protifyapp.features.events
 import android.app.TimePickerDialog
 import android.content.ContentUris
 import android.icu.util.TimeZone
-import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.widget.ScrollView
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,11 +16,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -44,7 +48,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.protify.protifyapp.Attendee
 import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.NetworkManager
@@ -61,7 +64,7 @@ class AddEvent {
     //private var timeZone: TimeZone? by mutableStateOf(TimeZone.getTimeZone("America/New_York"))
     private var timeZone: TimeZone? by mutableStateOf(TimeZone.getDefault())
     private var importance: Int by mutableIntStateOf(3)
-    private var attendees: List<CalendarContract.Attendees>? by mutableStateOf(listOf())
+    private var attendees: List<Attendee> by mutableStateOf(listOf())
     private var formattedStartTime: String by mutableStateOf("")
     private var formattedEndTime: String by mutableStateOf("")
     private var dateError: Boolean by mutableStateOf(false)
@@ -133,12 +136,14 @@ class AddEvent {
             } else {
                 "$month/$dayOfMonth/$year $hour:$minute PM"
             }
+        } else {
             formattedEndTime = if (minute < 10) {
-                "$month/$dayOfMonth/$year $hour:0$minute PM"
+                "$month/$dayOfMonth/$year $hour:0$minute AM"
             } else {
-                "$month/$dayOfMonth/$year $hour:$minute PM"
+                "$month/$dayOfMonth/$year $hour:$minute AM"
             }
         }
+
     }
     private fun updateLocation(newLocation: String) {
         location = newLocation
@@ -152,7 +157,7 @@ class AddEvent {
     private fun updateImportance(newImportance: Int) {
         importance = newImportance
     }
-    private fun updateAttendees(newAttendees: List<CalendarContract.Attendees>) {
+    private fun updateAttendees(newAttendees: List<Attendee>) {
         attendees = newAttendees
     }
     private fun isTimeSelected(): Boolean {
@@ -232,6 +237,7 @@ class AddEvent {
         var contactNumber by remember {
             mutableStateOf("")
         }
+        var expandedContact by remember { mutableStateOf("")}
         val permission = android.Manifest.permission.READ_CONTACTS
         var contactsGranted by remember { mutableStateOf(false) }
         val requestPermissionsLauncher = rememberLauncherForActivityResult(
@@ -261,6 +267,12 @@ class AddEvent {
                         contactNumber = cursor.getString(numberIndex) ?: ""
                         contactName = cursor.getString(nameIndex) ?: ""
                         contactEmail = cursor.getString(emailIndex) ?: ""
+                        if (!contactEmail.contains("@")) {
+                            contactEmail = ""
+                        }
+                        if (contactNumber.contains("@")) {
+                            contactNumber = ""
+                        }
                         if (contactName == "") {
                             Toast.makeText(context, "Contact must have a name", Toast.LENGTH_LONG).show()
                         }
@@ -605,44 +617,68 @@ class AddEvent {
                     }
                 }
                 item {
-                    OutlinedTextField(
-                        value = contactNames.toString(),
-                        onValueChange = {  },
-                        readOnly = true,
-                        label = { Text("Attendees") },
+                    ElevatedCard(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                            .height(200.dp),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        supportingText = {
-                            Text(
-                                text = "Optional",
-                                color = MaterialTheme.colorScheme.outline,
-                            )
-                        },
-                        trailingIcon = {
-                            Row {
-                                for (name in contactNames) {
-                                    Text(name)
-                                        Button(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(16.dp),
-                                            onClick = {
-                                                contactNames = contactNames - name
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                        colors = CardDefaults.elevatedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                    )
+                    ){
+                        Text(
+                            text = if (contactList.isEmpty()) "No Attendees" else "Attendees",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                        ) {
+                            contactList.forEach() { attendee ->
+                                Button(
+                                    onClick = {expandedContact = attendee.name }
+                                ) {
+                                    Column {
+                                        Row {
+                                            Text(attendee.name)
+                                            if (expandedContact != attendee.name) {
+                                                Icon(
+                                                    imageVector = Icons.Default.ArrowDropDown,
+                                                    contentDescription = "More Info",
+                                                    tint = MaterialTheme.colorScheme.surface,
+                                                )
                                             }
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Delete,
-                                                contentDescription = "Delete",
-                                                tint = MaterialTheme.colorScheme.onSurface,
-                                            )
                                         }
+
+
+                                        if (expandedContact == attendee.name) {
+                                            if (attendee.phoneNumber != "") {
+                                                Text(text = "Phone Number " + attendee.phoneNumber)
+                                            }
+                                            if (attendee.email != "") {
+                                                Text(text = "Email " + attendee.email)
+                                            }
+                                        }
+                                    }
+
+
+                                }
+                                Button(
+                                    onClick = { contactList = contactList - attendee },
+                                ) {
+                                    Icon (
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.surface,
+                                    )
                                 }
                             }
                         }
-                    )
+                    }
+
                 }
                 item {
                     Button(
@@ -651,7 +687,7 @@ class AddEvent {
                             .padding(16.dp),
                         onClick = {
                             var firestoreEvent:FirestoreEvent = FirestoreEvent(
-                                attendees = attendees,
+                                attendees = contactList,
                                 description = description,
                                 endTime = endTime,
                                 startTime = startTime,
