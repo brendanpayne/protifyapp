@@ -1,9 +1,13 @@
 package com.protify.protifyapp
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,11 +18,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.protify.protifyapp.features.calendar.CalendarUiModel
 import com.protify.protifyapp.features.calendar.CalendarView
-import com.protify.protifyapp.features.events.EventView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.ui.theme.ProtifyTheme
+import com.protify.protifyapp.utils.LocationUtils
 
 class HomeActivity {
         @Composable
@@ -35,8 +38,26 @@ class HomeActivity {
                     style = MaterialTheme.typography.titleLarge
                 )
                 CalendarView().Calendar(navigateToAddEvent)
+                val permission = android.Manifest.permission.ACCESS_FINE_LOCATION; android.Manifest.permission.ACCESS_COARSE_LOCATION
 
+                 val locationPermssionsContract = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission(),
+                    onResult = { isGranted ->
+                        if (isGranted) {
+                            LocationUtils(context).getCurrentLocation { long, lat ->
+                                Toast.makeText(context, "Location: $long, $lat", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            // Explain to the user that the feature is unavailable because the
+                            // features requires a permission that the user has denied.
+                        }
+                    }
+                )
+                LaunchedEffect(locationPermssionsContract) {
+                    locationPermssionsContract.launch(permission)
+                }
             }
+
             val networkManager = NetworkManager(context)
 
             val isConnected by remember { mutableStateOf(false) }
