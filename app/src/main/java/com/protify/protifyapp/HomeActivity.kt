@@ -13,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -22,6 +23,7 @@ import com.protify.protifyapp.features.calendar.CalendarView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.ui.theme.ProtifyTheme
 import com.protify.protifyapp.utils.LocationUtils
+import com.protify.protifyapp.utils.WeatherUtils
 
 class HomeActivity {
         @Composable
@@ -29,15 +31,18 @@ class HomeActivity {
             val firestoreHelper = FirestoreHelper()
             val user = FirebaseLoginHelper().getCurrentUser()
             val context = LocalContext.current
+            var locationForecast by remember { mutableStateOf("Loading Forecast...") }
+
             Column(modifier = Modifier.fillMaxSize()) {
                 // TODO: Add a greeting based on the time of day and logged in user.
-                val greeting = "Good Morning, ${user?.email}!"
+                val greeting = "Good Morning, ${user?.email}! $locationForecast"
                 Text(
                     text = greeting,
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.titleLarge
                 )
                 CalendarView().Calendar(navigateToAddEvent)
+                //Get Location Permissions
                 val permission = android.Manifest.permission.ACCESS_FINE_LOCATION; android.Manifest.permission.ACCESS_COARSE_LOCATION
 
                  val locationPermssionsContract = rememberLauncherForActivityResult(
@@ -46,6 +51,11 @@ class HomeActivity {
                         if (isGranted) {
                             LocationUtils(context).getCurrentLocation { long, lat ->
                                 Toast.makeText(context, "Location: $long, $lat", Toast.LENGTH_SHORT).show()
+                                WeatherUtils(lat ,long).getForecast { forecast ->
+                                    if (forecast != null) {
+                                        locationForecast = "Forecast: ${forecast.properties.periods[0].shortForecast}"
+                                    }
+                                }
                             }
                         } else {
                             // Explain to the user that the feature is unavailable because the
