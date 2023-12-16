@@ -23,7 +23,9 @@ import com.protify.protifyapp.features.calendar.CalendarView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.ui.theme.ProtifyTheme
 import com.protify.protifyapp.utils.LocationUtils
+import com.protify.protifyapp.utils.MapsDurationUtils
 import com.protify.protifyapp.utils.WeatherUtils
+import java.time.LocalDateTime
 
 class HomeActivity {
         @Composable
@@ -32,10 +34,11 @@ class HomeActivity {
             val user = FirebaseLoginHelper().getCurrentUser()
             val context = LocalContext.current
             var locationForecast by remember { mutableStateOf("Loading Forecast...") }
+            var distanceFromBrooklyn by remember { mutableStateOf("Loading Distance...") }
 
             Column(modifier = Modifier.fillMaxSize()) {
                 // TODO: Add a greeting based on the time of day and logged in user.
-                val greeting = "Good Morning, ${user?.email}! $locationForecast"
+                val greeting = "Good Morning, ${user?.email}! $locationForecast $distanceFromBrooklyn"
                 Text(
                     text = greeting,
                     modifier = Modifier.padding(16.dp),
@@ -56,6 +59,9 @@ class HomeActivity {
                                         locationForecast = "Forecast: ${forecast.properties.periods[0].shortForecast}"
                                     }
                                 }
+                                MapsDurationUtils(long, lat, LocalDateTime.now()).getDistance { distance ->
+                                    distanceFromBrooklyn = "Distance from Brooklyn: ${distance} seconds"
+                                }
                             }
                         } else {
                             // Explain to the user that the feature is unavailable because the
@@ -67,6 +73,7 @@ class HomeActivity {
                     locationPermssionsContract.launch(permission)
                 }
             }
+
 
             val networkManager = NetworkManager(context)
 
