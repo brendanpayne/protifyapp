@@ -3,8 +3,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowLeft
@@ -22,6 +22,7 @@ import androidx.navigation.NavHostController
 import com.protify.protifyapp.features.events.EventView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.utils.DateUtils
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -51,54 +52,28 @@ class CalendarView {
         // Load a day-specific dataset or trigger a network request
     }
 
-
     @Composable
     fun CalendarHeader(
         data: CalendarUiModel,
         onNextClickListener: (LocalDate) -> Unit,
-        onPreviousClickListener: (LocalDate) -> Unit
+        onPreviousClickListener: (LocalDate) -> Unit,
+        onToggleViewClickListener: () -> Unit
     ) {
         var isMonthView by remember { mutableStateOf(true) }
 
         Row {
             Text(
-                text = if (isMonthView) {
-                    "Month View"
+                if (data.selectedDate.isToday) {
+                    "Today"
                 } else {
-                    if (data.selectedDate.isToday) {
-                        "Today"
-                    } else {
-                        data.selectedDate.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
-                    }
+                    data.selectedDate.date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
                 },
                 modifier = Modifier
                     .padding(16.dp)
                     .clickable(
                         indication = null,
                         interactionSource = MutableInteractionSource(),
-                        onClick = {
-                            // Toggle the month view
-                            isMonthView = !isMonthView
-
-                            // TODO: Perform actions based on the view mode change
-                            if (isMonthView) {
-                                // Switched to month view
-
-                                // Update UI elements for month view
-                                updateMonthViewUI()
-
-                                // Fetch and update data for month view
-                                fetchDataForMonthView()
-                            } else {
-                                // Switched to another view (e.g., day view)
-
-                                // Update UI elements for day view
-                                updateDayViewUI()
-
-                                // Fetch and update data for day view
-                                fetchDataForDayView()
-                            }
-                        }
+                        onClick = onToggleViewClickListener
                     )
                     .weight(1f)
                     .align(Alignment.CenterVertically)
@@ -122,6 +97,7 @@ class CalendarView {
         }
     }
 
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun CalendarItem(date: CalendarUiModel.Date, onClickListener: (CalendarUiModel.Date) -> Unit) {
@@ -141,6 +117,7 @@ class CalendarView {
                 modifier = Modifier.padding(vertical = 4.dp, horizontal = 4.dp),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.elevatedCardColors(
+                    // TODO: If there are dates within the week that fall in the previous/next month, they should be a different (darker) color.
                     containerColor = if (date.isSelected) {
                         MaterialTheme.colorScheme.primary
                     } else {
@@ -166,10 +143,22 @@ class CalendarView {
     }
 
     @Composable
-    fun  CalendarContent(data: CalendarUiModel, onDateClickListener: (CalendarUiModel.Date) -> Unit) {
-        LazyRow {
-            items(items = data.visibleDates) { date ->
-                CalendarItem(date, onDateClickListener)
+    fun CalendarContent(data: CalendarUiModel, onDateClickListener: (CalendarUiModel.Date) -> Unit, isMonthView: Boolean) {
+        if (isMonthView) {
+            LazyColumn {
+                items(data.visibleDates.chunked(7)) { week ->
+                    Row {
+                        for (date in week) {
+                            CalendarItem(date, onDateClickListener)
+                        }
+                    }
+                }
+            }
+        } else {
+            LazyRow {
+                items(items = data.visibleDates) { date ->
+                    CalendarItem(date, onDateClickListener)
+                }
             }
         }
     }
@@ -177,9 +166,9 @@ class CalendarView {
     @Composable
     fun Calendar(navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
-        var calendarUiModel by remember { mutableStateOf(dataSource.getData(lastSelectedDate = dataSource.today))}
+        var isMonthView by remember { mutableStateOf(true) }
+        var calendarUiModel by remember { mutableStateOf(dataSource.getData(lastSelectedDate = dataSource.today, isMonthView = isMonthView))}
         var isLoadingEvents by remember { mutableStateOf(true)}
-        //var calendarUiModel = dataSource.getData(lastSelectedDate = dataSource.today)
 
         Box(
             modifier = Modifier
@@ -193,19 +182,29 @@ class CalendarView {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 CalendarHeader(
+                    // TODO: Month view jumps two months rather than one due to fetching the first/last day of the month, which in this case is the previous/next month
+                    // TODO: Add/Subtract 7 days from the first/last day of the month to fix this?
+
+                    // TODO: Fix weekly view from jumping a whole month? IDK why this happens
                     data = calendarUiModel,
                     onPreviousClickListener = { startDate ->
-                        val finalStartDate = startDate.minusDays(1)
-                        calendarUiModel = dataSource.getData(startDate = finalStartDate, lastSelectedDate = calendarUiModel.selectedDate.date)
-
+                        val firstDay = if (isMonthView) startDate.withDayOfMonth(1) else startDate.with(DayOfWeek.SUNDAY)
+                        val finalStartDate = firstDay.minusMonths(1)
+                        calendarUiModel = dataSource.getData(startDate = finalStartDate, lastSelectedDate = calendarUiModel.selectedDate.date, isMonthView = isMonthView)
                     },
                     onNextClickListener = { endDate ->
-                        val finalStartDate = endDate.plusDays(2)
-                        calendarUiModel = dataSource.getData(startDate = finalStartDate, lastSelectedDate = calendarUiModel.selectedDate.date)
+                        val lastDay = if (isMonthView) endDate.withDayOfMonth(endDate.lengthOfMonth()) else endDate.with(DayOfWeek.SATURDAY)
+                        val finalStartDate = lastDay.plusMonths(1)
+                        calendarUiModel = dataSource.getData(startDate = finalStartDate, lastSelectedDate = calendarUiModel.selectedDate.date, isMonthView = isMonthView)
+                    },
+                    onToggleViewClickListener = {
+                        isMonthView = !isMonthView
+                        calendarUiModel = dataSource.getData(startDate = dataSource.today, lastSelectedDate = dataSource.today, isMonthView = isMonthView)
                     }
                 )
-                CalendarContent(data = calendarUiModel) { date ->
-                    calendarUiModel = dataSource.getData(startDate = calendarUiModel.startDate.date, lastSelectedDate = date.date)
+                CalendarContent(data = calendarUiModel, onDateClickListener = { date ->
+                    val finalStartDate = if (isMonthView) date.date else calendarUiModel.startDate.date
+                    calendarUiModel = dataSource.getData(startDate = finalStartDate, lastSelectedDate = date.date, isMonthView = isMonthView)
                     isLoadingEvents = true
                     dataSource.getFirestoreEvents(
                         FirebaseLoginHelper().getCurrentUser()!!.uid,
@@ -219,10 +218,10 @@ class CalendarView {
                         }
                         isLoadingEvents = false
                     }
-
-                }
+                }, isMonthView = isMonthView)
             }
         }
+        // TODO: Resize the calendar to fit the whole month when in month view
         EventView().EventCard(calendarUiModel, navigateToAddEvent, isLoadingEvents)
     }
 
