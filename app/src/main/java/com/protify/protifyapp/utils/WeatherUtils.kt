@@ -73,9 +73,15 @@ class WeatherUtils(val longitude: Double, val latitude: Double) {
                 .map {
                     RainForecast(
                         it.startTimeLocalDateTime,
-                        it.probabilityOfPrecipitation!!.value
+                        it.probabilityOfPrecipitation!!.value,
+                        false
                     )
                 }
+            for (forecasts in rainForecast) {
+                if (forecasts.probability > 50) {
+                    forecasts.isRaining = true
+                }
+            }
             oncomplete(rainForecast)
         }
     }
