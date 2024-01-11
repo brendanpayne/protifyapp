@@ -1,6 +1,7 @@
 package com.protify.protifyapp.utils
 
 import com.google.gson.GsonBuilder
+import com.protify.protifyapp.features.weather.RainForecast
 import com.protify.protifyapp.features.weather.WeatherForecast
 import com.protify.protifyapp.features.weather.WeatherOverview
 import okhttp3.OkHttpClient
@@ -42,7 +43,7 @@ class WeatherUtils(val longitude: Double, val latitude: Double) {
                 return@getGridValues
             }
             val request = okhttp3.Request.Builder()
-                .url(overview.properties.forecast)
+                .url(overview.properties.forecastHourly)
                 .build()
             client.newCall(request).enqueue(object : okhttp3.Callback {
                 override fun onFailure(call: okhttp3.Call, e: IOException) {
@@ -52,9 +53,30 @@ class WeatherUtils(val longitude: Double, val latitude: Double) {
                 override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
                     val body = response.body?.string()
                     val forecast = gson.fromJson(body, WeatherForecast::class.java)
+                    for (period in forecast.properties.periods) {
+                        period.startTimeLocalDateTime = java.time.LocalDateTime.parse(period.startTime, java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                        period.endTimeLocalDateTime = java.time.LocalDateTime.parse(period.endTime, java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                    }
                     onComplete(forecast)
                 }
             })
+        }
+    }
+
+    fun getRainForecast(oncomplete: (List<RainForecast>?) -> Unit) {
+        getForecast { forecast ->
+            if (forecast == null) {
+                oncomplete(null)
+                return@getForecast
+            }
+            val rainForecast = forecast.properties.periods
+                .map {
+                    RainForecast(
+                        it.startTimeLocalDateTime,
+                        it.probabilityOfPrecipitation!!.value
+                    )
+                }
+            oncomplete(rainForecast)
         }
     }
 }

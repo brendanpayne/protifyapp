@@ -54,9 +54,17 @@ class HomeActivity {
                         if (isGranted) {
                             LocationUtils(context).getCurrentLocation { long, lat ->
                                 Toast.makeText(context, "Location: $long, $lat", Toast.LENGTH_SHORT).show()
-                                WeatherUtils(lat ,long).getForecast { forecast ->
-                                    if (forecast != null) {
-                                        locationForecast = "Forecast: ${forecast.properties.periods[0].shortForecast}"
+//                                WeatherUtils(lat ,long).getForecast { forecast ->
+//                                    if (forecast != null) {
+//                                        locationForecast = "Forecast: ${forecast.properties.periods[0].shortForecast}"
+//                                        var testTimeShit = forecast.properties.periods[0].startTimeLocalDateTime
+//                                        Log.d("Time", testTimeShit.toString())
+//                                    }
+//                                }
+                                WeatherUtils(lat, long).getRainForecast { rainForecast ->
+                                    if (rainForecast != null) {
+                                        locationForecast =
+                                            "Rain Forecast: ${rainForecast[0].probability}%"
                                     }
                                 }
                                 MapsDurationUtils(long, lat, LocalDateTime.now()).getDistance { distance ->

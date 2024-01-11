@@ -1,5 +1,7 @@
 package com.protify.protifyapp.features.weather
 
+import java.time.LocalDateTime
+
 data class WeatherForecast(
     val type: String,
     val geometry: Geometry,
@@ -30,6 +32,8 @@ data class WeatherForecast(
             val name: String,
             val startTime: String,
             val endTime: String,
+            var startTimeLocalDateTime: LocalDateTime,
+            var endTimeLocalDateTime: LocalDateTime,
             val isDaytime: Boolean,
             val temperature: Int,
             val temperatureUnit: String,
