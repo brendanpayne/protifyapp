@@ -1,9 +1,6 @@
 package com.protify.protifyapp.utils
 
 import DirectionsResponse
-import com.google.firebase.firestore.Exclude
-import com.google.gson.ExclusionStrategy
-import com.google.gson.FieldAttributes
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import java.io.IOException
@@ -14,14 +11,15 @@ class MapsStopsUtils(startLong: Double, startLat: Double,
     // destinationLong: Double, destinationLat: Double,
                      departTime: LocalDateTime) {
 
-    val mapsKey = System.getenv("maps_api")
+    //val mapsKey = System.getenv("maps_api")
+    val mapsKey = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     val beginningOfTime = LocalDateTime.of(1970, 1, 1, 0, 0, 0)
     val departTimeFix = departTime.plusDays(1).toEpochSecond(ZoneOffset.UTC) - beginningOfTime.toEpochSecond(
         ZoneOffset.UTC)
     val url = "https://maps.googleapis.com/maps/api/directions/json" +
             "?departure_time=${departTimeFix}" +
-            "&destination=MainevilleOhio" +
-            "origin=LancasterOhio%2C%20MA" +
+            "&destination=MainevilleOhio&" +
+            "origin=39.85%2C-82.82" +
             "&waypoints=via%3AWaynesvilleOhio%2CMA" +
             "&key=$mapsKey"
 
@@ -30,22 +28,7 @@ class MapsStopsUtils(startLong: Double, startLat: Double,
         .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
-    private val gson = GsonBuilder()
-        .serializeNulls() // Include null values
-        .setExclusionStrategies(object : ExclusionStrategy {
-            override
-
-            fun
-
-                    shouldSkipField(f: FieldAttributes): Boolean {
-                return f.getAnnotation(Exclude::class.java) != null
-            }
-
-            override fun shouldSkipClass(clazz: Class<*>): Boolean {
-                return false
-            }
-        })
-        .create()
+    private val gson = GsonBuilder().create()
     private fun getDuration(onComplete: (DirectionsResponse?) -> Unit) {
         val request = okhttp3.Request.Builder()
             .url(url)
