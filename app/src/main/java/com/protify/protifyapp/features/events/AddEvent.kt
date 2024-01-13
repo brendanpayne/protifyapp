@@ -48,6 +48,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.widget.*
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.NetworkManager
@@ -285,6 +289,18 @@ class AddEvent {
                 }
             }
         )
+        //Auto Complete
+        Places.initialize(context, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+        val placesClient = remember { Places.createClient(context) }
+        val autocompleteLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.StartActivityForResult(),
+            onResult = {
+                if (it.resultCode == android.app.Activity.RESULT_OK) {
+                    val place = Autocomplete.getPlaceFromIntent(it.data!!)
+                    updateLocation(place.address ?: "")
+                }
+            }
+        )
         //Get network state so we can toggle Firestore offline/online
         val isConnected by remember { mutableStateOf(false) }
         LaunchedEffect(networkManager) {
@@ -477,7 +493,18 @@ class AddEvent {
                 item {
                     OutlinedTextField(
                         value = location ?: "",
-                        onValueChange = { location -> updateLocation(location) },
+                        onValueChange = {
+                                location = it
+
+                            if (it.isNotBlank()) {
+                                autocompleteLauncher.launch(
+                                    Autocomplete.IntentBuilder(
+                                        AutocompleteActivityMode.OVERLAY,
+                                        listOf(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS)
+                                    ).build(context)
+                                )
+                            }
+                                        },
                         label = { Text("Location") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
