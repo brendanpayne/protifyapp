@@ -6,6 +6,7 @@ import com.protify.protifyapp.features.weather.WeatherForecast
 import com.protify.protifyapp.features.weather.WeatherOverview
 import okhttp3.OkHttpClient
 import java.io.IOException
+import java.time.format.DateTimeFormatter
 
 class WeatherUtils(val longitude: Double, val latitude: Double) {
 
@@ -74,14 +75,17 @@ class WeatherUtils(val longitude: Double, val latitude: Double) {
                     RainForecast(
                         it.startTimeLocalDateTime,
                         it.probabilityOfPrecipitation!!.value,
-                        false
+                        false,
+                        ""
                     )
                 }
             for (forecasts in rainForecast) {
+                forecasts.stringTime = forecasts.time.format(DateTimeFormatter.ISO_DATE_TIME)
                 if (forecasts.probability > 50) {
                     forecasts.isRaining = true
                 }
             }
+            val jsonRainForecast = gson.toJson(rainForecast)
             oncomplete(rainForecast)
         }
     }
