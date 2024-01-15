@@ -10,14 +10,16 @@ import java.time.ZoneOffset
 class MapsDurationUtils(startLong: Double, startLat: Double,
                         // destinationLong: Double, destinationLat: Double,
                         departTime: LocalDateTime) {
-    val mapsKey = System.getenv("maps_api")
+    //val mapsKey = System.getenv("maps_api")
+    val mapsKey = "x"
     val beginningOfTime = LocalDateTime.of(1970, 1, 1, 0, 0, 0)
     val departTimeFix = departTime.plusDays(1).toEpochSecond(ZoneOffset.UTC) - beginningOfTime.toEpochSecond(ZoneOffset.UTC)
-    val url = "https://maps.googleapis.com/maps/api/distancematrix/json" +
-            "?departure_time=${departTimeFix}" +
-            "&destinations=40.659569%2C-73.933783%7C40.729029%2C-73.851524%7C40.6860072%2C-73.6334271%7C40.598566%2C-73.7527626" +
-            "&origins=$startLong%2C$startLat" +
-            "&key=$mapsKey"
+//    private val url = "https://maps.googleapis.com/maps/api/distancematrix/json" +
+//            "?departure_time=${departTimeFix}" +
+//            "&destinations=40.659569%2C-73.933783%7C40.729029%2C-73.851524%7C40.6860072%2C-73.6334271%7C40.598566%2C-73.7527626" +
+//            "&origins=$startLong%2C$startLat" +
+//            "&key=$mapsKey"
+    private val url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=1101%20Beech%20Rd%20SW,%20New%20Albany,%20OH%2043054&destinations=6190%20Falla%20Dr,%20Canal%20Winchester,%20OH%2043110&key=xx"
 
     private val client: OkHttpClient = OkHttpClient().newBuilder()
         .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
