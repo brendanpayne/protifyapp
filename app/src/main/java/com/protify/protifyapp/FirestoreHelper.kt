@@ -62,7 +62,11 @@ class FirestoreHelper() {
                     "description" to event.description,
                     "timeZone" to event.timeZone,
                     "importance" to event.importance,
-                    "attendees" to event.attendees,        )
+                    "attendees" to event.attendees,
+                    "rainCheck" to event.rainCheck,
+                    "isRaining" to event.isRaining,
+                    "mapsCheck" to event.mapsCheck,
+                    "distance" to event.distance)
                 db.collection("users")
                     .document(uid)
                     .collection("events")
@@ -159,14 +163,18 @@ class FirestoreHelper() {
                         )
                         events.add(
                             FirestoreEvent(
-                            name = document.data["name"].toString(),
-                            startTime = startTime as LocalDateTime,
-                            endTime = endTime as LocalDateTime,
-                            location = document.data["location"].toString(),
-                            description = document.data["description"].toString(),
-                            timeZone = document.data["timeZone"].toString(),
-                            importance = (document.data["importance"] as Long).toInt(),
-                            attendees = attendeeList
+                                name = document.data["name"].toString(),
+                                startTime = startTime as LocalDateTime,
+                                endTime = endTime as LocalDateTime,
+                                location = document.data["location"].toString(),
+                                description = document.data["description"].toString(),
+                                timeZone = document.data["timeZone"].toString(),
+                                importance = (document.data["importance"] as Long).toInt(),
+                                attendees = attendeeList,
+                                rainCheck = (document.data["rainCheck"] as Boolean),
+                                isRaining = (document.data["isRaining"] as Boolean),
+                                mapsCheck = (document.data["mapsCheck"] as Boolean),
+                                distance = (document.data["distance"] as Long).toInt()
 
                         )
                         )
@@ -177,5 +185,33 @@ class FirestoreHelper() {
             .addOnFailureListener { exception ->
                 Log.w("GoogleFirestore", "Error getting documents.", exception)
             }
+    }
+    //Retunrs a list of free time intervals for a given day (to minimize API calls)
+    fun getFreeTime(dayStart: LocalDateTime, dayEnd: LocalDateTime, uid: String, day: String, month: String, year: String, callback: (List<Pair<LocalDateTime, LocalDateTime>>) -> Unit) {
+
+        var events = getEvents(uid, day, month, year) { events ->
+
+            var sortedEvents = events.sortedBy { it.startTime }
+            val freeTimes = mutableListOf<Pair<LocalDateTime, LocalDateTime>>()
+            var currentFreeTimeStart = dayStart
+            var currentFreeTimeEnd = dayStart
+
+            //Find free time intervals
+            for (event in sortedEvents) {
+                if (event.startTime > currentFreeTimeStart) {
+                    if (currentFreeTimeStart != currentFreeTimeEnd) {
+                        freeTimes.add(Pair(currentFreeTimeStart, currentFreeTimeEnd))
+                    }
+                    currentFreeTimeStart = event.endTime
+                } else {
+                    currentFreeTimeEnd = minOf(currentFreeTimeEnd, event.endTime)
+                }
+            }
+            //Check for final free time interval
+            if (currentFreeTimeStart < dayEnd) {
+                freeTimes.add(Pair(currentFreeTimeStart, dayEnd))
+            }
+            callback(freeTimes)
+        }
     }
 }

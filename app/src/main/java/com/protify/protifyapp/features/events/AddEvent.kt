@@ -734,7 +734,11 @@ class AddEvent {
                                 timeZone = timeZone?.displayName,
                                 name = name,
                                 importance = importance,
-                                location = location
+                                location = location,
+                                rainCheck = false,
+                                isRaining = false,
+                                mapsCheck = false,
+                                distance = 0
                             )
                             val errors = firestoreEvent.validateEvent(firestoreEvent)
                             if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {
