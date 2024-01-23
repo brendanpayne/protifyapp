@@ -29,6 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -52,6 +53,7 @@ import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.widget.*
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
+import com.protify.protifyapp.APIKeys
 import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.NetworkManager
@@ -290,7 +292,8 @@ class AddEvent {
             }
         )
         //Auto Complete
-        Places.initialize(context, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+        val mapsAPI = APIKeys().getMapsKey()
+        Places.initialize(context, mapsAPI)
         val placesClient = remember { Places.createClient(context) }
         val autocompleteLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.StartActivityForResult(),
@@ -508,6 +511,16 @@ class AddEvent {
                         label = { Text("Location") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        trailingIcon = {
+                                       IconButton(onClick = { location = "" }) {
+                                           Icon(
+                                               imageVector = Icons.Default.Delete,
+                                               contentDescription = "Delete",
+                                               tint = MaterialTheme.colorScheme.outline,
+                                           )
+
+                                       }
+                        },
                         supportingText = {
                             Text(
                                 text = "Optional",
