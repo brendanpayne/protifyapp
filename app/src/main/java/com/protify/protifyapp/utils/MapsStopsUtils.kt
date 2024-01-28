@@ -2,19 +2,18 @@ package com.protify.protifyapp.utils
 
 import DirectionsResponse
 import com.google.gson.GsonBuilder
+import com.protify.protifyapp.APIKeys
 import okhttp3.OkHttpClient
 import java.io.IOException
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
-class MapsStopsUtils(startLong: Double, startLat: Double,
+class MapsStopsUtils(
     // destinationLong: Double, destinationLat: Double,
                      departTime: LocalDateTime) {
-    private val startLong = startLong
-    private val startLat = startLat
     private val departTime = departTime
     //val mapsKey = System.getenv("maps_api")
-    val mapsKey = "x"
+    val mapsKey = APIKeys().getMapsKey()
     val beginningOfTime = LocalDateTime.of(1970, 1, 1, 0, 0, 0)
     val departTimeFix = departTime.plusDays(1).toEpochSecond(ZoneOffset.UTC) - beginningOfTime.toEpochSecond(
         ZoneOffset.UTC)
@@ -25,7 +24,7 @@ class MapsStopsUtils(startLong: Double, startLat: Double,
 //            "&waypoints=via%3AWaynesvilleOhio%2CMA" +
 //            "&key=$mapsKey"
 
-    private val url = "https://maps.googleapis.com/maps/api/directions/json?origin=1101%20Beech%20Rd%20SW,%20New%20Albany,%20OH%2043054&destination=6190%20Falla%20Dr,%20Canal%20Winchester,%20OH%2043110&waypoints=2700%20Brice%20Rd,%20Reynoldsburg,%20OH%2043068&key=xx"
+    private val url = "https://maps.googleapis.com/maps/api/directions/json?origin=1101%20Beech%20Rd%20SW,%20New%20Albany,%20OH%2043054&destination=6190%20Falla%20Dr,%20Canal%20Winchester,%20OH%2043110&waypoints=2700%20Brice%20Rd,%20Reynoldsburg,%20OH%2043068&key=${mapsKey}"
 
     private val client: OkHttpClient = OkHttpClient().newBuilder()
         .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
@@ -53,9 +52,30 @@ class MapsStopsUtils(startLong: Double, startLat: Double,
             }
         })
     }
+    private fun getDuration(startLocation: String?, endLocation: String?, waypoint: String?, onComplete: (DirectionsResponse?) -> Unit) {
+        val url = "https://maps.googleapis.com/maps/api/directions/json?origin=$startLocation&destination=$endLocation&waypoints=$waypoint&key=${mapsKey}"
+        val request = okhttp3.Request.Builder()
+            .url(url)
+            .build()
+        client.newCall(request).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: IOException) {
+                onComplete(null)
+            }
 
-    fun getTotalTime(onComplete: (Int) -> Unit) {
-        getDuration { directionsResponse ->
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                val body = response.body?.string()
+                if (response.code != 200) {
+                    onComplete(null)
+                    return
+                }
+                val directionsResponse = gson.fromJson(body, DirectionsResponse::class.java)
+                onComplete(directionsResponse)
+            }
+        })
+    }
+
+    fun getTotalTime(startLocation: String?, endLocation: String?, waypoint: String?, onComplete: (Int) -> Unit) {
+        getDuration(startLocation, endLocation, waypoint) { directionsResponse ->
             if (directionsResponse == null) {
                 onComplete(0)
                 return@getDuration
@@ -78,7 +98,7 @@ class MapsStopsUtils(startLong: Double, startLat: Double,
         }
     }
     fun getTimeSavings(onComplete: (Int) -> Unit) {
-        MapsDurationUtils(startLong, startLat, departTime).getDistance { directDistance ->
+        MapsDurationUtils(LocalDateTime.now()).getDistance { directDistance ->
             getDuration { directionsResponse ->
                 if (directionsResponse == null) {
                     onComplete(0)

@@ -7,7 +7,7 @@ class FirestoreEvent(
     val name: String,
     val startTime: LocalDateTime,
     val endTime: LocalDateTime,
-    val location: String?,
+    var location: String?,
     val description: String?,
     val timeZone: String?,
     val importance: Int?,

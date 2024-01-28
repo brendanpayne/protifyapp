@@ -6,6 +6,7 @@ import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.protify.protifyapp.features.events.Attendee
+import com.protify.protifyapp.utils.MapsDurationUtils
 import java.time.LocalDateTime
 
 class FirestoreHelper() {
@@ -186,32 +187,132 @@ class FirestoreHelper() {
                 Log.w("GoogleFirestore", "Error getting documents.", exception)
             }
     }
-    //Retunrs a list of free time intervals for a given day (to minimize API calls)
+   // Returns a list of free time intervals for a given day (to minimize API calls)
+//    fun getFreeTime(dayStart: LocalDateTime, dayEnd: LocalDateTime, uid: String, day: String, month: String, year: String, callback: (List<Pair<LocalDateTime, LocalDateTime>>) -> Unit) {
+//
+//        getEvents(uid, day, month, year) { events ->
+//
+//            var sortedEvents = events.sortedBy { it.startTime }
+//            val freeTimes = mutableListOf<Pair<LocalDateTime, LocalDateTime>>()
+//            var currentFreeTimeStart = dayStart
+//
+//            //Find free time intervals
+//            for (event in sortedEvents.withIndex()) {
+//                //Get the next event, or null if there are no more events
+//                val nextEvent = if (event.index < sortedEvents.lastIndex) sortedEvents[event.index + 1] else null
+//                if (nextEvent != null && (event.value.location != nextEvent.location)) {
+//                    MapsDurationUtils(event.value.startTime).isChainedEvent(event.value, nextEvent, "6190 Falla Dr, Canal Winchester, OH 43110") { runSuccess, isChained ->
+//                        if (event.value.startTime > currentFreeTimeStart) {
+//                            freeTimes.add(Pair(currentFreeTimeStart, event.value.startTime)) // Add free time before the event
+//                            if (nextEvent != null) {
+//
+//                                if (isChained && runSuccess) {
+//                                    currentFreeTimeStart = nextEvent.endTime
+//                                }
+//                            }
+//                            currentFreeTimeStart = event.value.endTime  // Move to the end of the event
+//                        } else {
+//                            currentFreeTimeStart = maxOf(currentFreeTimeStart, event.value.endTime) // Ensure start time is after the event
+//                        }
+//                        // Check for final free time interval
+//                        if (currentFreeTimeStart < dayEnd) {
+//                            freeTimes.add(Pair(currentFreeTimeStart, dayEnd))
+//                        }
+//
+//                    }
+//                }
+//            }
+//            callback(freeTimes)
+//        }
+//    }
     fun getFreeTime(dayStart: LocalDateTime, dayEnd: LocalDateTime, uid: String, day: String, month: String, year: String, callback: (List<Pair<LocalDateTime, LocalDateTime>>) -> Unit) {
 
-        var events = getEvents(uid, day, month, year) { events ->
+        getEvents(uid, day, month, year) { events ->
 
             var sortedEvents = events.sortedBy { it.startTime }
             val freeTimes = mutableListOf<Pair<LocalDateTime, LocalDateTime>>()
             var currentFreeTimeStart = dayStart
-            var currentFreeTimeEnd = dayStart
 
-            //Find free time intervals
-            for (event in sortedEvents) {
-                if (event.startTime > currentFreeTimeStart) {
-                    if (currentFreeTimeStart != currentFreeTimeEnd) {
-                        freeTimes.add(Pair(currentFreeTimeStart, currentFreeTimeEnd))
-                    }
+            // Recursive function to process events sequentially
+            fun processEvents(index: Int) {
+                if (index >= sortedEvents.size) {
+                    // All events processed, return
+                    callback(freeTimes)
+                    return
+                }
+
+                val event = sortedEvents[index]
+                val nextEvent = if (index < sortedEvents.lastIndex) sortedEvents[index + 1] else null
+                //If it's the first event, check if its after your day start
+                if (index == 0 && event.startTime > dayStart) {
+                    freeTimes.add(Pair(dayStart, event.startTime))
                     currentFreeTimeStart = event.endTime
+                }
+                if (nextEvent != null) {
+                    MapsDurationUtils(event.startTime).isChainedEvent(event, nextEvent, "6190 Falla Dr, Canal Winchester, OH 43110") { runSuccess, isChained ->
+                        if (event.startTime > currentFreeTimeStart) {
+
+                            if (nextEvent != null && isChained && runSuccess) {
+                                currentFreeTimeStart = nextEvent.endTime
+                            } else {
+                                currentFreeTimeStart = event.endTime // Move to the end of the event
+                                freeTimes.add(Pair(currentFreeTimeStart, nextEvent.startTime)) // Add free time before the event
+
+                            }
+                        } else {
+                            currentFreeTimeStart = maxOf(currentFreeTimeStart, event.endTime) // Ensure start time is after the event
+                        }
+
+                        // Check for final free time interval
+                        if (currentFreeTimeStart > dayEnd) {
+                            freeTimes.add(Pair(currentFreeTimeStart, dayEnd))
+                        }
+
+                        processEvents(index + 1) // Move to the next event after callback
+                    }
                 } else {
-                    currentFreeTimeEnd = minOf(currentFreeTimeEnd, event.endTime)
+
+                    //Make a new firestore event with the location as home
+                    var homeEvent = FirestoreEvent(
+                        name = "Home",
+                        startTime = event.endTime,
+                        endTime = dayEnd,
+                        location = "6190 Falla Dr, Canal Winchester, OH 43110",
+                        description = "",
+                        timeZone = "",
+                        importance = 0,
+                        attendees = null,
+                        rainCheck = false,
+                        isRaining = false,
+                        mapsCheck = false,
+                        distance = 0
+                    )
+                    MapsDurationUtils(event.startTime).isChainedEvent(event, homeEvent, "6190 Falla Dr, Canal Winchester, OH 43110") { runSuccess, isChained ->
+                        if (event.startTime > currentFreeTimeStart) {
+
+                            if (isChained && runSuccess) {
+                                currentFreeTimeStart = event.endTime
+                            } else {
+                                freeTimes.add(Pair(currentFreeTimeStart, event.startTime)) // Add free time before the event
+                                currentFreeTimeStart = event.endTime // Move to the end of the event
+                            }
+                        } else {
+                            currentFreeTimeStart = maxOf(currentFreeTimeStart, event.endTime) // Ensure start time is after the event
+                        }
+
+                        // If the last event ends after the end of the day, don't add it
+                        if (currentFreeTimeStart < dayEnd) {
+                            freeTimes.add(Pair(currentFreeTimeStart, dayEnd))
+                        }
+
+                        processEvents(index + 1) // Move to the next event after callback
+                    }
                 }
             }
-            //Check for final free time interval
-            if (currentFreeTimeStart < dayEnd) {
-                freeTimes.add(Pair(currentFreeTimeStart, dayEnd))
-            }
-            callback(freeTimes)
+
+            // Initiate event processing
+            processEvents(0)
         }
     }
+
 }

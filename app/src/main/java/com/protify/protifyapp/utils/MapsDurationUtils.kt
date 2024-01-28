@@ -9,12 +9,10 @@ import java.io.IOException
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
-class MapsDurationUtils(startLong: Double, startLat: Double,
-                        // destinationLong: Double, destinationLat: Double,
-                        departTime: LocalDateTime) {
+class MapsDurationUtils(departTime: LocalDateTime) {
     val mapsKey = APIKeys().getMapsKey()
     val beginningOfTime = LocalDateTime.of(1970, 1, 1, 0, 0, 0)
-    val departTimeFix = departTime.plusDays(1).toEpochSecond(ZoneOffset.UTC) - beginningOfTime.toEpochSecond(ZoneOffset.UTC)
+    val departTimeFix = departTime.plusMinutes(10).toEpochSecond(ZoneOffset.UTC) - beginningOfTime.toEpochSecond(ZoneOffset.UTC)
 //    private val url = "https://maps.googleapis.com/maps/api/distancematrix/json" +
 //            "?departure_time=${departTimeFix}" +
 //            "&destinations=40.659569%2C-73.933783%7C40.729029%2C-73.851524%7C40.6860072%2C-73.6334271%7C40.598566%2C-73.7527626" +
@@ -49,9 +47,12 @@ class MapsDurationUtils(startLong: Double, startLat: Double,
         })
     }
     private fun getDuration(startLocation: String?, endLocation: String?, onComplete: (DistanceResponse?) -> Unit) {
-        val url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=$startLocation&destinations=$endLocation&key=${mapsKey}"
+        var startLocationFormatted = startLocation?.replace(" ", "%20")
+        var endLocationFormatted = endLocation?.replace(" ", "%20")
+        val testurl = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=$startLocationFormatted&destinations=$endLocationFormatted&key=$mapsKey"
+        val url =   "https://maps.googleapis.com/maps/api/distancematrix/json?origins=1091%20Hill%20Rd%20N,%20Pickerington,%20OH%2043147,%20USA&destinations=6591%20Winchester%20Blvd,%20Canal%20Winchester,%20OH%2043110,%20USA&key=${mapsKey}"
         val request = okhttp3.Request.Builder()
-            .url(url)
+            .url(testurl)
             .build()
         client.newCall(request).enqueue(object : okhttp3.Callback {
             override fun onFailure(call: okhttp3.Call, e: IOException) {
@@ -69,27 +70,27 @@ class MapsDurationUtils(startLong: Double, startLat: Double,
             }
         })
     }
-    private fun getDuration(homeAddress: String, startLocation: String?, onComplete: (DistanceResponse?) -> Unit) {
-        val url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=$startLocation&destinations=$homeAddress&key=${mapsKey}"
-        val request = okhttp3.Request.Builder()
-            .url(url)
-            .build()
-        client.newCall(request).enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: okhttp3.Call, e: IOException) {
-                onComplete(null)
-            }
-
-            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
-                val body = response.body?.string()
-                if (response.code != 200) {
-                    onComplete(null)
-                    return
-                }
-                val distanceResponse = gson.fromJson(body, DistanceResponse::class.java)
-                onComplete(distanceResponse)
-            }
-        })
-    }
+//    private fun getDuration(homeAddress: String, startLocation: String?, onComplete: (DistanceResponse?) -> Unit) {
+//        val url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=$startLocation&destinations=$homeAddress&key=${mapsKey}"
+//        val request = okhttp3.Request.Builder()
+//            .url(url)
+//            .build()
+//        client.newCall(request).enqueue(object : okhttp3.Callback {
+//            override fun onFailure(call: okhttp3.Call, e: IOException) {
+//                onComplete(null)
+//            }
+//
+//            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+//                val body = response.body?.string()
+//                if (response.code != 200) {
+//                    onComplete(null)
+//                    return
+//                }
+//                val distanceResponse = gson.fromJson(body, DistanceResponse::class.java)
+//                onComplete(distanceResponse)
+//            }
+//        })
+//    }
     fun getDistance(onComplete: (Int) -> Unit) {
         getDuration { distanceResponse ->
             if (distanceResponse == null) {
@@ -101,10 +102,15 @@ class MapsDurationUtils(startLong: Double, startLat: Double,
     }
 
     fun isChainedEvent(firstEvent: FirestoreEvent, secondEvent: FirestoreEvent, homeAddress: String ,onComplete: (Boolean, Boolean) -> Unit) {
-        val timeGap = secondEvent.endTime.toEpochSecond(ZoneOffset.UTC) - firstEvent.endTime.toEpochSecond(ZoneOffset.UTC)
-
-
+        val timeGap = secondEvent.startTime.toEpochSecond(ZoneOffset.UTC) - firstEvent.endTime.toEpochSecond(ZoneOffset.UTC)
+        var homeAddress = "6190 Falla Dr, Canal Winchester, OH 43110"
         //Get the distance between the two events
+        if (firstEvent.location == "") {
+            firstEvent.location = homeAddress
+        }
+        if (secondEvent.location == "") {
+            secondEvent.location = homeAddress
+        }
         getDuration(firstEvent.location, secondEvent.location) { eventDistanceResponse ->
             if (eventDistanceResponse == null) {
                 onComplete(false, false)
@@ -113,8 +119,8 @@ class MapsDurationUtils(startLong: Double, startLat: Double,
             val eventDistance: Int = eventDistanceResponse.rows[0].elements[0].duration.value
 
             //Get the distance from the first event, to home, to the second event,
-            MapsStopsUtils().getTotalTime { TimeFromHome ->
-                if ((TimeFromHome < timeGap - 600) || (eventDistance < timeGap - 600)) {
+            MapsStopsUtils(LocalDateTime.now()).getTotalTime(firstEvent.location, secondEvent.location, homeAddress) { TimeFromHome ->
+                if ((TimeFromHome > timeGap - 600) || (eventDistance > timeGap - 600)) {
                     onComplete(true, true)
                 }
                 else {
