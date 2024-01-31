@@ -15,6 +15,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Divider
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.Surface
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
@@ -23,10 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -44,10 +45,9 @@ import androidx.compose.ui.unit.dp
 import com.protify.protifyapp.features.events.EventView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-
-
 class CalendarView {
 
     // private val dateUtils = DateUtils()
@@ -60,7 +60,8 @@ class CalendarView {
         onNextClickListener: (LocalDate) -> Unit,
         onPreviousClickListener: (LocalDate) -> Unit,
         onToggleViewClickListener: () -> Unit,
-        onAddEventClickListener: () -> Unit // Adds this parameter to handle click event for the new tab
+        onAddEventClickListener: () -> Unit, // Adds this parameter to handle click event for the new tab
+        isMonthView: Boolean // Adds this parameter to determine the view type
     ) {
         var selectedTabIndex by remember { mutableStateOf(0) }
         val tabTitles =
@@ -81,7 +82,13 @@ class CalendarView {
                     fontWeight = FontWeight.Bold
                 )
                 IconButton(
-                    onClick = { onPreviousClickListener(data.startDate.date.minusWeeks(1)) }, // Go to the previous week
+                    onClick = {
+                        if (isMonthView) {
+                            onPreviousClickListener(data.startDate.date.minusMonths(-1)) // Go to the previous month
+                        } else {
+                            onPreviousClickListener(data.startDate.date.minusWeeks(1)) // Go to the previous week
+                        }
+                    },
                     modifier = Modifier.size(48.dp).padding(8.dp).align(Alignment.CenterVertically)
                 ) {
                     Surface(
@@ -90,13 +97,19 @@ class CalendarView {
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.KeyboardArrowLeft,
-                            contentDescription = "Go to previous week",
+                            contentDescription = if (isMonthView) "Go to previous month" else "Go to previous week",
                             tint = Color.Blue,
                         )
                     }
                 }
                 IconButton(
-                    onClick = { onNextClickListener(data.endDate.date.plusWeeks(1)) }, // Go to the next week
+                    onClick = {
+                        if (isMonthView) {
+                            onNextClickListener(data.startDate.date.plusMonths(1)) // Go to the next month
+                        } else {
+                            onNextClickListener(data.startDate.date.plusWeeks(0)) // Go to the next week
+                        }
+                    },
                     modifier = Modifier.size(48.dp).padding(8.dp).align(Alignment.CenterVertically)
                 ) {
                     Surface(
@@ -105,13 +118,14 @@ class CalendarView {
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.KeyboardArrowRight,
-                            contentDescription = "Go to next week",
+                            contentDescription = if (isMonthView) "Go to next month" else "Go to next week",
                             tint = Color.Blue,
                         )
                     }
                 }
             }
-            TabRow(selectedTabIndex = selectedTabIndex) {
+
+                TabRow(selectedTabIndex = selectedTabIndex) {
                 tabTitles.forEachIndexed { index, title ->
                     Tab(
                         text = { Text(title) },
@@ -131,7 +145,7 @@ class CalendarView {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun CalendarItem(date: CalendarUiModel.Date, onClickListener: (CalendarUiModel.Date) -> Unit) {
+    fun CalendarItem(date: CalendarUiModel.Date, onClickListener: (CalendarUiModel.Date) -> Unit, isMonthView: Boolean) {
         var showDialog by remember { mutableStateOf(false) }
         val backgroundColor by animateColorAsState(
             targetValue = if (date.isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
@@ -150,7 +164,9 @@ class CalendarView {
             ElevatedCard(
                 onClick = {
                     onClickListener(date)
-                    showDialog = true
+                    if (isMonthView) {
+                        showDialog = true
+                    }
                 },
                 modifier = Modifier.padding(vertical = 4.dp, horizontal = 4.dp),
                 shape = RoundedCornerShape(20.dp),
@@ -193,14 +209,20 @@ class CalendarView {
                                 LazyColumn {
                                     items((0..23).toList()) { hour ->
                                         listOf(0, 30).forEach { minute ->
-                                            val time = String.format("%02d:%02d", hour, minute)
+                                            val time = LocalTime.of(hour, minute)
+                                            val formattedTime = time.format(DateTimeFormatter.ofPattern("h:mm a"))
+                                            val currentTime = LocalTime.now().format(DateTimeFormatter.ofPattern("h:mm a"))
                                             Text(
-                                                text = time,
+                                                text = formattedTime,
                                                 modifier = Modifier.padding(8.dp),
                                                 style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurface,
+                                                color = if (formattedTime == currentTime) Color.Red else MaterialTheme.colorScheme.onSurface,
                                                 textAlign = TextAlign.Center
                                             )
+                                            // Add a divider after each hour
+                                            if (minute == 30) {
+                                                Divider(color = Color.Gray, thickness = 1.dp)
+                                            }
                                         }
                                     }
                                 }
@@ -214,10 +236,8 @@ class CalendarView {
                     }
                 }
             }
-
         }
     }
-
     @Composable
     fun CalendarContent(
         data: CalendarUiModel,
@@ -238,7 +258,7 @@ class CalendarView {
                     items(dates.chunked(7)) { week ->
                         Row {
                             week.forEach { date ->
-                                CalendarItem(date, onDateClickListener)
+                                CalendarItem(date, onDateClickListener, isMonthView)
                             }
                         }
                     }
@@ -247,12 +267,11 @@ class CalendarView {
         } else {
             LazyRow {
                 items(items = data.visibleDates) { date ->
-                    CalendarItem(date, onDateClickListener)
+                    CalendarItem(date, onDateClickListener, isMonthView)
                 }
             }
         }
     }
-
     @Composable
     fun Calendar(navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
@@ -267,15 +286,14 @@ class CalendarView {
             )
         }
         var isLoadingEvents by remember { mutableStateOf(true) }
-        // Call getFirestoreEvents
+
         dataSource.getFirestoreEvents("uid", 1234567890L, "January", "1", "2023") { events ->
-            // Handle the list of events here
-            // Update your UI with these events
+
             if (events.isNotEmpty()) {
                 calendarUiModel.selectedDate.events = events
                 isLoadingEvents = false
             } else {
-                // Handle the case when there are no events
+
                 println("No events found for the given date.")
             }
         }
@@ -321,7 +339,8 @@ class CalendarView {
                                 isMonthView = isMonthView
                             )
                         },
-                        onAddEventClickListener = navigateToAddEvent
+                        onAddEventClickListener = navigateToAddEvent,
+                                isMonthView = isMonthView
                     )
 
                     CalendarContent(data = calendarUiModel, onDateClickListener = { date ->
