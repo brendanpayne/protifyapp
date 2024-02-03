@@ -314,5 +314,19 @@ class FirestoreHelper() {
             processEvents(0)
         }
     }
-
+    fun getOverlappingEvents(uid: String, day: String, month: String, year: String, callback: (List<FirestoreEvent>) -> Unit) {
+        getEvents(uid, day, month, year) { events ->
+            val overlappingEvents = mutableListOf<FirestoreEvent>()
+            val sortedEvents = events.sortedBy { it.startTime }
+            for (event in sortedEvents.withIndex()) {
+                val nextEvent = if (event.index < sortedEvents.lastIndex) sortedEvents[event.index + 1] else null
+                if (nextEvent != null) {
+                    if (event.value.startTime.isBefore(nextEvent.endTime) && event.value.endTime.isAfter(nextEvent.startTime)) {
+                        overlappingEvents.add(event.value)
+                    }
+                }
+            }
+            callback(overlappingEvents)
+        }
+    }
 }
