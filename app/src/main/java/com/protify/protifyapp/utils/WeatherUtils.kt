@@ -1,16 +1,18 @@
 package com.protify.protifyapp.utils
 
 import com.google.gson.GsonBuilder
+import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.features.weather.RainForecast
 import com.protify.protifyapp.features.weather.WeatherForecast
 import com.protify.protifyapp.features.weather.WeatherOverview
 import okhttp3.OkHttpClient
 import java.io.IOException
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 class WeatherUtils(val longitude: Double, val latitude: Double) {
 
-    private val url: String = "https://api.weather.gov/points/${latitude},${longitude}"
+    private val url: String = "https://api.weather.gov/points/${longitude},${latitude}"
     private val client: OkHttpClient = OkHttpClient().newBuilder()
         .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
@@ -89,4 +91,67 @@ class WeatherUtils(val longitude: Double, val latitude: Double) {
             oncomplete(rainForecast)
         }
     }
+
+    fun rainToday(today: LocalDateTime, onComplete: (Boolean) -> Unit) {
+
+        if (today.isAfter(LocalDateTime.now().plusDays(6))) {
+            onComplete(false)
+            return
+        }
+        getRainForecast { rainForecast ->
+            if (rainForecast == null) {
+                onComplete(false)
+                return@getRainForecast
+            }
+            val isRaining = rainForecast.any { it.time.dayOfYear == today.dayOfYear && it.isRaining }
+            onComplete(isRaining)
+        }
+    }
+
+fun getNonRainingTimes(event: FirestoreEvent, onComplete: (List<Pair<LocalDateTime, LocalDateTime>>) -> Unit) {
+    val today = event.startTime
+    getRainForecast { rainForecast ->
+        if (rainForecast == null) {
+            onComplete(listOf())
+            return@getRainForecast
+        }
+
+        val dayForecast = rainForecast.filter { it.time.dayOfMonth == today.dayOfMonth }
+
+        val nonRainingTimes = mutableListOf<Pair<LocalDateTime, LocalDateTime>>()
+        var currentFreeTimeStart = today.withHour(0).withMinute(0).withSecond(0).withNano(0) // Start at midnight
+
+        for (index in dayForecast.indices) {
+            val forecast = rainForecast[index]
+            val nextForecast = rainForecast.getOrNull(index + 1)
+
+            if (!forecast.isRaining) {
+                if (currentFreeTimeStart > forecast.time) {
+                    currentFreeTimeStart = forecast.time // Adjust start time if non-raining period began earlier
+                }
+
+                if (nextForecast == null || nextForecast.isRaining) {
+                    // End of non-raining period
+                    nonRainingTimes.add(Pair(
+                        if (currentFreeTimeStart.minute == 1) {
+                            currentFreeTimeStart.minusMinutes(1)
+                        } else {
+                            currentFreeTimeStart
+                        }, forecast.time))
+                    currentFreeTimeStart = forecast.time.plusMinutes(1) // Start one minute after the non-raining period
+                }
+            } else {
+                currentFreeTimeStart = forecast.time.plusMinutes(1) // Start one minute after the rainy forecast
+            }
+        }
+
+        // Handle last non-raining period if it extends to midnight
+        if (currentFreeTimeStart < today.plusDays(1).withHour(0)) {
+            nonRainingTimes.add(Pair(currentFreeTimeStart, today.plusDays(1).withHour(0)))
+        }
+
+        onComplete(nonRainingTimes)
+    }
+}
+
 }
