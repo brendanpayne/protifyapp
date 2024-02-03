@@ -4,6 +4,7 @@ import DistanceResponse
 import com.google.gson.GsonBuilder
 import com.protify.protifyapp.APIKeys
 import com.protify.protifyapp.FirestoreEvent
+import com.protify.protifyapp.features.GoogleMapsAPI.DrivingTimeMatrix
 import okhttp3.OkHttpClient
 import java.io.IOException
 import java.time.LocalDateTime
@@ -70,6 +71,32 @@ class MapsDurationUtils(departTime: LocalDateTime) {
             }
         })
     }
+     fun getMaxtrix(startLocation: String?, endLocations: List<String?>, onComplete: (DrivingTimeMatrix?) -> Unit) {
+        var startLocationsFormatted = startLocation?.replace(" ", "%20")
+        var endLocationsFormatted = endLocations.map { it?.replace(" ", "%20") }
+        val url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=${endLocationsFormatted.joinToString("%7C")}&destinations=${endLocationsFormatted.joinToString("%7C")}&key=${mapsKey}"
+        val request = okhttp3.Request.Builder()
+            .url(url)
+            .build()
+        client.newCall(request).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: IOException) {
+                onComplete(null)
+            }
+
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                val body = response.body?.string()
+                if (response.code != 200) {
+                    onComplete(null)
+                    return
+                }
+                //Map to DrivingTimeMatrix class
+                val distanceResponse = gson.fromJson(body, DrivingTimeMatrix::class.java)
+                val jsonMatrix = gson.toJson(distanceResponse)
+                onComplete(distanceResponse)
+            }
+        })
+
+    }
 //    private fun getDuration(homeAddress: String, startLocation: String?, onComplete: (DistanceResponse?) -> Unit) {
 //        val url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=$startLocation&destinations=$homeAddress&key=${mapsKey}"
 //        val request = okhttp3.Request.Builder()
@@ -100,17 +127,26 @@ class MapsDurationUtils(departTime: LocalDateTime) {
             onComplete(distanceResponse.rows[0].elements[0].duration.value)
         }
     }
+    fun getDistance(startLocation: String?, endLocation: String?, onComplete: (Int) -> Unit) {
+        getDuration(startLocation, endLocation) { distanceResponse ->
+            if (distanceResponse == null) {
+                onComplete(0)
+                return@getDuration
+            }
+            onComplete(distanceResponse.rows[0].elements[0].duration.value)
+        }
+    }
 
     fun isChainedEvent(firstEvent: FirestoreEvent, secondEvent: FirestoreEvent, homeAddress: String ,onComplete: (Boolean, Boolean) -> Unit) {
         val timeGap = secondEvent.startTime.toEpochSecond(ZoneOffset.UTC) - firstEvent.endTime.toEpochSecond(ZoneOffset.UTC)
         var homeAddress = "6190 Falla Dr, Canal Winchester, OH 43110"
-        //Get the distance between the two events
         if (firstEvent.location == "") {
             firstEvent.location = homeAddress
         }
         if (secondEvent.location == "") {
             secondEvent.location = homeAddress
         }
+        //Get the distance between the two events
         getDuration(firstEvent.location, secondEvent.location) { eventDistanceResponse ->
             if (eventDistanceResponse == null) {
                 onComplete(false, false)
