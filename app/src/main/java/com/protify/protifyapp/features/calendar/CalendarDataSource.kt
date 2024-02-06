@@ -17,7 +17,9 @@ class CalendarDataSource {
             return LocalDate.now()
         }
 
-    fun getData(startDate: LocalDate = today, lastSelectedDate: LocalDate, isMonthView: Boolean): CalendarUiModel {
+
+        fun getData(startDate: LocalDate = today.plusWeeks(-1), lastSelectedDate: LocalDate, isMonthView: Boolean): CalendarUiModel {
+            //Old Code May need to still use: fun getData(startDate: LocalDate = today, lastSelectedDate: LocalDate, isMonthView: Boolean): CalendarUiModel {
         val firstDay = if (isMonthView) {
             val firstDayOfMonth = startDate.withDayOfMonth(1)
             if (firstDayOfMonth.dayOfWeek == DayOfWeek.SUNDAY) {

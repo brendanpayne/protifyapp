@@ -48,6 +48,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+
 class CalendarView {
 
     // private val dateUtils = DateUtils()
@@ -60,12 +61,12 @@ class CalendarView {
         onNextClickListener: (LocalDate) -> Unit,
         onPreviousClickListener: (LocalDate) -> Unit,
         onToggleViewClickListener: () -> Unit,
-        onAddEventClickListener: () -> Unit, // Adds this parameter to handle click event for the new tab
-        isMonthView: Boolean // Adds this parameter to determine the view type
+        onAddEventClickListener: () -> Unit,
+        isMonthView: Boolean
     ) {
-        var selectedTabIndex by remember { mutableStateOf(0) }
+        var selectedTabIndex by remember { mutableStateOf(1) }
         val tabTitles =
-            listOf("Month View", "Week View", "Add Event") // Adds the new tab title here
+            listOf("Month View", "Home View", "Add Event") // Adds the new tab title here
 
         Column {
             Row {
@@ -276,7 +277,7 @@ class CalendarView {
     fun Calendar(navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
         val selectedTabIndex by remember { mutableStateOf(0) }
-        var isMonthView by remember { mutableStateOf(selectedTabIndex == 0) }
+        var isMonthView by remember { mutableStateOf(false) } // Changed to false to start with week view
         var calendarUiModel by remember {
             mutableStateOf(
                 dataSource.getData(
@@ -340,11 +341,15 @@ class CalendarView {
                             )
                         },
                         onAddEventClickListener = navigateToAddEvent,
-                                isMonthView = isMonthView
+                        isMonthView = isMonthView
                     )
 
                     CalendarContent(data = calendarUiModel, onDateClickListener = { date ->
-                        calendarUiModel = dataSource.getData(startDate = calendarUiModel.startDate.date, lastSelectedDate = date.date,isMonthView = isMonthView)
+                        calendarUiModel = dataSource.getData(
+                            startDate = calendarUiModel.startDate.date,
+                            lastSelectedDate = date.date,
+                            isMonthView = isMonthView
+                        )
                         isLoadingEvents = true
                         dataSource.getFirestoreEvents(
                             FirebaseLoginHelper().getCurrentUser()!!.uid,
@@ -378,10 +383,10 @@ class CalendarView {
                         color = MaterialTheme.colorScheme.surface,
                     )
             ) {
-                EventView().EventCard(calendarUiModel, navigateToAddEvent, isLoadingEvents)
-
+                if (!isMonthView) { // Only show the EventCard in week view
+                    EventView().EventCard(calendarUiModel, navigateToAddEvent, isLoadingEvents)
+                }
             }
-
         }
         //fun navigateToEventDetails(navController: NavHostController, calendarUiModel: CalendarUiModel) {
         //    navController.navigate("eventDetails/${calendarUiModel.selectedDate.date}/${calendarUiModel.selectedDate.events[0].id}")
