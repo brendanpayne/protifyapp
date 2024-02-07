@@ -19,27 +19,34 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         var systemContent: String,
         var userContent: String
     )
+    //Model type and response format
     private val model = "gpt-3.5-turbo-1106"
     private val response_format = """{ "type": "json_object" }"""
-
+    //Create a new okhttp client
     private val client: OkHttpClient = OkHttpClient().newBuilder()
         .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
         .build()
+    //Create a new gson object
     private val gson = GsonBuilder().create()
-
+    //Create a new request object
     private val request = okhttp3.Request.Builder()
         .url("https://api.openai.com/v1/chat/completions")
         .addHeader("Content-Type", "application/json")
         .addHeader("Authorization", "${apiKey}")
         .build()
-
+    //Make a new CompressData object
+    private val compressData = CompressData()
+    //Create a map to store the location and its number
+    private val locationToNumberMap = compressData.listLocationsToNumbers(events.map { event -> event.location!! })
+    //Create a map to store the event and its number
+    private val eventToNumberMap = compressData.listEventsToNumbers(events)
 
     //Get only start time, end time, and location from FirestoreEvents. If location == "", then put homeAddress as location
-    private val eventList = events.map { event -> "${event.name} goes from ${event?.startTime} to ${event?.endTime} at ${if (event?.location == "") homeAddress else event?.location}" }
+    private val eventList = events.map { event -> "Event ${compressData.eventToNumber(event)} goes from ${event?.startTime} to ${event?.endTime} at location ${compressData.locationToNumber( event?.location!! )}" }
     private val eventString = eventList.joinToString(" ")
     //Get the travel time, origin, and destination from the travelTime list
-    private val travelTimeList = travelTime.map { travel -> "${travel?.startLocation} to ${travel?.endLocation} takes ${travel?.duration}" }
+    private val travelTimeList = travelTime.map { travel -> "Location ${compressData.locationToNumber(travel?.startLocation!!)} to location ${compressData.locationToNumber(travel.endLocation)} takes ${travel?.duration}" }
     private val travelTimeString = travelTimeList.joinToString(" ")
 
     private var userContent = "I need help optimizing my schedule for today. Here are my events: $eventString. Here are my travel times: $travelTimeString"
@@ -92,7 +99,5 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             }
         })
     }
-
-
 
 }

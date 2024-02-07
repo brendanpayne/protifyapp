@@ -1,8 +1,5 @@
 package com.protify.protifyapp
 
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -22,12 +19,9 @@ import androidx.navigation.NavHostController
 import com.protify.protifyapp.features.calendar.CalendarView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.ui.theme.ProtifyTheme
-import com.protify.protifyapp.utils.LocationUtils
-import com.protify.protifyapp.utils.MapsDurationUtils
-import com.protify.protifyapp.utils.WeatherUtils
-import java.time.LocalDateTime
 
 class HomeActivity {
+    var hasRan = false
         @Composable
         fun HomePage(navigateToAddEvent: () -> Unit) {
             val firestoreHelper = FirestoreHelper()
@@ -45,41 +39,47 @@ class HomeActivity {
                     style = MaterialTheme.typography.titleLarge
                 )
                 CalendarView().Calendar(navigateToAddEvent)
-                //Get Location Permissions
-                val permission = android.Manifest.permission.ACCESS_FINE_LOCATION; android.Manifest.permission.ACCESS_COARSE_LOCATION
 
-                 val locationPermssionsContract = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.RequestPermission(),
-                    onResult = { isGranted ->
-                        if (isGranted) {
-                            LocationUtils(context).getCurrentLocation { long, lat ->
-                                Toast.makeText(context, "Location: $long, $lat", Toast.LENGTH_SHORT).show()
-//                                WeatherUtils(lat ,long).getForecast { forecast ->
-//                                    if (forecast != null) {
-//                                        locationForecast = "Forecast: ${forecast.properties.periods[0].shortForecast}"
-//                                        var testTimeShit = forecast.properties.periods[0].startTimeLocalDateTime
-//                                        Log.d("Time", testTimeShit.toString())
+                //Get Location Permissions
+//                val permission = android.Manifest.permission.ACCESS_FINE_LOCATION; android.Manifest.permission.ACCESS_COARSE_LOCATION
+//
+//                 val locationPermssionsContract = rememberLauncherForActivityResult(
+//                    contract = ActivityResultContracts.RequestPermission(),
+//                    onResult = { isGranted ->
+//                        if (isGranted) {
+//                            LocationUtils(context).getCurrentLocation { long, lat ->
+//                                Toast.makeText(context, "Location: $long, $lat", Toast.LENGTH_SHORT).show()
+////                                WeatherUtils(lat ,long).getForecast { forecast ->
+////                                    if (forecast != null) {
+////                                        locationForecast = "Forecast: ${forecast.properties.periods[0].shortForecast}"
+////                                        var testTimeShit = forecast.properties.periods[0].startTimeLocalDateTime
+////                                        Log.d("Time", testTimeShit.toString())
+////                                    }
+////                                }
+//                                WeatherUtils(lat, long).getRainForecast { rainForecast ->
+//                                    if (rainForecast != null) {
+//                                        locationForecast =
+//                                            "Rain Forecast: ${rainForecast[0].probability}%"
 //                                    }
 //                                }
-                                WeatherUtils(lat, long).getRainForecast { rainForecast ->
-                                    if (rainForecast != null) {
-                                        locationForecast =
-                                            "Rain Forecast: ${rainForecast[0].probability}%"
-                                    }
-                                }
-                                MapsDurationUtils(long, lat, LocalDateTime.now()).getDistance { distance ->
-                                    distanceFromBrooklyn = "Distance from Brooklyn: ${distance} seconds"
-                                }
-                            }
-                        } else {
-                            // Explain to the user that the feature is unavailable because the
-                            // features requires a permission that the user has denied.
-                        }
-                    }
-                )
-                LaunchedEffect(locationPermssionsContract) {
-                    locationPermssionsContract.launch(permission)
-                }
+////                                MapsDurationUtils(long, lat, LocalDateTime.now()).getDistance { distance ->
+////                                    distanceFromBrooklyn = "Distance from Brooklyn: ${distance} seconds"
+////                                }
+//                                MapsStopsUtils(long, lat, LocalDateTime.now()).getTimeSavings { totalTime ->
+//                                    if (totalTime != null) {
+//                                        distanceFromBrooklyn = "Total time ${totalTime} seconds"
+//                                    }
+//                                }
+//                            }
+//                        } else {
+//                            // Explain to the user that the feature is unavailable because the
+//                            // features requires a permission that the user has denied.
+//                        }
+//                    }
+//                )
+//                LaunchedEffect(locationPermssionsContract) {
+//                    locationPermssionsContract.launch(permission)
+//                }
             }
 
 
