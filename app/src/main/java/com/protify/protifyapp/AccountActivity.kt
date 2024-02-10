@@ -98,7 +98,7 @@ class AccountActivity {
 //
                 val homeAddress = "6190 Falla Dr, Canal Winchester, OH 43110" // pull up
                 //get all of the events for the day
-                FirestoreHelper().getEvents(currentUser!!.uid, today.dayOfMonth.toString(), today.month.toString(), today.year.toString()) { events ->
+                FirestoreHelper().getEvents(currentUser!!.uid, "28", "January", "2024") { events ->
                     //map locations from the events
                     val locations = mutableListOf<String?>()
                     //If the location is empty, use home address
@@ -130,8 +130,43 @@ class AccountActivity {
                                 }
                             }
                             //Put all of this into the OptimizeSchedule class
-                            OptimizeSchedule(today.dayOfMonth.toString(), today.month.toString(), today.year.toString(), events, drivingTimes, homeAddress).getResponse {
-                                println(it)
+                            OptimizeSchedule(today.dayOfMonth.toString(), today.month.toString(), today.year.toString(), events, drivingTimes, homeAddress).parseResponse {response ->
+                                //Run for as many times are there are events
+                                val eventCount = response.events.size
+
+                                fun updateEvents(iterations: Int) {
+                                    //If we have updated all of the events, return
+                                    if (iterations >= eventCount) {
+                                        return
+                                    }
+                                    FirestoreHelper().getEvent(currentUser!!.uid, "28", "January", "2024", response.events[iterations].name) { id, event ->
+                                       //Extract start time and end time from the response
+                                        val startTimeString = response.events[iterations].startTime
+                                        val startTimeParsed = startTimeString.split(":")
+                                        val startHour = startTimeParsed[0].toInt()
+                                        val startMinute = startTimeParsed[1].toInt()
+                                        val endTimeString = response.events[iterations].endTime
+                                        val endTimeParsed = endTimeString.split(":")
+                                        val endHour = endTimeParsed[0].toInt()
+                                        val endMinute = endTimeParsed[1].toInt()
+                                        //Set new start and end times for events
+                                        val startTime = LocalDateTime.of(event.startTime.year, event.startTime.month, event.startTime.dayOfMonth, startHour, startMinute)
+                                        val endTime = LocalDateTime.of(event.endTime.year, event.endTime.month, event.endTime.dayOfMonth, endHour, endMinute)
+                                        //Reassign start and end times to events
+                                        event.startTime = startTime
+                                        event.endTime = endTime
+                                        if (id != null) {
+                                            FirestoreHelper().modifyEvent(currentUser!!.uid, id, event) {
+                                                if(it) {
+                                                    updateEvents(iterations + 1)
+                                                }
+                                                    print("Error")
+                                            }
+                                        }
+                                    }
+                                }
+                                //Initialize the updateEvents function
+                                updateEvents(0)
                             }
 
                         }
