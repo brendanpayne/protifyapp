@@ -5,8 +5,8 @@ import java.time.LocalDateTime
 
 class FirestoreEvent(
     val name: String,
-    val startTime: LocalDateTime,
-    val endTime: LocalDateTime,
+    var startTime: LocalDateTime,
+    var endTime: LocalDateTime,
     var location: String?,
     val description: String?,
     val timeZone: String?,

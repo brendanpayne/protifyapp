@@ -187,44 +187,180 @@ class FirestoreHelper() {
                 Log.w("GoogleFirestore", "Error getting documents.", exception)
             }
     }
-   // Returns a list of free time intervals for a given day (to minimize API calls)
-//    fun getFreeTime(dayStart: LocalDateTime, dayEnd: LocalDateTime, uid: String, day: String, month: String, year: String, callback: (List<Pair<LocalDateTime, LocalDateTime>>) -> Unit) {
-//
-//        getEvents(uid, day, month, year) { events ->
-//
-//            var sortedEvents = events.sortedBy { it.startTime }
-//            val freeTimes = mutableListOf<Pair<LocalDateTime, LocalDateTime>>()
-//            var currentFreeTimeStart = dayStart
-//
-//            //Find free time intervals
-//            for (event in sortedEvents.withIndex()) {
-//                //Get the next event, or null if there are no more events
-//                val nextEvent = if (event.index < sortedEvents.lastIndex) sortedEvents[event.index + 1] else null
-//                if (nextEvent != null && (event.value.location != nextEvent.location)) {
-//                    MapsDurationUtils(event.value.startTime).isChainedEvent(event.value, nextEvent, "6190 Falla Dr, Canal Winchester, OH 43110") { runSuccess, isChained ->
-//                        if (event.value.startTime > currentFreeTimeStart) {
-//                            freeTimes.add(Pair(currentFreeTimeStart, event.value.startTime)) // Add free time before the event
-//                            if (nextEvent != null) {
-//
-//                                if (isChained && runSuccess) {
-//                                    currentFreeTimeStart = nextEvent.endTime
-//                                }
-//                            }
-//                            currentFreeTimeStart = event.value.endTime  // Move to the end of the event
-//                        } else {
-//                            currentFreeTimeStart = maxOf(currentFreeTimeStart, event.value.endTime) // Ensure start time is after the event
-//                        }
-//                        // Check for final free time interval
-//                        if (currentFreeTimeStart < dayEnd) {
-//                            freeTimes.add(Pair(currentFreeTimeStart, dayEnd))
-//                        }
-//
-//                    }
-//                }
-//            }
-//            callback(freeTimes)
-//        }
-//    }
+    fun getEventsAndIds(uid: String, day: String, month: String, year: String, callback: (HashMap<FirestoreEvent, String>) -> Unit) {
+        val upperMonth = month.uppercase()
+        //Hashmap of the events and their id
+
+        db.collection("users")
+            .document(uid)
+            .collection("events")
+            .document(year)
+            .collection(upperMonth)
+            .whereEqualTo("startTime.dayOfMonth", day.toInt())
+            .get()
+            .addOnSuccessListener { result ->
+                val events = hashMapOf<FirestoreEvent, String>()
+                for (document in result) {
+                    Log.d("GoogleFirestore", "${document.id} => ${document.data}")
+                    if (!result.isEmpty) {
+                        var testAttendee: Attendee = Attendee(
+                            name = "Test",
+                            email = "Test",
+                            phoneNumber = "Test"
+                        )
+                        val attendeeList: List<Attendee> = listOf(testAttendee)
+                        var startTimeHashMap = document.data["startTime"] as HashMap<*, *>
+                        var endTimeHashMap = document.data["endTime"] as HashMap<*, *>
+                        val startTime = LocalDateTime.of(
+                            (startTimeHashMap["year"] as Long).toInt(),
+                            (startTimeHashMap["monthValue"] as Long).toInt(),
+                            (startTimeHashMap["dayOfMonth"] as Long).toInt(),
+                            (startTimeHashMap["hour"] as Long).toInt(),
+                            (startTimeHashMap["minute"] as Long).toInt()
+                        )
+                        val endTime = LocalDateTime.of(
+                            (endTimeHashMap["year"] as Long).toInt(),
+                            (endTimeHashMap["monthValue"] as Long).toInt(),
+                            (endTimeHashMap["dayOfMonth"] as Long).toInt(),
+                            (endTimeHashMap["hour"] as Long).toInt(),
+                            (endTimeHashMap["minute"] as Long).toInt()
+                        )
+                            val firestoreEvent = FirestoreEvent(
+                                name = document.data["name"].toString(),
+                                startTime = startTime as LocalDateTime,
+                                endTime = endTime as LocalDateTime,
+                                location = document.data["location"].toString(),
+                                description = document.data["description"].toString(),
+                                timeZone = document.data["timeZone"].toString(),
+                                importance = (document.data["importance"] as Long).toInt(),
+                                attendees = attendeeList,
+                                rainCheck = (document.data["rainCheck"] as Boolean),
+                                isRaining = (document.data["isRaining"] as Boolean),
+                                mapsCheck = (document.data["mapsCheck"] as Boolean),
+                                distance = (document.data["distance"] as Long).toInt()
+                            )
+                        events[firestoreEvent] = document.id
+
+                    }
+                }
+                callback(events)
+            }
+            .addOnFailureListener { exception ->
+                Log.w("GoogleFirestore", "Error getting documents.", exception)
+            }
+    }
+    fun getEvent(uid: String, day: String, month: String, year: String,name: String, callback: (String?, FirestoreEvent) -> Unit ) {
+        val upperMonth = month.uppercase()
+        db.collection("users")
+            .document(uid)
+            .collection("events")
+            .document(year)
+            .collection(upperMonth)
+            .whereEqualTo("startTime.dayOfMonth", day.toInt())
+            .whereEqualTo("name", name)
+            .get()
+            .addOnSuccessListener { result ->
+                if (result.size() == 1) {
+                    //Return the event and the id of the event
+                    for (document in result) {
+                        var testAttendee: Attendee = Attendee(
+                            name = "Test",
+                            email = "Test",
+                            phoneNumber = "Test"
+                        )
+                        val attendeeList: List<Attendee> = listOf(testAttendee)
+                        var startTimeHashMap = document.data["startTime"] as HashMap<*, *>
+                        var endTimeHashMap = document.data["endTime"] as HashMap<*, *>
+                        val startTime = LocalDateTime.of(
+                            (startTimeHashMap["year"] as Long).toInt(),
+                            (startTimeHashMap["monthValue"] as Long).toInt(),
+                            (startTimeHashMap["dayOfMonth"] as Long).toInt(),
+                            (startTimeHashMap["hour"] as Long).toInt(),
+                            (startTimeHashMap["minute"] as Long).toInt()
+                        )
+                        val endTime = LocalDateTime.of(
+                            (endTimeHashMap["year"] as Long).toInt(),
+                            (endTimeHashMap["monthValue"] as Long).toInt(),
+                            (endTimeHashMap["dayOfMonth"] as Long).toInt(),
+                            (endTimeHashMap["hour"] as Long).toInt(),
+                            (endTimeHashMap["minute"] as Long).toInt()
+                        )
+                        val event = FirestoreEvent(
+                            name = document.data["name"].toString(),
+                            startTime = startTime as LocalDateTime,
+                            endTime = endTime as LocalDateTime,
+                            location = document.data["location"].toString(),
+                            description = document.data["description"].toString(),
+                            timeZone = document.data["timeZone"].toString(),
+                            importance = (document.data["importance"] as Long).toInt(),
+                            attendees = attendeeList,
+                            rainCheck = (document.data["rainCheck"] as Boolean),
+                            isRaining = (document.data["isRaining"] as Boolean),
+                            mapsCheck = (document.data["mapsCheck"] as Boolean),
+                            distance = (document.data["distance"] as Long).toInt()
+                        )
+                        callback(document.id, event)
+                    }
+                }
+                //If it finds more than one document, callback null and empty event
+                else {
+                    callback(null, FirestoreEvent(
+                        name = "",
+                        startTime = LocalDateTime.now(),
+                        endTime = LocalDateTime.now(),
+                        location = "",
+                        description = "",
+                        timeZone = "",
+                        importance = 0,
+                        attendees = null,
+                        rainCheck = false,
+                        isRaining = false,
+                        mapsCheck = false,
+                        distance = 0
+                    ))
+                }
+
+            }
+            .addOnFailureListener { exception ->
+                //Don't callback if there is an error
+                Log.w("GoogleFirestore", "Error getting documents.", exception)
+            }
+    }
+    fun modifyEvent(uid: String, eventId: String, event: FirestoreEvent, callback: (Boolean) -> Unit) {
+        if (event.validateEvent(event).isEmpty()) {
+            val FirestoreEventEntry = hashMapOf(
+                "name" to event.name,
+                "startTime" to event.startTime,
+                "endTime" to event.endTime,
+                "location" to event.location,
+                "description" to event.description,
+                "timeZone" to event.timeZone,
+                "importance" to event.importance,
+                "attendees" to event.attendees,
+                "rainCheck" to event.rainCheck,
+                "isRaining" to event.isRaining,
+                "mapsCheck" to event.mapsCheck,
+                "distance" to event.distance)
+            db.collection("users")
+                .document(uid)
+                .collection("events")
+                .document(event.startTime.year.toString())
+                .collection(event.startTime.month.toString())
+                .document(eventId)
+                .set(FirestoreEventEntry)
+                .addOnSuccessListener { documentReference ->
+                    Log.d("GoogleFirestore", "Document modified successfully")
+                    callback(true)
+                }
+                .addOnFailureListener { e ->
+                    Log.d("GoogleFirestore", "Error modifying document", e)
+                    callback(false)
+                }
+        } else {
+            Log.d("GoogleFirestore", "Event failed validation with errors: " + event.validateEvent(event))
+            callback(false)
+        }
+    }
     fun getFreeTime(dayStart: LocalDateTime, dayEnd: LocalDateTime, uid: String, day: String, month: String, year: String, callback: (List<Pair<LocalDateTime, LocalDateTime>>) -> Unit) {
 
         getEvents(uid, day, month, year) { events ->
