@@ -44,7 +44,7 @@ class CalendarDataSource {
         return toUiModel(visibleDates, lastSelectedDate)
     }
 
-    private fun getDatesBetween(startDate: LocalDate, endDate: LocalDate): List<LocalDate> {
+    fun getDatesBetween(startDate: LocalDate, endDate: LocalDate): List<LocalDate> {
         val numOfDays = ChronoUnit.DAYS.between(startDate, endDate)
         return Stream.iterate(startDate) { date ->
             date.plusDays(1)

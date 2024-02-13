@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Divider
@@ -32,6 +33,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,10 +44,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.protify.protifyapp.features.events.EventView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
@@ -82,46 +86,40 @@ class CalendarView {
                         .align(Alignment.CenterVertically),
                     fontWeight = FontWeight.Bold
                 )
-                IconButton(
-                    onClick = {
-                        if (isMonthView) {
-                            onPreviousClickListener(data.startDate.date.minusMonths(-1)) // Go to the previous month
-                        } else {
+                if (!isMonthView) { // Only show the arrows in week view
+                    IconButton(
+                        onClick = {
                             onPreviousClickListener(data.startDate.date.minusWeeks(1)) // Go to the previous week
-                        }
-                    },
-                    modifier = Modifier.size(48.dp).padding(8.dp).align(Alignment.CenterVertically)
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                        },
+                        modifier = Modifier.size(48.dp).padding(8.dp).align(Alignment.CenterVertically)
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.KeyboardArrowLeft,
-                            contentDescription = if (isMonthView) "Go to previous month" else "Go to previous week",
-                            tint = Color.Blue,
-                        )
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.KeyboardArrowLeft,
+                                contentDescription = "Go to previous week",
+                                tint = Color.Blue,
+                            )
+                        }
                     }
-                }
-                IconButton(
-                    onClick = {
-                        if (isMonthView) {
-                            onNextClickListener(data.startDate.date.plusMonths(1)) // Go to the next month
-                        } else {
+                    IconButton(
+                        onClick = {
                             onNextClickListener(data.startDate.date.plusWeeks(0)) // Go to the next week
-                        }
-                    },
-                    modifier = Modifier.size(48.dp).padding(8.dp).align(Alignment.CenterVertically)
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                        },
+                        modifier = Modifier.size(48.dp).padding(8.dp).align(Alignment.CenterVertically)
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.KeyboardArrowRight,
-                            contentDescription = if (isMonthView) "Go to next month" else "Go to next week",
-                            tint = Color.Blue,
-                        )
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.KeyboardArrowRight,
+                                contentDescription = "Go to next week",
+                                tint = Color.Blue,
+                            )
+                        }
                     }
                 }
             }
@@ -147,6 +145,8 @@ class CalendarView {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun CalendarItem(date: CalendarUiModel.Date, onClickListener: (CalendarUiModel.Date) -> Unit, isMonthView: Boolean) {
+        val dataSource = CalendarDataSource()
+        val currentUser = FirebaseLoginHelper().getCurrentUser()
         var showDialog by remember { mutableStateOf(false) }
         val backgroundColor by animateColorAsState(
             targetValue = if (date.isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
@@ -220,9 +220,32 @@ class CalendarView {
                                                 color = if (formattedTime == currentTime) Color.Red else MaterialTheme.colorScheme.onSurface,
                                                 textAlign = TextAlign.Center
                                             )
-                                            // Add a divider after each hour
+                                            // Adds a divider after each hour
                                             if (minute == 30) {
                                                 Divider(color = Color.Gray, thickness = 1.dp)
+                                            }
+                                            // Displays the events for each hour
+
+                                            dataSource.getFirestoreEvents(currentUser!!.uid, currentUser.metadata!!.creationTimestamp, date.date.month.toString(), date.date.dayOfMonth.toString(), date.date.year.toString()) { events ->
+                                                if (events.isNotEmpty()) {
+
+                                                    date.events = events
+
+                                                }
+                                            }
+                                            date.events.forEach { event ->
+                                                val eventStartTime = LocalTime.parse(event.startTime, DateTimeFormatter.ofPattern("h:mm a"))
+                                                val eventEndTime = LocalTime.parse(event.endTime, DateTimeFormatter.ofPattern("h:mm a"))
+                                                if ((eventStartTime.isAfter(time) && eventStartTime.isBefore(time.plusHours(1))) ||
+                                                    (eventEndTime.isAfter(time) && eventEndTime.isBefore(time.plusHours(1)))) {
+                                                    Text(
+                                                        text = "${event.title} (${event.startTime} - ${event.endTime})",
+                                                        modifier = Modifier.padding(8.dp),
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = MaterialTheme.colorScheme.onSurface,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -246,13 +269,25 @@ class CalendarView {
         isMonthView: Boolean
     ) {
         if (isMonthView) {
-            val datesGroupedByMonth = data.visibleDates.groupBy { it.date.month }
-            LazyColumn {
-                datesGroupedByMonth.forEach { (month, dates) ->
+            // Generates a list of dates for all the months you want to display
+            val allDates = generateDatesForMonths()
+
+            // Groups the dates by both the month and the year
+            val datesGroupedByMonth = allDates.groupBy { YearMonth.from(it.date) }
+            val listState = rememberLazyListState()
+
+            // Scrolls to the current month when the CalendarContent is first displayed
+            LaunchedEffect(key1 = Unit) {
+                listState.animateScrollToItem(index = allDates.indexOfFirst { YearMonth.from(it.date) == YearMonth.now() })
+            }
+
+            LazyColumn(state = listState) {
+                datesGroupedByMonth.forEach { (yearMonth, dates) ->
                     item {
                         Text(
-                            text = month.toString(),
-                            style = MaterialTheme.typography.bodySmall,
+                            // Formats the yearMonth to display the full name of the month and the year
+                            text = yearMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
                             modifier = Modifier.padding(start = 16.dp, top = 16.dp)
                         )
                     }
@@ -262,6 +297,9 @@ class CalendarView {
                                 CalendarItem(date, onDateClickListener, isMonthView)
                             }
                         }
+                    }
+                    item {
+                        Divider(color = Color.Gray, thickness = 1.dp)
                     }
                 }
             }
@@ -273,11 +311,19 @@ class CalendarView {
             }
         }
     }
+    // Generates a list of dates for all the months you want to display
+    fun generateDatesForMonths(): List<CalendarUiModel.Date> {
+        val dataSource = CalendarDataSource()
+        val startDate = dataSource.today.withDayOfMonth(1) // Start from the current month
+        val endDate = dataSource.today.withDayOfMonth(1).plusMonths(12) // Ends at 12 months later
+        val allDates = dataSource.getDatesBetween(startDate, endDate)
+        return allDates.map { CalendarUiModel.Date(it, false, it.isEqual(dataSource.today), false) }
+    }
     @Composable
     fun Calendar(navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
-        val selectedTabIndex by remember { mutableStateOf(0) }
-        var isMonthView by remember { mutableStateOf(false) } // Changed to false to start with week view
+        //val selectedTabIndex by remember { mutableStateOf(0) }
+        var isMonthView by remember { mutableStateOf(false) }
         var calendarUiModel by remember {
             mutableStateOf(
                 dataSource.getData(
@@ -289,7 +335,6 @@ class CalendarView {
         var isLoadingEvents by remember { mutableStateOf(true) }
 
         dataSource.getFirestoreEvents("uid", 1234567890L, "January", "1", "2023") { events ->
-
             if (events.isNotEmpty()) {
                 calendarUiModel.selectedDate.events = events
                 isLoadingEvents = false
@@ -304,7 +349,7 @@ class CalendarView {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(if (isMonthView) 0.85f else 0.5f) // Adjusts the weight based on the view
+                    .weight(if (isMonthView) 0.85f else 0.5f)
                     .background(
                         color = MaterialTheme.colorScheme.surface,
                     )
@@ -378,12 +423,12 @@ class CalendarView {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(if (isMonthView) 0.15f else 0.5f) // Adjusts the weight based on the view
+                    .weight(if (isMonthView) 0.15f else 0.5f)
                     .background(
                         color = MaterialTheme.colorScheme.surface,
                     )
             ) {
-                if (!isMonthView) { // Only show the EventCard in week view
+                if (!isMonthView) { // Only shows the EventCard in week view
                     EventView().EventCard(calendarUiModel, navigateToAddEvent, isLoadingEvents)
                 }
             }
