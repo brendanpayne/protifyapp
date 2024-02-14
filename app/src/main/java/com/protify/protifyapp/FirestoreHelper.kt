@@ -57,6 +57,7 @@ class FirestoreHelper() {
             if (event.validateEvent(event).isEmpty()) {
                 val FirestoreEventEntry = hashMapOf(
                     "name" to event.name,
+                    "nameLower" to event.nameLower,
                     "startTime" to event.startTime,
                     "endTime" to event.endTime,
                     "location" to event.location,
@@ -67,7 +68,8 @@ class FirestoreHelper() {
                     "rainCheck" to event.rainCheck,
                     "isRaining" to event.isRaining,
                     "mapsCheck" to event.mapsCheck,
-                    "distance" to event.distance)
+                    "distance" to event.distance,
+                    "isOutside" to event.isOutside)
                 db.collection("users")
                     .document(uid)
                     .collection("events")
@@ -139,6 +141,7 @@ class FirestoreHelper() {
                 val events = mutableListOf<FirestoreEvent>()
                 for (document in result) {
                     Log.d("GoogleFirestore", "${document.id} => ${document.data}")
+                    //Need to refactor this. I don't think creating an attendee is needed
                     if (!result.isEmpty) {
                         var testAttendee: Attendee = Attendee(
                             name = "Test",
@@ -175,7 +178,9 @@ class FirestoreHelper() {
                                 rainCheck = (document.data["rainCheck"] as Boolean),
                                 isRaining = (document.data["isRaining"] as Boolean),
                                 mapsCheck = (document.data["mapsCheck"] as Boolean),
-                                distance = (document.data["distance"] as Long).toInt()
+                                distance = (document.data["distance"] as Long).toInt(),
+                                nameLower = document.data["nameLower"].toString(),
+                                isOutside = (document.data["isOutside"] as Boolean)
 
                         )
                         )
@@ -237,7 +242,9 @@ class FirestoreHelper() {
                                 rainCheck = (document.data["rainCheck"] as Boolean),
                                 isRaining = (document.data["isRaining"] as Boolean),
                                 mapsCheck = (document.data["mapsCheck"] as Boolean),
-                                distance = (document.data["distance"] as Long).toInt()
+                                distance = (document.data["distance"] as Long).toInt(),
+                                nameLower = document.data["nameLower"].toString(),
+                                isOutside = (document.data["isOutside"] as Boolean)
                             )
                         events[firestoreEvent] = document.id
 
@@ -251,13 +258,15 @@ class FirestoreHelper() {
     }
     fun getEvent(uid: String, day: String, month: String, year: String,name: String, callback: (String?, FirestoreEvent) -> Unit ) {
         val upperMonth = month.uppercase()
+        //Hopefully using lowercase name will make this more accurate
+        val nameLower= name.lowercase().trim()
         db.collection("users")
             .document(uid)
             .collection("events")
             .document(year)
             .collection(upperMonth)
             .whereEqualTo("startTime.dayOfMonth", day.toInt())
-            .whereEqualTo("name", name)
+            .whereEqualTo("nameLower", nameLower)
             .get()
             .addOnSuccessListener { result ->
                 if (result.size() == 1) {
@@ -297,7 +306,9 @@ class FirestoreHelper() {
                             rainCheck = (document.data["rainCheck"] as Boolean),
                             isRaining = (document.data["isRaining"] as Boolean),
                             mapsCheck = (document.data["mapsCheck"] as Boolean),
-                            distance = (document.data["distance"] as Long).toInt()
+                            distance = (document.data["distance"] as Long).toInt(),
+                            nameLower = document.data["nameLower"].toString(),
+                            isOutside = (document.data["isOutside"] as Boolean)
                         )
                         callback(document.id, event)
                     }
@@ -316,7 +327,9 @@ class FirestoreHelper() {
                         rainCheck = false,
                         isRaining = false,
                         mapsCheck = false,
-                        distance = 0
+                        distance = 0,
+                        nameLower = "",
+                        isOutside = false
                     ))
                 }
 
@@ -330,6 +343,8 @@ class FirestoreHelper() {
         if (event.validateEvent(event).isEmpty()) {
             val FirestoreEventEntry = hashMapOf(
                 "name" to event.name,
+                //Should be exactly same as the event name, except lowercase for searching
+                "nameLower" to event.nameLower.trim().lowercase(),
                 "startTime" to event.startTime,
                 "endTime" to event.endTime,
                 "location" to event.location,
@@ -340,7 +355,8 @@ class FirestoreHelper() {
                 "rainCheck" to event.rainCheck,
                 "isRaining" to event.isRaining,
                 "mapsCheck" to event.mapsCheck,
-                "distance" to event.distance)
+                "distance" to event.distance,
+                "isOutside" to event.isOutside)
             db.collection("users")
                 .document(uid)
                 .collection("events")
@@ -421,7 +437,9 @@ class FirestoreHelper() {
                         rainCheck = false,
                         isRaining = false,
                         mapsCheck = false,
-                        distance = 0
+                        distance = 0,
+                        nameLower = "",
+                        isOutside = false
                     )
                     MapsDurationUtils(event.startTime).isChainedEvent(event, homeEvent, "6190 Falla Dr, Canal Winchester, OH 43110") { runSuccess, isChained ->
                         if (event.startTime > currentFreeTimeStart) {

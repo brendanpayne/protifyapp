@@ -5,6 +5,7 @@ import java.time.LocalDateTime
 
 class FirestoreEvent(
     val name: String,
+    val nameLower: String,
     var startTime: LocalDateTime,
     var endTime: LocalDateTime,
     var location: String?,
@@ -15,7 +16,8 @@ class FirestoreEvent(
     val rainCheck: Boolean,
     val isRaining: Boolean,
     val mapsCheck: Boolean,
-    val distance: Int
+    val distance: Int,
+    val isOutside: Boolean,
 ) {
     fun validateEvent(event: FirestoreEvent): List<Error> {
         val errors = mutableListOf<Error>()

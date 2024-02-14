@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,7 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
-import com.google.android.libraries.places.widget.*
+import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.protify.protifyapp.APIKeys
 import com.protify.protifyapp.FirestoreEvent
@@ -304,6 +305,8 @@ class AddEvent {
                 }
             }
         )
+        //isOutside boolean
+        var isOutside by remember { mutableStateOf(false) }
         //Get network state so we can toggle Firestore offline/online
         val isConnected by remember { mutableStateOf(false) }
         LaunchedEffect(networkManager) {
@@ -530,6 +533,23 @@ class AddEvent {
                     )
                 }
                 item {
+                    //Make a tick box to check if the event is outdoors
+                    Row {
+                        Text(
+                            text = "Is this event outdoors?",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                        Checkbox(
+                            checked =isOutside,
+                            onCheckedChange = { isChecked -> isOutside = isChecked },
+                            modifier = Modifier.padding(16.dp),
+                        )
+
+
+                    }
+                }
+                item {
                     OutlinedTextField(
                         value = description ?: "",
                         onValueChange = { description -> updateDescription(description) },
@@ -733,12 +753,16 @@ class AddEvent {
                                 startTime = startTime,
                                 timeZone = timeZone?.displayName,
                                 name = name,
+                                //Additional field to store the name in lowercase for searching
+                                nameLower = name.trim().lowercase(),
                                 importance = importance,
                                 location = location,
                                 rainCheck = false,
                                 isRaining = false,
                                 mapsCheck = false,
-                                distance = 0
+                                distance = 0,
+                                //This will be used in the AI model to determine whether this event can be scheduled if it's raining outside
+                                isOutside = isOutside
                             )
                             val errors = firestoreEvent.validateEvent(firestoreEvent)
                             if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {
