@@ -189,7 +189,7 @@ class AddEvent {
         val networkManager = NetworkManager(context)
         //Date Picker Dialog
         val dayOfMonth = LocalDateTime.now().dayOfMonth
-        val month = LocalDateTime.now().monthValue
+        val month = LocalDateTime.now().monthValue - 1 //Subtract 1 to select the right day in the DatePickerDialog
         val year = LocalDateTime.now().year
         val selectedDate = remember { mutableStateOf("")}
         var selectedMonth = 0
