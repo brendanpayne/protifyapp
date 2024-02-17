@@ -21,7 +21,9 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         var systemContent: String,
         var userContent: String
     )
-    private val model = "gpt-3.5-turbo-1106"
+    private val model = "gpt-3.5-turbo-0125"
+    //GPT 4 goated. GPT 3.5 is not reorganizing the shcedule properly, but GPT 4 is
+    //private val model = "gpt-4-0125-preview"
     private val response_format = """{ "type": "json_object" }"""
 
     private val client: OkHttpClient = OkHttpClient().newBuilder()
@@ -43,7 +45,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
     private val eventString = eventList.joinToString(" ")
     //Get the travel time, origin, and destination from the travelTime list
-    private val travelTimeList = travelTime.map { travel -> "${travel?.startLocation} to ${travel?.endLocation} takes ${travel?.duration}" }
+    private val travelTimeList = travelTime.map { travel -> "The distance between ${travel?.startLocation} and ${travel?.endLocation} is ${travel?.duration}" }
     private val travelTimeString = travelTimeList.joinToString(" ")
 
     private var userContent = "I need help optimizing my schedule for today. Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
@@ -54,13 +56,10 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         //Make a new request object
         val httpPost = Request(model,
             response_format,
-            "You are a helpful assistant responsible for reducing the amount of time I have to drive in a day by optimizing my schedule. " +
-                    "You are not allowed to change the length of the events, but are encouraged to rearrange events to save driving time between my events. " +
-                    "Assume that when I don't have an event going on, I will drive back home to ${homeAddress}. " +
-                    "You will provide the new schedule in json format. One of the objects is to be named Events. " +
-                    "In Events, you will have a field Called Name, StartTime, EndTime, and Location. " +
-                    "Another object should be called TimeSaved, which you will state how many minutes of driving in the form of an integer, in minutes. " +
-                    "If you are not able to optimize the schedule, please set all TimeSaved to -1.",
+            "You are responsible for saving me the time it takes to drive to these events by changing the time of the events. " +
+                    "You will provide the optimized schedule in json format. One of the objects is to be named Events. " +
+                    "In Events, you will have a field called Name, StartTime, EndTime, and Location. " +
+                    "Another object should be called TimeSaved, which you will state how many minutes of driving in the form of an integer, in minutes",
             "${userContent}")
 
 
