@@ -4,7 +4,9 @@ import DistanceResponse
 import com.google.gson.GsonBuilder
 import com.protify.protifyapp.APIKeys
 import com.protify.protifyapp.FirestoreEvent
+import com.protify.protifyapp.features.GoogleMapsAPI.DrivingTime
 import com.protify.protifyapp.features.GoogleMapsAPI.DrivingTimeMatrix
+import com.protify.protifyapp.features.GoogleMapsAPI.GeocodedResponse
 import okhttp3.OkHttpClient
 import java.io.IOException
 import java.time.LocalDateTime
@@ -97,6 +99,48 @@ class MapsDurationUtils(departTime: LocalDateTime) {
         })
 
     }
+    fun getDrivingTimes(startLocation: String?, endLocations: List<String?>, onComplete: (List<DrivingTime?>) -> Unit) {
+        var drivingTimes = mutableListOf<DrivingTime?>()
+
+        getMaxtrix(startLocation, endLocations) { matrix ->
+            if (matrix == null) {
+                onComplete(emptyList())
+                return@getMaxtrix
+            }
+            for (i in matrix.rows.indices) {
+                //j is representing the destination
+                for (j in matrix.rows[i].elements.indices) {
+                    //Make sure origin and destination are not the same
+                    if (matrix.originAddresses[i] != matrix.destinationAddresses[j]) {
+                        //This is the driving time in seconds
+                        val drivingTime =
+                            matrix.rows[i].elements[j].duration.value
+                        //This is the driving time in text
+                        val drivingTimeText =
+                            matrix.rows[i].elements[j].duration.text
+                        //Add the driving time to the list
+                        drivingTimes.add(
+                            DrivingTime(
+                                matrix.originAddresses[i],
+                                matrix.destinationAddresses[j],
+                                drivingTimeText
+                            )
+                        )
+                    }
+                }
+            }
+            onComplete(removeDuplicateDrivingTimes(drivingTimes))
+        }
+    }
+    private fun removeDuplicateDrivingTimes(drivingTimes: List<DrivingTime?>): List<DrivingTime?> {
+        val uniqueDrivingTimes = mutableListOf<DrivingTime?>()
+        for (drivingTime in drivingTimes) {
+            if (uniqueDrivingTimes.none { it?.startLocation == drivingTime?.endLocation && it?.endLocation == drivingTime?.startLocation }) {
+                uniqueDrivingTimes.add(drivingTime)
+            }
+        }
+        return uniqueDrivingTimes
+    }
 //    private fun getDuration(homeAddress: String, startLocation: String?, onComplete: (DistanceResponse?) -> Unit) {
 //        val url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=$startLocation&destinations=$homeAddress&key=${mapsKey}"
 //        val request = okhttp3.Request.Builder()
@@ -165,5 +209,26 @@ class MapsDurationUtils(departTime: LocalDateTime) {
         }
 
         }
+    }
+    fun geocode(address: String, onComplete: (Double, Double) -> Unit) {
+        val url = "https://maps.googleapis.com/maps/api/geocode/json?address=$address&key=${mapsKey}"
+        val request = okhttp3.Request.Builder()
+            .url(url)
+            .build()
+        client.newCall(request).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: IOException) {
+                onComplete(0.0,0.0)
+            }
+
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                val body = response.body?.string()
+                if (response.code != 200) {
+                    onComplete(0.0,0.0)
+                    return
+                }
+                val geocodeResponse = gson.fromJson(body, GeocodedResponse::class.java)
+                onComplete(geocodeResponse.results[0].geometry.location.lat, geocodeResponse.results[0].geometry.location.lng)
+            }
+        })
     }
 }
