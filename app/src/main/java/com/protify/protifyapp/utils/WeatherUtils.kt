@@ -1,7 +1,6 @@
 package com.protify.protifyapp.utils
 
 import com.google.gson.GsonBuilder
-import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.features.weather.RainForecast
 import com.protify.protifyapp.features.weather.WeatherForecast
 import com.protify.protifyapp.features.weather.WeatherOverview
@@ -91,6 +90,24 @@ class WeatherUtils(val longitude: Double, val latitude: Double) {
             oncomplete(rainForecast)
         }
     }
+    fun getRainForecastList(locationsList: HashMap<Double, Double>, oncomplete: (List<RainForecast>) -> Unit) {
+        val rainForecast = mutableListOf<RainForecast>()
+        val locationsList = locationsList.size
+        fun getRainForecastOne(iteration: Int) {
+            getRainForecast { forecast ->
+                if (forecast == null) {
+                    if (iteration < locationsList) {
+                        getRainForecastOne(iteration + 1)
+                    } else {
+                        oncomplete(rainForecast)
+                    }
+                    return@getRainForecast
+                }
+            }
+        }
+        //Init
+        getRainForecastOne(0)
+    }
 
     fun rainToday(today: LocalDateTime, onComplete: (Boolean) -> Unit) {
 
@@ -108,8 +125,8 @@ class WeatherUtils(val longitude: Double, val latitude: Double) {
         }
     }
 
-fun getNonRainingTimes(event: FirestoreEvent, onComplete: (List<Pair<LocalDateTime, LocalDateTime>>) -> Unit) {
-    val today = event.startTime
+fun getNonRainingTimes(time: LocalDateTime, onComplete: (List<Pair<LocalDateTime, LocalDateTime>>) -> Unit) {
+    val today = time.withHour(0).withMinute(0).withSecond(0).withNano(0)
     getRainForecast { rainForecast ->
         if (rainForecast == null) {
             onComplete(listOf())
