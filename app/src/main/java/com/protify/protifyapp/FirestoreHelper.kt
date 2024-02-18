@@ -1,5 +1,6 @@
 package com.protify.protifyapp
 
+import OptimizedSchedule
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.MetadataChanges
@@ -339,6 +340,7 @@ class FirestoreHelper() {
                 Log.w("GoogleFirestore", "Error getting documents.", exception)
             }
     }
+    //This takes a firestoreevent object and overwrites the event with the same id
     fun modifyEvent(uid: String, eventId: String, event: FirestoreEvent, callback: (Boolean) -> Unit) {
         if (event.validateEvent(event).isEmpty()) {
             val FirestoreEventEntry = hashMapOf(
@@ -376,6 +378,63 @@ class FirestoreHelper() {
             Log.d("GoogleFirestore", "Event failed validation with errors: " + event.validateEvent(event))
             callback(false)
         }
+    }
+    fun modifyEventTime(OptimizedEvents: OptimizedSchedule, uid: String, day: String, month:String, year: String, callback: (Boolean) -> Unit) {
+        //This will determine how many events we have to update
+        val eventCount = OptimizedEvents.events.size
+
+        fun modifySingletonEvent(iterations: Int) {
+            //If we have modified all of the events, return
+            if (iterations >= eventCount) {
+                callback(true)
+                return
+            }
+            getEvent(uid, day, month, year, OptimizedEvents.events[iterations].name) { eventId, event ->
+                //If the event is found, modify it
+                if (eventId != null) {
+                    //This is essentially parsing the string output from the class and turning it into a localdatetime object
+                    val startTimeString = OptimizedEvents.events[iterations].startTime
+                    val startTimeParsed = startTimeString.split(":")
+                    val startHour = startTimeParsed[0].toInt()
+                    val startMinute = startTimeParsed[1].toInt()
+                    val endTimeString = OptimizedEvents.events[iterations].endTime
+                    val endTimeParsed = endTimeString.split(":")
+                    val endHour = endTimeParsed[0].toInt()
+                    val endMinute = endTimeParsed[1].toInt()
+                    //Set new start and end times for events now that we have the integers associated with the start and end times
+                    val startTime = LocalDateTime.of(
+                        event.startTime.year,
+                        event.startTime.month,
+                        event.startTime.dayOfMonth,
+                        startHour,
+                        startMinute
+                    )
+                    val endTime = LocalDateTime.of(
+                        event.endTime.year,
+                        event.endTime.month,
+                        event.endTime.dayOfMonth,
+                        endHour,
+                        endMinute
+                    )
+                    //Reassign start and end times to events
+                    event.startTime = startTime
+                    event.endTime = endTime
+
+                    modifyEvent(uid, eventId, event) { success ->
+                        if (success) {
+                            modifySingletonEvent(iterations + 1)
+                        } else {
+                            callback(false)
+                        }
+                    }
+                } else {
+                    //If the event is not found, return false
+                    callback(false)
+                }
+            }
+        }
+        //Initiate the recursive function
+        modifySingletonEvent(0)
     }
     fun getFreeTime(dayStart: LocalDateTime, dayEnd: LocalDateTime, uid: String, day: String, month: String, year: String, callback: (List<Pair<LocalDateTime, LocalDateTime>>) -> Unit) {
 
