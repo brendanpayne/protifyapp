@@ -231,4 +231,25 @@ class MapsDurationUtils(departTime: LocalDateTime) {
             }
         })
     }
+    fun geocodeList(addresses: List<String>, onComplete: (List<HashMap<String, HashMap<Double, Double>>>) -> Unit) {
+        val geocodedList = mutableListOf<HashMap<String, HashMap<Double, Double>>>()
+
+        //use recursion to get one at a time
+        fun geocodeOne(iteration: Int) {
+            if (iteration == addresses.size) {
+                onComplete(geocodedList)
+                return
+            }
+            geocode(addresses[iteration]) { lat, lng ->
+                val geocodedAddress = HashMap<String, HashMap<Double, Double>>()
+                val location = HashMap<Double, Double>()
+                location[lat] = lng
+                geocodedAddress[addresses[iteration]] = location
+                geocodedList.add(geocodedAddress)
+                geocodeOne(iteration + 1)
+            }
+        }
+        //Init
+        geocodeOne(0)
+    }
 }
