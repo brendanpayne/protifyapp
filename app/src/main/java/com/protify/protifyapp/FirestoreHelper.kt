@@ -70,7 +70,8 @@ class FirestoreHelper() {
                     "isRaining" to event.isRaining,
                     "mapsCheck" to event.mapsCheck,
                     "distance" to event.distance,
-                    "isOutside" to event.isOutside)
+                    "isOutside" to event.isOutside,
+                    "isOptimized" to event.isOptimized)
                 db.collection("users")
                     .document(uid)
                     .collection("events")
