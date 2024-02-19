@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -499,39 +500,43 @@ class AddEvent {
 
                 }
                 item {
+                    var isFocused by remember { mutableStateOf(false) }
+
                     OutlinedTextField(
                         value = location ?: "",
-                        onValueChange = {
-                                location = it
-
-                            if (it.isNotBlank()) {
+                        onValueChange = { location = it },
+                        label = { Text("Location") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        trailingIcon = {
+                            IconButton(onClick = { location = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.outline,
+                                )
+                            }
+                        },
+                        modifier = Modifier.onFocusChanged { focusState ->
+                            if (focusState.isFocused && !isFocused) {
+                                isFocused = true
                                 autocompleteLauncher.launch(
                                     Autocomplete.IntentBuilder(
                                         AutocompleteActivityMode.OVERLAY,
                                         listOf(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS)
                                     ).build(context)
                                 )
+                            } else if (!focusState.isFocused) {
+                                isFocused = false
                             }
-                                        },
-                        label = { Text("Location") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        trailingIcon = {
-                                       IconButton(onClick = { location = "" }) {
-                                           Icon(
-                                               imageVector = Icons.Default.Delete,
-                                               contentDescription = "Delete",
-                                               tint = MaterialTheme.colorScheme.outline,
-                                           )
-
-                                       }
                         },
                         supportingText = {
                             Text(
                                 text = "Optional",
                                 color = MaterialTheme.colorScheme.outline,
                             )
-                        }
+                        },
+                        readOnly = true
                     )
                 }
                 item {
@@ -751,7 +756,7 @@ class AddEvent {
                             modifier = Modifier.padding(16.dp)
                         )
                         Checkbox(
-                            checked = isOutside,
+                            checked = isOptimized,
                             onCheckedChange = { isChecked -> isOptimized = isChecked },
                             modifier = Modifier.padding(16.dp),
                         )
@@ -780,8 +785,9 @@ class AddEvent {
                                 distance = 0,
                                 //This will be used in the AI model to determine whether this event can be scheduled if it's raining outside
                                 isOutside = isOutside,
-                                //This will be used to determine whether or not an event is allowed to be optimized by the Ai
-                                isOptimized = isOptimized
+                                //This will be used to determine whether or not an event is allowed to be optimized by the AI
+                                //My naming scheme is so bad that I have to reverse the boolean to make it make sense
+                                isOptimized = !isOptimized
                             )
                             val errors = firestoreEvent.validateEvent(firestoreEvent)
                             if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {
