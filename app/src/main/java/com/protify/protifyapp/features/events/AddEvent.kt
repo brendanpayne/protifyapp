@@ -307,6 +307,8 @@ class AddEvent {
         )
         //isOutside boolean
         var isOutside by remember { mutableStateOf(false) }
+        //isOptimized boolean
+        var isOptimized by remember { mutableStateOf(true)}
         //Get network state so we can toggle Firestore offline/online
         val isConnected by remember { mutableStateOf(false) }
         LaunchedEffect(networkManager) {
@@ -741,6 +743,21 @@ class AddEvent {
 
                 }
                 item {
+                    Row {
+                        //Button to allows the AI to make optimizations to this event or not
+                        Text (
+                            text = "Do you want to allow the AI to optimize this event?",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                        Checkbox(
+                            checked = isOutside,
+                            onCheckedChange = { isChecked -> isOptimized = isChecked },
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
+                }
+                item {
                     Button(
                         modifier = Modifier
                             .fillMaxSize()
@@ -762,7 +779,9 @@ class AddEvent {
                                 mapsCheck = false,
                                 distance = 0,
                                 //This will be used in the AI model to determine whether this event can be scheduled if it's raining outside
-                                isOutside = isOutside
+                                isOutside = isOutside,
+                                //This will be used to determine whether or not an event is allowed to be optimized by the Ai
+                                isOptimized = isOptimized
                             )
                             val errors = firestoreEvent.validateEvent(firestoreEvent)
                             if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {

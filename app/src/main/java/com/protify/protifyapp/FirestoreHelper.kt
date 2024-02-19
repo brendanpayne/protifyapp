@@ -181,7 +181,8 @@ class FirestoreHelper() {
                                 mapsCheck = (document.data["mapsCheck"] as Boolean),
                                 distance = (document.data["distance"] as Long).toInt(),
                                 nameLower = document.data["nameLower"].toString(),
-                                isOutside = (document.data["isOutside"] as Boolean)
+                                isOutside = (document.data["isOutside"] as Boolean),
+                                isOptimized = (document.data["isOptimized"] as Boolean)
 
                         )
                         )
@@ -245,7 +246,8 @@ class FirestoreHelper() {
                                 mapsCheck = (document.data["mapsCheck"] as Boolean),
                                 distance = (document.data["distance"] as Long).toInt(),
                                 nameLower = document.data["nameLower"].toString(),
-                                isOutside = (document.data["isOutside"] as Boolean)
+                                isOutside = (document.data["isOutside"] as Boolean),
+                                isOptimized = (document.data["isOptimized"] as Boolean)
                             )
                         events[firestoreEvent] = document.id
 
@@ -309,7 +311,8 @@ class FirestoreHelper() {
                             mapsCheck = (document.data["mapsCheck"] as Boolean),
                             distance = (document.data["distance"] as Long).toInt(),
                             nameLower = document.data["nameLower"].toString(),
-                            isOutside = (document.data["isOutside"] as Boolean)
+                            isOutside = (document.data["isOutside"] as Boolean),
+                            isOptimized = (document.data["isOptimized"] as Boolean)
                         )
                         callback(document.id, event)
                     }
@@ -330,7 +333,8 @@ class FirestoreHelper() {
                         mapsCheck = false,
                         distance = 0,
                         nameLower = "",
-                        isOutside = false
+                        isOutside = false,
+                        isOptimized = false
                     ))
                 }
 
@@ -358,7 +362,8 @@ class FirestoreHelper() {
                 "isRaining" to event.isRaining,
                 "mapsCheck" to event.mapsCheck,
                 "distance" to event.distance,
-                "isOutside" to event.isOutside)
+                "isOutside" to event.isOutside,
+                "isOptimized" to event.isOptimized)
             db.collection("users")
                 .document(uid)
                 .collection("events")
@@ -498,7 +503,8 @@ class FirestoreHelper() {
                         mapsCheck = false,
                         distance = 0,
                         nameLower = "",
-                        isOutside = false
+                        isOutside = false,
+                        isOptimized = false
                     )
                     MapsDurationUtils(event.startTime).isChainedEvent(event, homeEvent, "6190 Falla Dr, Canal Winchester, OH 43110") { runSuccess, isChained ->
                         if (event.startTime > currentFreeTimeStart) {

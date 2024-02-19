@@ -18,6 +18,7 @@ class FirestoreEvent(
     val mapsCheck: Boolean,
     val distance: Int,
     val isOutside: Boolean,
+    val isOptimized: Boolean,
 ) {
     fun validateEvent(event: FirestoreEvent): List<Error> {
         val errors = mutableListOf<Error>()
