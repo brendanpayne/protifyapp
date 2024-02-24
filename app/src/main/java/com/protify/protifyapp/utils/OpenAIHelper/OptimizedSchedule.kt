@@ -23,6 +23,9 @@ data class OptimizedSchedule(
     // Add additional methods or properties specific to the optimized schedule if needed
 
     fun nullCheck(): Boolean {
+        if (events == null || timeSaved == null) {
+            return false
+        }
         return events.isNotEmpty() && events.all { event ->
             event.name.isNotBlank() &&
                     event.startTime.isNotBlank() &&
