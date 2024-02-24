@@ -61,7 +61,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
 
 
-    private fun getResponse(onComplete: (String?) -> Unit) {
+    fun getResponse(onComplete: (String?) -> Unit) {
 
         if (isFullyOptimized()) {
             onComplete("FullyOptimized")
