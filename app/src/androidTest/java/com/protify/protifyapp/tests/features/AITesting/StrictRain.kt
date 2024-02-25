@@ -62,7 +62,7 @@ class StrictRain {
                         ) { events ->
                             // If all of the events aren't outside, the test will fail
                             if (events.any { !it.isOutside }) {
-                                assert(false)
+                                assert(false) {"At least one event must be outside on February 24th, 2024"}
                             }
 
                             // Convert FirestoreEvent to FirestoreEventString
@@ -165,7 +165,7 @@ class StrictRain {
                         }
                     } else {
                         // If the login fails, the test will fail
-                        assert(false)
+                        assert(false) {"Login failed"}
                     }
                 }
             // Wait 45 seconds for the asynchronous code to finish
@@ -228,7 +228,7 @@ class StrictRain {
             // In the function, if it fails 5 times in a row, it will return empty lists
             if (response.events.isEmpty() || response.oldEvents.isEmpty()) {
                 // If the response is empty, the test will fail
-                assert(false)
+                assert(false) {"The response is empty likely due to incorrect formatting of the input data or an error in the API call."}
             } else {
                 // Write the response to a file
                 val responseFile = File(context.filesDir, "aiResponse.json")
@@ -271,18 +271,18 @@ class StrictRain {
 
         // If the old schedule is the same as the new schedule, the test will fail
         if (response.events == response.oldEvents) {
-            assert(false)
+            assert(false) {"The old schedule is the same as the new schedule"}
         }
         // If the old schedule or new schedule is empty, the test will fail
         if (response.events.isEmpty() || response.oldEvents.isEmpty()) {
-            assert(false)
+            assert(false) {"The old schedule or new schedule is empty"}
         }
 
         // Match the events in the response to the events in the events file by name with case insensitivity
         // If the ai didn't return all of the events, the test will fail
         eventsString.forEach { event ->
             if (response.events.none { it.name.equals(event.name, true) }) {
-                assert(false)
+                assert(false) {"One or more events are missing from the response"}
             }
         }
 
@@ -304,7 +304,7 @@ class StrictRain {
 
                 // If the event is not scheduled during any non-raining interval, the test will fail
                 if (!isScheduledDuringNonRainingTime) {
-                    assert(false)
+                    assert(false) {"One or more outdoor events are scheduled during a time when it is raining"}
                 }
             }
         }

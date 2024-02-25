@@ -138,7 +138,7 @@ class Essential {
                     }
                 } else {
                     // If the login fails, the test will fail
-                    assert(false)
+                    assert(false) { "Login failed" }
                 }
             }
             // Wait 45 seconds for the asynchronous code to finish
@@ -156,7 +156,7 @@ class Essential {
 
         // Check that the files exist
         if (!eventsFile.exists() || !drivingTimesFile.exists() || !optimalOrderFile.exists()) {
-            assert(false)
+            assert(false) { "Missing one or more json files. These are required for the tests to run."}
         }
         // Try to convert the json files to a list and assign them to variables
         try {
@@ -167,7 +167,7 @@ class Essential {
             assert(events.isNotEmpty() && drivingTimes.isNotEmpty() && optimalOrder.isNotEmpty())
         } catch (e: Exception) {
             // If the conversion fails, the test will fail
-            assert(false)
+            assert(false) {"One or more json files are not in the correct format."}
         }
     }
     @Test
@@ -222,7 +222,7 @@ class Essential {
                 countDownLatch.countDown()
             } else {
                 // If the api call fails, the test will fail
-                assert(false)
+                assert(false) { "API call failed" }
             }
         }
         // Wait 15 seconds for the asynchronous code to finish
@@ -280,7 +280,7 @@ class Essential {
             // In the function, if it fails 5 times in a row, it will return empty lists
             if (response.events.isEmpty() || response.oldEvents.isEmpty()) {
                 // If the response is empty, the test will fail
-                assert(false)
+                assert(false) {"No valid response from API call."}
             } else {
                 // If the response is not empty, the test will pass
                 countDownLatch.countDown()
@@ -343,7 +343,7 @@ class Essential {
                 countDownLatch.countDown()
             } else {
                 // If the events are the same, the test will fail
-                assert(false)
+                assert(false) {"No events were modified"}
             }
         }
         // Wait 60 seconds for the asynchronous code to finish
@@ -401,7 +401,7 @@ class Essential {
                 countDownLatch.countDown()
             } else {
                 // If the matrix is null, the test will fail
-                assert(false)
+                assert(false) {"Matrix does not contain all locations"}
             }
         }
         // Wait 25 seconds for the asynchronous code to finish
