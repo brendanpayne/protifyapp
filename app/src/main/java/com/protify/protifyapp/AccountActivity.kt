@@ -1,16 +1,14 @@
 package com.protify.protifyapp
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.*
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -24,7 +22,7 @@ class AccountActivity {
     fun AccountPage() {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colors.background
+            color = MaterialTheme.colorScheme.background
         ) {
             //Greeting("Android")
             val navController = rememberNavController()
@@ -33,12 +31,39 @@ class AccountActivity {
             }
             NavHost(navController = navController, startDestination = "main") {
                 composable("main") {
-                    Row {
-                        Button(onClick = { navController.navigate("register") }) {
-                            Text("New User")
-                        }
-                        Button(onClick = { navController.navigate("login") }) {
-                            Text("Existing User")
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Protify",
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            style = MaterialTheme.typography.headlineLarge,
+                            textAlign = TextAlign.Center,
+                        )
+                        Row (
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ){
+                            Button(
+                                onClick = { navController.navigate("register") },
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .weight(1f)
+                            ) {
+                                Text("New User")
+                            }
+                            Button(
+                                onClick = { navController.navigate("login") },
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .weight(1f)
+                            ) {
+                                Text("Existing User")
+                            }
                         }
                     }
                 }
