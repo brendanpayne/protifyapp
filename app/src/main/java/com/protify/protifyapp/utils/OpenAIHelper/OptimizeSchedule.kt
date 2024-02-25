@@ -143,7 +143,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         }
 
         //Turn the list of non-raining times into a string
-        val nonRainingTimesString = nonRainingTimes.joinToString(" ") { (start, end) -> "${start.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${end.format(DateTimeFormatter.ofPattern("HH:mm"))} " }
+        val nonRainingTimesString = nonRainingTimes.joinToString(" ") { (start, end) -> "${start.format(DateTimeFormatter.ofPattern("HH:mm"))} and ${end.format(DateTimeFormatter.ofPattern("HH:mm"))} " }
 
         //Get only start time, end time, and location from FirestoreEvents. If location == "", then put homeAddress as location
         val eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
@@ -159,11 +159,11 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         var userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
 
-        val systemContent = "Attempt to change the start times and end times of my events so they are in this order: ${optimalEventOrderString} " +
+        val systemContent = "Prioritize scheduling events that are outdoors betwwen ${nonRainingTimesString}. " +
+                "Secondarily, attempt to change the start times and end times of my events so they are in this order: ${optimalEventOrderString} " +
                 "You can do this by changing the startTime and endTime of the events. " +
                 //If there are events that aren't allowed to be rescheduled, list them here.
                 if (dontRescheduleEvents.isNotEmpty()) { "You may not reschedule the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
-                "If an event says it's outdoors, you may only schedule it within the following times: $nonRainingTimesString" +
                 "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
                 "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
                 "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
@@ -262,8 +262,8 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                 //If the response is not an error, then parse the response
                 else {
                     val optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
-                    //If the schedule is not null, then call the callback, else retry
-                    if (optimizedSchedule.nullCheck()) {
+                    //If the schedule is not null and the optimizedSchedule is different from the original schedule, then call the callback, else retry
+                    if (optimizedSchedule.nullCheck() && optimizedSchedule.events != optimizedSchedule.oldEvents) {
                         callback(optimizedSchedule)
                     }
                     else {

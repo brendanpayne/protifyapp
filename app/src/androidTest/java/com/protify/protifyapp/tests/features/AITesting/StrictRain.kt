@@ -31,12 +31,12 @@ class StrictRain {
         val today = LocalDateTime.of(2024, 2, 20, 0, 0)
 
         // User's home address
-        const val homeAddress = "762 Morning Dew Ln, Maineville, OH 45039, USA"
+        const val homeAddress = "6190 Falla Drive, Canal Winchester, OH 43110"
 
         // Make a mock nonRainingTimes list
         val nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>> = listOf(
             Pair(
-                LocalDateTime.of(2024, 2, 24, 0, 0),
+                LocalDateTime.of(2024, 2, 24, 6, 0),
                 LocalDateTime.of(2024, 2, 24, 16, 59)
 
             )
@@ -61,7 +61,7 @@ class StrictRain {
                             "2024"
                         ) { events ->
                             // If all of the events aren't outside, the test will fail
-                            if (events.any { !it.isOutside }) {
+                            if (events.all { !it.isOutside }) {
                                 assert(false) {"At least one event must be outside on February 24th, 2024"}
                             }
 
@@ -285,31 +285,91 @@ class StrictRain {
                 assert(false) {"One or more events are missing from the response"}
             }
         }
-
+        var outdoorEventDuringNonRainingTimeCount = 0
         // For all of the events in the eventsString that are outside, each event with a matching name must be scheduled during a nonRainingTime
         outdoorEvents.forEach { event ->
             // Find the outdoor event in the response
             val matchingEvent = response.events.find { it.name.equals(event.name, true) }
             if (matchingEvent != null) {
-                // Convert the start and end times to LocalDateTime
-                val startTime = LocalDateTime.parse(matchingEvent.startTime)
-                val endTime = LocalDateTime.parse(matchingEvent.endTime)
+                // Parse the string time of the event to a LocalDateTime object
+                val eventLocalDateTimeStartTime = LocalDateTime.parse(event.startTime)
+                val eventLocalDateTimeEndTime = LocalDateTime.parse(event.endTime)
 
-                // Check if the event is scheduled during any of the non-raining intervals
-                val isScheduledDuringNonRainingTime = nonRainingTimes.any { nonRainingTime ->
-                    val graceStartTime = nonRainingTime.first.minusMinutes(15) // Grace period of 15 minutes before and after the non-raining time
-                    val graceEndTime = nonRainingTime.second.plusMinutes(15)
-                    startTime.isAfter(graceStartTime) && endTime.isBefore(graceEndTime)
+                // Break the startTime and endTime into separate variables from mathcingEvent
+                val timePartsStart = matchingEvent.startTime.split(":")
+                val hourStringStart = timePartsStart[0]
+                val minuteStringStart = timePartsStart[1]
+                val timePartsEnd = matchingEvent.endTime.split(":")
+                val hourStringEnd = timePartsEnd[0]
+                val minuteStringEnd = timePartsEnd[1]
+
+                // Use the matching event to get the start and end times
+                val startTime = LocalDateTime.of(
+                    eventLocalDateTimeStartTime.year,
+                    eventLocalDateTimeStartTime.month,
+                    eventLocalDateTimeStartTime.dayOfMonth,
+                    hourStringStart.toInt(),
+                    minuteStringStart.toInt()
+
+                )
+                val endTime = LocalDateTime.of(
+                    eventLocalDateTimeEndTime.year,
+                    eventLocalDateTimeEndTime.month,
+                    eventLocalDateTimeEndTime.dayOfMonth,
+                    hourStringEnd.toInt(),
+                    minuteStringEnd.toInt()
+                )
+                // If the event is scheduled during a nonRainingTime, increment the count
+                if (nonRainingTimes.any { nonRainingTime ->
+                        val graceStartTime = nonRainingTime.first.minusMinutes(15)
+                        val graceEndTime = nonRainingTime.second.plusMinutes(15)
+                        startTime.isAfter(graceStartTime) && endTime.isBefore(graceEndTime)
+                    }) {
+                    outdoorEventDuringNonRainingTimeCount++
                 }
+            }
+        }
+        // If there is only one outdoor event, and it is not scheduled during a nonRainingTime, the test will fail
+        if (outdoorEvents.size == 1) {
+            if (outdoorEventDuringNonRainingTimeCount != 1) {
+                assert(false) {"One or more outdoor events are scheduled during a time when it is raining"}
 
-                // If the event is not scheduled during any non-raining interval, the test will fail
-                if (!isScheduledDuringNonRainingTime) {
-                    assert(false) {"One or more outdoor events are scheduled during a time when it is raining"}
+            }
+            // If there are two or more outdoor events, and none of them are scheduled during a nonRainingTime, the test will fail
+        } else {
+            if (outdoorEventDuringNonRainingTimeCount < 1) {
+                assert(false) {"Two or more outdoor events are scheduled during a time when it is raining"}
+            }
+
+        }
+        // Make sure the event durations have not been changed
+        response.events.forEach { event ->
+            // Match the event to the event in the eventsString by name with case insensitivity
+            val matchingEvent = eventsString.find { it.name.equals(event.name, true) }
+            if (matchingEvent != null) {
+                // Parse the string time of the event to a LocalDateTime object
+                val eventLocalDateTimeStartTime = LocalDateTime.parse(matchingEvent.startTime)
+                val eventLocalDateTimeEndTime = LocalDateTime.parse(matchingEvent.endTime)
+                // Get the duration of the event
+                val eventDuration = eventLocalDateTimeStartTime.until(eventLocalDateTimeEndTime, java.time.temporal.ChronoUnit.MINUTES)
+                // Break the startTime and endTime into separate variables from event
+                val timePartsStart = event.startTime.split(":")
+                val hourStringStart = timePartsStart[0]
+                val minuteStringStart = timePartsStart[1]
+                val timePartsEnd = event.endTime.split(":")
+                val hourStringEnd = timePartsEnd[0]
+                val minuteStringEnd = timePartsEnd[1]
+                // Get the duration of the event from the response
+                val startTimeResponse = eventLocalDateTimeStartTime.withHour(hourStringStart.toInt()).withMinute(minuteStringStart.toInt())
+                val endTimeResponse = eventLocalDateTimeEndTime.withHour(hourStringEnd.toInt()).withMinute(minuteStringEnd.toInt())
+                val eventDurationResponse = startTimeResponse.until(endTimeResponse, java.time.temporal.ChronoUnit.MINUTES)
+
+                if (eventDuration != eventDurationResponse) {
+                    assert(false) {"The duration of one or more events has been changed"}
                 }
             }
         }
         // If you made it this far, the test will pass
         assert(true)
-
     }
 }
