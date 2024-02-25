@@ -73,8 +73,22 @@ class MapsDurationUtils(departTime: LocalDateTime) {
             }
         })
     }
-     fun getMaxtrix(startLocation: String?, endLocations: List<String?>, onComplete: (DrivingTimeMatrix?) -> Unit) {
-        var startLocationsFormatted = startLocation?.replace(" ", "%20")
+     fun getMatrix(homeAddress: String?, endLocations: List<String?>, onComplete: (DrivingTimeMatrix?) -> Unit) {
+
+         //get unique locations
+         var endLocations = endLocations.toMutableList()
+        //If the home address isn't in the locations, add it
+        if (!endLocations.contains(homeAddress)) {
+            endLocations.add(homeAddress)
+        }
+         // If there are any empty strings, remove them
+         endLocations = endLocations.filter { it != "" }.toMutableList()
+         // Get only distinct
+         endLocations = endLocations.distinct().toMutableList()
+
+
+
+        var startLocationsFormatted = homeAddress?.replace(" ", "%20")
         var endLocationsFormatted = endLocations.map { it?.replace(" ", "%20") }
         val url = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=${endLocationsFormatted.joinToString("%7C")}&destinations=${endLocationsFormatted.joinToString("%7C")}&key=${mapsKey}"
         val request = okhttp3.Request.Builder()
@@ -99,13 +113,15 @@ class MapsDurationUtils(departTime: LocalDateTime) {
         })
 
     }
-    fun getDrivingTimes(startLocation: String?, endLocations: List<String?>, onComplete: (List<DrivingTime?>) -> Unit) {
+    fun getDrivingTimes(homeAddress: String?, endLocations: List<String?>, onComplete: (List<DrivingTime?>) -> Unit) {
+
         var drivingTimes = mutableListOf<DrivingTime?>()
 
-        getMaxtrix(startLocation, endLocations) { matrix ->
+        var endLocations = endLocations.toMutableList()
+        getMatrix(homeAddress, endLocations) { matrix ->
             if (matrix == null) {
                 onComplete(emptyList())
-                return@getMaxtrix
+                return@getMatrix
             }
             for (i in matrix.rows.indices) {
                 //j is representing the destination

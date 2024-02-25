@@ -70,7 +70,10 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         //Get only start time, end time, and location from FirestoreEvents. If location == "", then put homeAddress as location
         val eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
-            .map { event -> "${event.name} goes from ${event?.startTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event?.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event?.location == "") homeAddress else event?.location}" }
+            .map { event ->
+                "${event.name} goes from ${event?.startTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event?.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event?.location == "") homeAddress else event?.location} " +
+                        if (event.isOutside) "and is outdoors." else "." // If the event is outside, then add "and is outdoors."
+            }
 
         val eventString = eventList.joinToString(" ")
         //Get the travel time, origin, and destination from the travelTime list
@@ -80,9 +83,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         var userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
 
         val systemContent = "Attempt to change the start times and end times of my events so they are in this order: ${optimalEventOrderString} " +
-                "You are not allowed to change the start or end time of Birthday Party, however. " +
                 "You can do this by changing the startTime and endTime of the events. " +
-                //If there are events that aren't allowed to be rescheduled, list them here.
                  if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
                 "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
                 "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
@@ -158,14 +159,14 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         var userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
 
-        val systemContent = "Please optimize my schedule, prioritizing events that can be scheduled next to each other to avoid unnecessary travel. " +
+        val systemContent = "Attempt to change the start times and end times of my events so they are in this order: ${optimalEventOrderString} " +
                 "You can do this by changing the startTime and endTime of the events. " +
                 //If there are events that aren't allowed to be rescheduled, list them here.
                 if (dontRescheduleEvents.isNotEmpty()) { "You may not reschedule the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
                 "If an event says it's outdoors, you may only schedule it within the following times: $nonRainingTimesString" +
-                "You will provide the optimized schedule in json format. One of the objects is to be named Events. " +
-                "In Events, you will have a field called Name, StartTime, EndTime, and Location. " +
-                "Another object should be called TimeSaved, which you will state how many minutes of driving in the form of an integer, in minutes"
+                "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
+                "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
+                "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
 
         //Make a new request object
         val httpPost = Request(model,
@@ -220,7 +221,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         fun retry(retries: Int) {
             if (retries > maxRetries) {
-                callback(OptimizedSchedule(emptyList(), -1))
+                callback(OptimizedSchedule(emptyList(), emptyList()))
                 return
             }
             getResponse { response ->
@@ -251,7 +252,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         fun retry(retries: Int) {
             if (retries > maxRetries) {
-                callback(OptimizedSchedule(emptyList(), -1))
+                callback(OptimizedSchedule(emptyList(), emptyList()))
                 return
             }
             getResponse(nonRainingTimes) { response ->

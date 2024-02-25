@@ -1,10 +1,10 @@
 import com.google.gson.annotations.SerializedName
 
 data class OptimizedSchedule(
-    @SerializedName("Events")
+    @SerializedName("OptimizedEvents")
     val events: List<Event>,
-    @SerializedName("TimeSaved")
-    val timeSaved: Int
+    @SerializedName("OldEvents")
+    val oldEvents: List<Event>
 ) {
 
     data class Event(
@@ -23,14 +23,7 @@ data class OptimizedSchedule(
     // Add additional methods or properties specific to the optimized schedule if needed
 
     fun nullCheck(): Boolean {
-        if (events == null || timeSaved == null) {
-            return false
-        }
-        return events.isNotEmpty() && events.all { event ->
-            event.name.isNotBlank() &&
-                    event.startTime.isNotBlank() &&
-                    event.endTime.isNotBlank() &&
-                    event.location.isNotBlank()
-        } && timeSaved >= 0
+        // If both lists are not empty, return true
+        return (events.isNotEmpty() && oldEvents.isNotEmpty())
     }
 }
