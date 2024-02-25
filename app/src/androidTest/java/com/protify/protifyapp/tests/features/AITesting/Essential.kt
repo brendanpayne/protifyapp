@@ -17,11 +17,10 @@ import org.junit.Test
 import java.io.File
 import java.time.LocalDateTime
 import java.util.concurrent.CountDownLatch
-class Input {
+// Base bones testing of AI functionality
+class Essential {
 
-    //This is a test function to make sure that all of the correct data is fed to the AI
-
-    //This function will run once, before any of the tests are run
+// This syncs with the database and ensures that the json files are up to date
     companion object {
         // Get the context
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -97,10 +96,6 @@ class Input {
 
                             // Pull the locations from the events and map it to a list
                             val locations = events.map { it.location }.toMutableList()
-                            // If Home address doesn't exist in the locations, add it
-                            if (!locations.contains(homeAddress)) {
-                                locations.add(homeAddress)
-                            }
 
                             // Get the driving times for the locations
                             MapsDurationUtils(LocalDateTime.now()).getDrivingTimes(
@@ -120,7 +115,7 @@ class Input {
                                     countDownLatch.countDown()
 
                                     // Get the distance matrix
-                                    MapsDurationUtils(LocalDateTime.now()).getMaxtrix(
+                                    MapsDurationUtils(LocalDateTime.now()).getMatrix(
                                         homeAddress,
                                         locations
                                     ) { drivingTimeMatrix ->
@@ -236,7 +231,7 @@ class Input {
         assert(countDownLatch.count == 0L)
     }
     @Test
-    fun `Parse API Output`() {
+    fun `AI output is able to be parsed`() {
         // init latch
         val countDownLatch = CountDownLatch(1)
         // init gson
@@ -282,7 +277,8 @@ class Input {
             homeAddress,
             optimalOrder
         ).parseResponse { response ->
-            if (response.events.isEmpty()) {
+            // In the function, if it fails 5 times in a row, it will return empty lists
+            if (response.events.isEmpty() || response.oldEvents.isEmpty()) {
                 // If the response is empty, the test will fail
                 assert(false)
             } else {
@@ -290,8 +286,126 @@ class Input {
                 countDownLatch.countDown()
             }
         }
-        // Wait 15 seconds for the asynchronous code to finish
-        countDownLatch.await(15, java.util.concurrent.TimeUnit.SECONDS)
+        // Wait 60 seconds for the asynchronous code to finish
+        countDownLatch.await()
+        // If the countDownLatch is not 0, the test will fail
+        assert(countDownLatch.count == 0L)
+    }
+    @Test
+    fun `Schedule is different from original`() {
+        // init latch
+        val countDownLatch = CountDownLatch(1)
+        // init gson
+        val gson = Gson()
+        //Get the json files
+        val eventsFile = File(context.filesDir, "events.json")
+        val drivingTimesFile = File(context.filesDir, "drivingTimes.json")
+        val optimalOrderFile = File(context.filesDir, "optimalOrder.json")
+
+        // Convert the json files to objects
+        val eventsString: List<FirestoreEventString> = gson.fromJson(eventsFile.readText(), Array<FirestoreEventString>::class.java).toList()
+        val drivingTimes: MutableList<DrivingTime?> = gson.fromJson(drivingTimesFile.readText(), Array<DrivingTime>::class.java).toMutableList()
+        val optimalOrder: List<FirestoreEvent> = gson.fromJson(optimalOrderFile.readText(), Array<FirestoreEvent>::class.java).toList()
+
+        // Convert List<FirestoreEventString> to List<FirestoreEvent>
+        val events = eventsString.map {
+            FirestoreEvent(
+                it.name,
+                it.nameLower,
+                LocalDateTime.parse(it.startTime),
+                LocalDateTime.parse(it.endTime),
+                it.location,
+                it.description,
+                it.timeZone,
+                it.importance,
+                it.attendees,
+                it.rainCheck,
+                it.isRaining,
+                it.mapsCheck,
+                it.distance,
+                it.isOutside,
+                it.isOptimized
+            )
+        }
+
+        // Run the api call
+        OptimizeSchedule(
+            today.dayOfMonth.toString(),
+            today.month.toString(),
+            today.year.toString(),
+            events,
+            drivingTimes,
+            homeAddress,
+            optimalOrder
+        ).parseResponse { response ->
+            // If the events are different, the test will pass
+            if (response.events != response.oldEvents) {
+                countDownLatch.countDown()
+            } else {
+                // If the events are the same, the test will fail
+                assert(false)
+            }
+        }
+        // Wait 60 seconds for the asynchronous code to finish
+        countDownLatch.await()
+        // If the countDownLatch is not 0, the test will fail
+        assert(countDownLatch.count == 0L)
+    }
+    @Test
+    fun `Matrix contains all locations`() {
+        // init latch
+        val countDownLatch = CountDownLatch(1)
+        // init gson
+        val gson = Gson()
+        //Get the events json file
+        val eventsFile = File(context.filesDir, "events.json")
+        // Convert the json file to a list
+        val eventsString: List<FirestoreEventString> = gson.fromJson(eventsFile.readText(), Array<FirestoreEventString>::class.java).toList()
+        // Convert List<FirestoreEventString> to List<FirestoreEvent>
+        val events = eventsString.map {
+            FirestoreEvent(
+                it.name,
+                it.nameLower,
+                LocalDateTime.parse(it.startTime),
+                LocalDateTime.parse(it.endTime),
+                it.location,
+                it.description,
+                it.timeZone,
+                it.importance,
+                it.attendees,
+                it.rainCheck,
+                it.isRaining,
+                it.mapsCheck,
+                it.distance,
+                it.isOutside,
+                it.isOptimized
+            )
+        }
+
+       // Get a list of locations based off of the events
+        var locations = events.map { it.location }.toMutableList()
+
+        // Test getDrivingTimes
+        MapsDurationUtils(LocalDateTime.now()).getDrivingTimes(
+            homeAddress,
+            locations
+        ) { drivingTimes ->
+            // Get all of the address from the matrix and put them into a list
+            val matrixAddresses = drivingTimes!!.map { it!!.startLocation } + drivingTimes.map { it!!.endLocation }
+            // Remove empty strings from locations
+            locations = locations.filter { it != "" }.toMutableList()
+            // Remove duplicates from locations
+            locations = locations.distinct().toMutableList()
+            // Make sure there are as many unique values as there are locations
+            if (matrixAddresses.distinct().size >= locations.size) {
+                countDownLatch.countDown()
+            } else {
+                // If the matrix is null, the test will fail
+                assert(false)
+            }
+        }
+        // Wait 25 seconds for the asynchronous code to finish
+        countDownLatch.await(25, java.util.concurrent.TimeUnit.SECONDS)
         // If the countDownLatch is not 0, the test will fail
         assert(countDownLatch.count == 0L)
     }
