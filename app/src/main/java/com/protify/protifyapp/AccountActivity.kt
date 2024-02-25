@@ -14,14 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.protify.protifyapp.features.GoogleMapsAPI.DrivingTime
 import com.protify.protifyapp.features.events.AddEvent
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.features.login.LoginActivity
 import com.protify.protifyapp.features.login.RegisterActivity
-import com.protify.protifyapp.utils.MapsDurationUtils
-import com.protify.protifyapp.utils.OpenAIHelper.OptimizeSchedule
-import java.time.LocalDateTime
 
 class AccountActivity {
     @Composable
@@ -90,93 +86,10 @@ class AccountActivity {
 //                println(it)
 //            }
             if (currentUser != null) {
-                val today = LocalDateTime.of(2024, 2, 3, 0, 0)
-//                val dayStart = LocalDateTime.of(today.year, today.month, today.dayOfMonth, 7, 0)
-//                val dayEnd = LocalDateTime.of(today.year, today.month, today.dayOfMonth, 22, 0)
-//                FirestoreHelper().getFreeTime(dayStart, dayEnd, currentUser!!.uid, today.dayOfMonth.toString(), today.month.toString(), today.year.toString()) { freeTimes ->
-//                    println(freeTimes)
-//
-                val homeAddress = "6190 Falla Dr, Canal Winchester, OH 43110" // pull up
-                //get all of the events for the day
-                FirestoreHelper().getEvents(currentUser!!.uid, "28", "January", "2024") { events ->
-                    //map locations from the events
-                    val locations = mutableListOf<String?>()
-                    //If the location is empty, use home address
-                    events.mapTo(locations) {
-                        if (it.location == "") {
-                            "6190 Falla Dr, Canal Winchester, OH 43110"
-                        } else {
-                            it.location
-                        }
-                    }
 
-                    //Get the distance between all of the events (including home)
-                    MapsDurationUtils(LocalDateTime.now()).getMaxtrix(homeAddress, locations) { matrix ->
-                        if (matrix != null) {
-                            var drivingTimes = mutableListOf<DrivingTime?>()
-                            //i is representing the origin
-                            for (i in matrix.rows.indices) {
-                                //j is representing the destination
-                                for (j in matrix.rows[i].elements.indices) {
-                                    //Make sure origin and destination are not the same
-                                    if (matrix.originAddresses[i] != matrix.destinationAddresses[j]) {
-                                        //This is the driving time in seconds
-                                        val drivingTime = matrix.rows[i].elements[j].duration.value
-                                        //This is the driving time in text
-                                        val drivingTimeText = matrix.rows[i].elements[j].duration.text
-                                        //Add the driving time to the list
-                                        drivingTimes.add(DrivingTime(matrix.originAddresses[i], matrix.destinationAddresses[j], drivingTimeText))
-                                    }
-                                }
-                            }
-                            //Put all of this into the OptimizeSchedule class
-                            OptimizeSchedule(today.dayOfMonth.toString(), today.month.toString(), today.year.toString(), events, drivingTimes, homeAddress).parseResponse {response ->
-                                //Run for as many times are there are events
-                                val eventCount = response.events.size
-
-                                fun updateEvents(iterations: Int) {
-                                    //If we have updated all of the events, return
-                                    if (iterations >= eventCount) {
-                                        return
-                                    }
-                                    FirestoreHelper().getEvent(currentUser!!.uid, "28", "January", "2024", response.events[iterations].name) { id, event ->
-                                       //Extract start time and end time from the response
-                                        val startTimeString = response.events[iterations].startTime
-                                        val startTimeParsed = startTimeString.split(":")
-                                        val startHour = startTimeParsed[0].toInt()
-                                        val startMinute = startTimeParsed[1].toInt()
-                                        val endTimeString = response.events[iterations].endTime
-                                        val endTimeParsed = endTimeString.split(":")
-                                        val endHour = endTimeParsed[0].toInt()
-                                        val endMinute = endTimeParsed[1].toInt()
-                                        //Set new start and end times for events
-                                        val startTime = LocalDateTime.of(event.startTime.year, event.startTime.month, event.startTime.dayOfMonth, startHour, startMinute)
-                                        val endTime = LocalDateTime.of(event.endTime.year, event.endTime.month, event.endTime.dayOfMonth, endHour, endMinute)
-                                        //Reassign start and end times to events
-                                        event.startTime = startTime
-                                        event.endTime = endTime
-                                        if (id != null) {
-                                            FirestoreHelper().modifyEvent(currentUser!!.uid, id, event) {
-                                                if(it) {
-                                                    updateEvents(iterations + 1)
-                                                }
-                                                    print("Error")
-                                            }
-                                        }
-                                    }
-                                }
-                                //Initialize the updateEvents function
-                                updateEvents(0)
-                            }
-
-                        }
-
-                    }
                 }
-
 
                 navController.navigate("home")
             }
         }
-    }
 }
