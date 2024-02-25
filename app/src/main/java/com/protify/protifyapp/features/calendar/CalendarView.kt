@@ -149,7 +149,11 @@ class CalendarView {
         val currentUser = FirebaseLoginHelper().getCurrentUser()
         var showDialog by remember { mutableStateOf(false) }
         val backgroundColor by animateColorAsState(
-            targetValue = if (date.isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+            targetValue = when {
+                date.isSelected -> MaterialTheme.colorScheme.primary
+                date.isToday -> MaterialTheme.colorScheme.primary // Change this to the color you want for today
+                else -> MaterialTheme.colorScheme.secondary
+            },
             label = ""
         )
 
