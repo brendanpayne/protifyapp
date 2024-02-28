@@ -97,9 +97,11 @@ class FirestoreHelper() {
                 .set(FirestoreEventEntry)
                 .addOnSuccessListener { documentReference ->
                     Log.d("GoogleFirestore", "Document added successfully")
+                    callback(true)
                 }
                 .addOnFailureListener { e ->
                     Log.d("GoogleFirestore", "Error adding document", e)
+                    callback(false)
                 }
         } else {
             Log.d(
@@ -912,5 +914,85 @@ class FirestoreHelper() {
                 callback(false)
             }
         }
+    }
+    /** This function will remove duplicate events from the database for a given day
+     * @param uid: The user's uid
+     * @param day: The day of the event
+     * @param month: The month of the event
+     * @param year: The year of the event
+     * @param callback: A callback function that will return true if the events were removed successfully, and false if there are no duplicate events
+     */
+    fun removeDuplicateEvents(
+        uid: String,
+        day: String,
+        month: String,
+        year: String,
+        callback: (Boolean) -> Unit
+    ) {
+        // Get all of the events for the day
+        getEvents(uid, day, month, year) { events ->
+
+            // Get only distinct events
+            val distinctEvents = events.distinct()
+            // Get the events that are not distinct
+            val duplicateEvents = events - distinctEvents.toSet()
+            // Delete the duplicate events
+            for (event in duplicateEvents) {
+                db.collection("users")
+                    .document(uid)
+                    .collection("events")
+                    .document(year)
+                    .collection(month)
+                    .whereEqualTo("nameLower", event.nameLower)
+                    .whereEqualTo("isAiSuggestion", event.isAiSuggestion)
+                    .whereEqualTo("isUserAccepted", event.isUserAccepted)
+                    .whereEqualTo("isOptimized", event.isOptimized)
+                    .whereEqualTo("isOutside", event.isOutside)
+                    .whereEqualTo("mapsCheck", event.mapsCheck)
+                    .whereEqualTo("isRaining", event.isRaining)
+                    .whereEqualTo("rainCheck", event.rainCheck)
+                    .whereEqualTo("startTime.dayOfMonth", event.startTime.dayOfMonth)
+                    .whereEqualTo("startTime.hour", event.startTime.hour)
+                    .whereEqualTo("startTime.minute", event.startTime.minute)
+                    .whereEqualTo("endTime.dayOfMonth", event.endTime.dayOfMonth)
+                    .whereEqualTo("endTime.hour", event.endTime.hour)
+                    .whereEqualTo("endTime.minute", event.endTime.minute)
+                    .get()
+                    .addOnSuccessListener { result ->
+                        // If more than one event is found, delete one of them
+                        if (result.size() > 1) {
+                            // Delete all of the events except for the first one
+                            // init int to count the number of events that were successfully deleted
+                            var deletedEvents = 0
+                            for (i in 1 until result.size()) {
+                                db.collection("users")
+                                    .document(uid)
+                                    .collection("events")
+                                    .document(year)
+                                    .collection(month)
+                                    .document(result.documents[i].id)
+                                    .delete()
+                                    .addOnSuccessListener {
+                                        Log.d(
+                                            "GoogleFirestore",
+                                            "DocumentSnapshot successfully deleted!"
+                                        )
+                                        deletedEvents++
+                                        // If all of the events except one were successfully deleted, return true
+                                        if (deletedEvents == result.size() - 1) {
+                                            callback(true)
+                                        }
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Log.w("GoogleFirestore", "Error deleting document", e)
+                                        callback(false)
+                                    }
+                            }
+                        }
+                    }
+            }
+
+        }
+
     }
 }
