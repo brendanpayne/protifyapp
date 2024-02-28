@@ -16,4 +16,6 @@ data class FirestoreEventString(
     val distance: Int,
     val isOutside: Boolean,
     val isOptimized: Boolean,
+    val isAiSuggestion: Boolean,
+    val isUserAccepted: Boolean,
 )
