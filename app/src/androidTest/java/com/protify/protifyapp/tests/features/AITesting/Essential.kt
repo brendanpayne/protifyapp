@@ -63,7 +63,9 @@ class Essential {
                                 it.mapsCheck,
                                 it.distance,
                                 it.isOutside,
-                                it.isOptimized
+                                it.isOptimized,
+                                it.isAiSuggestion,
+                                it.isUserAccepted
                             )
                         }
                         // Convert events to json
@@ -203,7 +205,9 @@ class Essential {
                 it.mapsCheck,
                 it.distance,
                 it.isOutside,
-                it.isOptimized
+                it.isOptimized,
+                it.isAiSuggestion,
+                it.isUserAccepted
             )
         }
 
@@ -263,7 +267,9 @@ class Essential {
                 it.mapsCheck,
                 it.distance,
                 it.isOutside,
-                it.isOptimized
+                it.isOptimized,
+                it.isAiSuggestion,
+                it.isUserAccepted
             )
         }
 
@@ -324,7 +330,9 @@ class Essential {
                 it.mapsCheck,
                 it.distance,
                 it.isOutside,
-                it.isOptimized
+                it.isOptimized,
+                it.isAiSuggestion,
+                it.isUserAccepted
             )
         }
 
@@ -378,7 +386,9 @@ class Essential {
                 it.mapsCheck,
                 it.distance,
                 it.isOutside,
-                it.isOptimized
+                it.isOptimized,
+                it.isAiSuggestion,
+                it.isUserAccepted
             )
         }
 
