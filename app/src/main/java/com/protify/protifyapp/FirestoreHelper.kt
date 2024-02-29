@@ -197,6 +197,7 @@ class FirestoreHelper() {
                             (endTimeHashMap["hour"] as Long).toInt(),
                             (endTimeHashMap["minute"] as Long).toInt()
                         )
+                        // Map the FirestoreEvent from the database to a FirestoreEvent object
                         events.add(
                             FirestoreEvent(
                                 name = document.data["name"].toString(),
