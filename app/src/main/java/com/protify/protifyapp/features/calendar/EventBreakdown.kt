@@ -31,12 +31,14 @@ class EventBreakdown {
     fun DailySchedulePreview() {
         DailySchedule()
     }
+    // This will, at some point, take a list of events and display them on the calendar
     @Composable
     fun DailySchedule() {
+        // Create a list of time slots
         val timeSlots = createListTimeSlot()
         // This is the scale for the time slots
         val scale = 550
-
+        // this is for scaling the time slots
         val maxValue = timeSlots.maxOfOrNull { it.height } ?: 0f
 
         // Make a new scroll state. Since both of the columns will share this state, they will scroll together.
@@ -52,11 +54,13 @@ class EventBreakdown {
             timeSlots.forEach { timeSlot ->
                 Row(
                         modifier = Modifier
-                                // Take up 90% of the width on the right side
+                                // Take up 90% of the width on the right side, or if it's overlapping, take up 80%
                                 .fillMaxWidth(if (timeSlot.color == Color.Red) 0.8f else 0.9f)
+                                // Push overlapping events on x axis
                                 .offset(x = if (timeSlot.color == Color.Red) 20.dp else 0.dp)
                                 // Slightly round corners to make it look cleaner
                                 .clip(RoundedCornerShape(12.dp))
+                                // Align the time slots to the right
                                 .align((Alignment.End))
                                 // This adjusts the scale
                                 .height(timeSlot.height / maxValue * scale.dp)
@@ -97,7 +101,9 @@ class EventBreakdown {
                         .fillMaxWidth(0.1f)
                         .background(Color.LightGray)
                         .border(1.dp, Color.Black)
+                        // Put this on the top layer
                         .zIndex(0f)
+                        // Lock scrolling with events list
                         .verticalScroll(scrollState),
         ) {
             for (i in 0..24) {
@@ -127,6 +133,7 @@ class EventBreakdown {
                 modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(scrollState)
+                        // Put this on the bottom layer
                         .zIndex(-99f)
         ) {
             for (i in 0..24) {
@@ -155,13 +162,16 @@ class EventBreakdown {
 
     data class TimeSlot(val startTime: String, val text: String, val color: Color, val height: Float = 1f, val endTime: String = "")
 
+    /** Create a mock list of events for testing
+     * @return List<Event>
+     */
     fun createListEvent(): List<Event> {
         val event1 = Event()
         event1.title = "Breakfast"
         event1.description = "Eggs and bacon"
         event1.location = "Home"
-        event1.startTime = "07:00"
-        event1.endTime = "08:00"
+        event1.startTime = "06:00"
+        event1.endTime = "06:15"
 
         val event2 = Event()
         event2.title = "Work"
@@ -174,18 +184,24 @@ class EventBreakdown {
         event3.title = "Standup"
         event3.description = "Daily standup meeting"
         event3.location = "Home"
-        event3.startTime = "17:00"
-        event3.endTime = "21:00"
+        event3.startTime = "19:00"
+        event3.endTime = "20:00"
 
         val event4 = Event()
         event4.title = "Planet Fitness"
         event4.description = "Workout"
         event4.location = "Gym"
         event4.startTime = "19:30"
-        event4.endTime = "20:00"
+        event4.endTime = "22:00"
 
         return listOf(event1, event2, event3, event4)
     }
+
+    /** Converts a list of events into a list of time slots
+     * This essentially stacks all of the events into a column by putting transparent time slots between events
+     * This is designed to be exclusively used for the DailySchedule composable
+     * @return List<TimeSlot>
+     */
     fun createListTimeSlot(): List<TimeSlot> {
         // Create a list of time slots
         val timeSlots = mutableListOf<TimeSlot>()
@@ -205,6 +221,7 @@ class EventBreakdown {
             val event = eventByStart[i]
             // Check for overlapping events
             var overlap = false
+            // Check for overlapping events
             for (j in i + 1 until eventByStart.size) {
                 if (checkOverlap(event, eventByStart[j])) {
                     overlap = true
@@ -215,7 +232,7 @@ class EventBreakdown {
             val nextEvent = if (i < eventByStart.size - 1) eventByStart[i + 1] else null
             // Calculate the height of the event time slot
             val height = (convertTimeToFloat(event.endTime) - convertTimeToFloat(event.startTime))
-
+            // Color the box red if it's overlapping, else make it light gray
             timeSlots.add(TimeSlot(event.startTime, event.title, if (overlap) Color.Red else Color.LightGray, height, event.endTime))
             // If there is a next event, calculate the time between the two events
             if (nextEvent != null) {
@@ -231,12 +248,21 @@ class EventBreakdown {
         timeSlots.add(TimeSlot(lastEvent.endTime, "", Color.Transparent, convertTimeToFloat("24:00") - convertTimeToFloat(lastEvent.endTime)))
         return timeSlots
     }
+    /** Helper function to convert the the startTime from event into a float
+     * @param time String
+     * @return Float (time in hours)
+     */
     fun convertTimeToFloat(time: String): Float {
         val timeArray = time.split(":")
         val hour = timeArray[0].toFloat() * 60
         val minute = timeArray[1].toFloat()
         return (hour + minute) / 60
     }
+    /** Helper function to check if two events overlap
+     * @param event1 Event
+     * @param event2 Event
+     * @return Boolean
+     */
     fun checkOverlap(event1: Event, event2: Event): Boolean {
         val event1Start = convertTimeToFloat(event1.startTime)
         val event1End = convertTimeToFloat(event1.endTime)
