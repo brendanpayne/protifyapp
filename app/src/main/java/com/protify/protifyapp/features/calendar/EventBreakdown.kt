@@ -1,8 +1,11 @@
 package com.protify.protifyapp.features.calendar
 
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,10 +24,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.zIndex
+import com.protify.protifyapp.FirestoreHelper
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -37,21 +42,32 @@ class EventBreakdown {
     }
     /** This is the main composable for the Daily Schedule. It takes in a list of events and renders them on the screen
      * @param backgroundColor This is the color "behind" the events
-     * @param RenderClock This is set to true by default. If set to false, the clock will not be rendered
+     * @param RenderClock This is set to false by default because the current clock is deprecated. It will be removed in the future
      * @param Scale This is the scale of the time slots. If you set it larger, the scroll will be longer and vise versa
      * @param ClockColor This is the color of the line that represents the current time
      * @param ClockHeight This is how thick the line that represents the current time is
      * @param EventList List<Event> Pass in the events for one day. If you don't pass in any events, it will render a mock list of events
+     * @param uid String The user id of the user
+     * @param day String The day of the events
+     * @param month String The month of the events
+     * @param year String The year of the events
      */
     @Composable
     fun DailySchedule(
         backgroundColor: Color = Color.White,
-        RenderClock: Boolean = true,
+        RenderClock: Boolean = false,
         Scale: Double = 1.0,
         ClockColor: Color = Color.Red,
         ClockHeight: Int = 5,
-        EventList: List<Event> = listOf()
+        EventList: List<Event> = listOf(),
+        uid: String = "",
+        day: String = "",
+        month: String = "",
+        year: String = ""
     ) {
+
+        // Make a context
+        val context: Context = LocalContext.current
         // Create a list of time slots
         var timeSlots: List<TimeSlot>
         if (EventList.isEmpty()) {
@@ -72,7 +88,7 @@ class EventBreakdown {
         val layers = timeSlots.map { it.layer }.distinct()
         // Render the time slots by layer
         for (layer in layers) {
-            timeSlotLayer(timeSlots, scale, scrollState, layer)
+            timeSlotLayer(timeSlots, scale, scrollState, layer, context, uid, day, month, year)
         }
         // This is the time scale on the left side with the same scroll state as the time slots
         Column(
@@ -375,7 +391,17 @@ class EventBreakdown {
      * @param layer Int
      */
     @Composable
-    fun timeSlotLayer(timeSlots: List<TimeSlot>, scale: Int, scrollState: ScrollState, layer: Int) {
+    fun timeSlotLayer(
+        timeSlots: List<TimeSlot>,
+        scale: Int,
+        scrollState: ScrollState,
+        layer: Int,
+        context: Context,
+        uid: String,
+        day: String,
+        month: String,
+        year: String
+        ) {
         // Color the layers
         val layerColor = when (layer) {
             0 -> Color.LightGray
@@ -411,6 +437,21 @@ class EventBreakdown {
                         // Layer the time slots
                         .zIndex(layer.toFloat() + 1)
                         .padding(start = 4.dp, end = 8.dp)
+                        .clickable {
+                            // Fetch the event from Firestore
+                            FirestoreHelper().getEvent(uid, day, month, year, timeSlot.text) { documentid, event ->
+                                // TODO: Open the event in a edit event screen ( need to figure out how to pass event into nav controller)
+                                if (documentid != null) {
+
+                                } else {
+                                    // Display a toast that the event was not found
+                                    Toast.makeText(context, "Event not found", Toast.LENGTH_SHORT).show()
+                                }
+
+
+
+                            }
+                        }
                 ) {
                     // If the time slot has text, display it. This is needed because the time between
                     // events is a transparent time slot, and you don't want anything displayed there.
@@ -437,6 +478,7 @@ class EventBreakdown {
         }
 
     }
+    @Deprecated("This blocks all of the events from being clicked. Do not use")
     @Composable
     private fun Clock(
         scrollState: ScrollState,
