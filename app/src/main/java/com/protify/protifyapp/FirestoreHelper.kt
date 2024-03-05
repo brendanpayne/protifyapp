@@ -772,6 +772,41 @@ class FirestoreHelper() {
         }
     }
 
+    fun deleteUser(uid: String, callback: (Boolean) -> Unit) {
+        val userDocRef = db.collection("users").document(uid)
+
+        // Delete all documents in the 'events' subcollection
+        userDocRef.collection("events").get()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Begin a new batch
+                    val batch = db.batch()
+
+                    // Iterate over each document and add it to the batch to be deleted
+                    for (documentSnapshot in task.result!!) {
+                        batch.delete(documentSnapshot.reference)
+                    }
+
+                    // Commit the batch
+                    batch.commit().addOnCompleteListener {
+                        // Now delete the user document
+                        userDocRef.delete()
+                            .addOnSuccessListener {
+                                Log.d("GoogleFirestore", "User document and all subdocuments deleted successfully")
+                                callback(true)
+                            }
+                            .addOnFailureListener { e ->
+                                Log.d("GoogleFirestore", "Error deleting user document and subdocuments", e)
+                                callback(false)
+                            }
+                    }
+                } else {
+                    Log.d("GoogleFirestore", "Error getting subdocuments", task.exception)
+                    callback(false)
+                }
+            }
+    }
+
     /** This function will import the events from the AI generated schedule into the Firestore database
      * @param optimizedSchedule: The AI generated schedule
      * @param today: The current date of the events being optimized
