@@ -13,7 +13,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.protify.protifyapp.features.events.AddEvent
-import com.protify.protifyapp.features.events.EventDetails
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.features.login.LoginActivity
 import com.protify.protifyapp.features.login.RegisterActivity
@@ -107,9 +106,15 @@ class AccountActivity {
                 }
                  */
             }
+            //Open AI Testing
+//            AvoidRain("Garbage").getResponse {
+//                println(it)
+//            }
             if (currentUser != null) {
+
+                }
+
                 navController.navigate("home")
             }
         }
-    }
 }
