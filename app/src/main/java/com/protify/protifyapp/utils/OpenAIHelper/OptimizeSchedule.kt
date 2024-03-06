@@ -11,6 +11,15 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+/** Make sure an instance of this class is only used for one day. If you want to optimize a schedule for a different day, then make a new instance of this class.
+ * @param day: The day of the month
+ * @param month: The month of the year
+ * @param year: The year
+ * @param events: A list of FirestoreEvents
+ * @param travelTime: A list of DrivingTime objects
+ * @param homeAddress: The home address of the user
+ * @param optimalEventOrder: The order of the events that the user wants to optimize the schedule to
+ */
 class OptimizeSchedule(day: String, month: String, year: String, events: List<FirestoreEvent>, travelTime: MutableList<DrivingTime?>, homeAddress: String, optimalEventOrder: List<FirestoreEvent>) {
     //Get openAI key
     val apiKey = APIKeys().getOpenAIKey()
@@ -443,6 +452,67 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             return true
         }
         return false
+    }
+
+    /** This function is a helper function to check if the schedule is fully optimized before returning the object to the callback.
+     * @param optimizedSchedule: The optimized schedule that is to be checked
+     * @return: Returns true if the schedule is fully optimized, else false
+     */
+    private fun qualityCheck(optimizedSchedule: OptimizedSchedule, nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>? = null): Boolean {
+        var passedQaulityCheck = true
+        // Check that the number of events is the same
+        if (optimizedSchedule.events.size != events.size) {
+            passedQaulityCheck = false
+        }
+        // Check that the events all have the same name
+        if (optimizedSchedule.events.map { it.name.lowercase() } != events.map { it.name.lowercase() }) {
+            passedQaulityCheck = false
+        }
+        // Check that the old events and the new events don't all have the same start and end times
+        if (optimizedSchedule.events.map { it.startTime } == optimizedSchedule.oldEvents.map { it.startTime } && optimizedSchedule.events.map { it.endTime } == optimizedSchedule.oldEvents.map { it.endTime }) {
+            passedQaulityCheck = false
+        }
+        // If there are nonRainingTimes, then check that the events that have isOutside are scheduled during the non-raining times
+        if (nonRainingTimes != null) {
+            for (event in events) {
+                val matchingEvent = optimizedSchedule.events.find { it.name == event.name }
+                if (event.isOutside && matchingEvent != null) {
+                    // Parse the start and end times of the matching event
+                    val timePartsStart = matchingEvent.startTime.split(":")
+                    val hourStringStart = timePartsStart[0]
+                    val minuteStringStart = timePartsStart[1]
+                    val timePartsEnd = matchingEvent.endTime.split(":")
+                    val hourStringEnd = timePartsEnd[0]
+                    val minuteStringEnd = timePartsEnd[1]
+                    // Will return true if the event is scheduled during a non-raining time
+                     passedQaulityCheck = nonRainingTimes.any {
+                        val startHour = it.first.hour
+                        val startMinute = it.first.minute
+                        val endHour = it.second.hour
+                        val endMinute = it.second.minute
+                        val eventStartHour = hourStringStart.toInt()
+                        val eventStartMinute = minuteStringStart.toInt()
+                        val eventEndHour = hourStringEnd.toInt()
+                        val eventEndMinute = minuteStringEnd.toInt()
+                        return@any eventStartHour >= startHour && eventStartMinute >= startMinute && eventEndHour <= endHour && eventEndMinute <= endMinute
+                    }
+
+
+                }
+                }
+        }
+
+        // Check that non-movable events are not moved
+        for (event in dontRescheduleEvents) {
+            val matchingEvent = optimizedSchedule.events.find { it.name == event.name }
+            if (matchingEvent != null) {
+                if (matchingEvent.startTime != event.startTime.format(DateTimeFormatter.ofPattern("HH:mm")) || matchingEvent.endTime != event.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))) {
+                    passedQaulityCheck = false
+                }
+            }
+        }
+
+        return passedQaulityCheck
     }
 
 }
