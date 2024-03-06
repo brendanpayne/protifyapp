@@ -342,58 +342,94 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
      * @param callback: The callback function that is called after the response is parsed
      */
     fun parseResponse(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, callback: (OptimizedSchedule) -> Unit) {
-
+        // init hasOptimizedEvents bool
+        var hasOptimizedEvents = false
+        // Check if there are any events that are not allowed to be rescheduled
+        if(events.any { it.isOptimized }) {
+            hasOptimizedEvents = true
+        }
         // Init nonRainingTimes bool
         var hasRainingTimes = true
-
-        val parse = GsonBuilder().create()
-        //After 5 attempts, give up
-        val maxRetries = 5
-
         // Check if the nonRainingTimes list is 0:00-00:00
         if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0) {
             hasRainingTimes = false
         }
 
+        val parse = GsonBuilder().create()
+        //After 12 attempts, give up
+        val maxRetries = 12
+
+
         fun retry(retries: Int, hasRainingTimes: Boolean) {
             if (retries > maxRetries) {
+                // If there are no events, then return an empty list of oldEvents and events
                 callback(OptimizedSchedule(emptyList(), emptyList()))
                 return
             }
-            if (hasRainingTimes) {
-                getResponse(nonRainingTimes) { response ->
-                    if (response == "Error") {
-                        retry(retries + 1, hasRainingTimes)
-                    }
-                    //If the response is not an error, then parse the response
-                    else {
-                        val optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
-                        //If the schedule is not null and the optimizedSchedule is different from the original schedule, then call the callback, else retry
-                        if (optimizedSchedule.nullCheck() && optimizedSchedule.events != optimizedSchedule.oldEvents) {
-                            callback(optimizedSchedule)
-                        }
-                        else {
-                            retry(retries + 1, hasRainingTimes)
-                        }
-                    }
+            // Call the "all encompassing" getResponse function initially
+            getResponse(nonRainingTimes) { response ->
+                if (response == "Error") {
+                    retry(retries + 1, hasRainingTimes)
                 }
-            }
-            else {
-                getResponse { response ->
-                    if (response == "Error") {
-                        retry(retries + 1, hasRainingTimes)
+                //If the response is not an error, then parse the response
+                else {
+                    var optimizedSchedule: OptimizedSchedule
+                    // Always use protection
+                    try {
+                        optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
                     }
-                    //If the response is not an error, then parse the response
-                    else {
-                        val optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
-                        //If the schedule is not null and the optimizedSchedule is different from the original schedule, then call the callback, else retry
-                        if (optimizedSchedule.nullCheck() && optimizedSchedule.events != optimizedSchedule.oldEvents) {
+                    catch (e: Exception) {
+                        retry(retries + 1, hasRainingTimes)
+                        return@getResponse
+                    }
+                    // If hasRainingTimes is false, don't pass the nonRainingTimes list to the qualityCheck function
+                    if (hasRainingTimes) {
+                        // If the schedule is not null and passes the quality check, then call the callback, else retry
+                        if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule, nonRainingTimes)) {
                             callback(optimizedSchedule)
                         }
                         else {
+                            // This is where I need to add in another function that is more specific to the event list's scope
                             retry(retries + 1, hasRainingTimes)
                         }
                     }
+                    else {
+                        // If the schedule is not null and passes the quality check, then call the callback, else retry
+                        if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {
+                            callback(optimizedSchedule)
+                        }
+                        else {
+                            // If hasOptimizedEvents is true, then call the getResponseBlockedEvents function if it has already failed 5 times
+                            if (hasOptimizedEvents && retries > 5) {
+                                getResponseBlockedEvents { response ->
+                                    if (response == "Error") {
+                                        retry(retries + 1, hasRainingTimes)
+                                    }
+                                    else {
+                                        // Always use protection
+                                        try {
+                                            optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+                                        }
+                                        catch (e: Exception) {
+                                            retry(retries + 1, hasRainingTimes)
+                                            return@getResponseBlockedEvents
+                                        }
+                                        // If the schedule is not null and passes the quality check, then call the callback, else retry
+                                        if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {
+                                            callback(optimizedSchedule)
+                                        }
+                                        else {
+                                            retry(retries + 1, hasRainingTimes)
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            retry(retries + 1, hasRainingTimes)
+                        }
+                    }
+
+
                 }
             }
 
