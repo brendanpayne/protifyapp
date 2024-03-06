@@ -58,9 +58,10 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
     private val allowedOptimalEventOrderString = allowedOptimalEventOrder.mapIndexed { index, event -> "${index + 1}: ${event.name}" }.joinToString(", ")
 
 
-
-
-
+    /** This function is executed when it is not raining that day or there are no events that are outside.
+     * @param onComplete: Returns the response from the AI
+     */
+    @Deprecated("This function is deprecated. Use the function with the nonRainingTimes parameter instead.")
     fun getResponse(onComplete: (String?) -> Unit) {
 
         if (isFullyOptimized()) {
@@ -135,7 +136,10 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         })
     }
 
-    //Get response with weather data
+    /** This function is only when when both it is raining outside and there are outdoor events for the day.
+     * @param nonRainingTimes: A list of non-raining times for the day
+     * @param onComplete: Returns the response from the AI
+     */
     private fun getResponse(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, onComplete: (String?) -> Unit) {
         if (isFullyOptimized()) {
             onComplete("FullyOptimized")
@@ -159,7 +163,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         var userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
 
-        val systemContent = "Prioritize scheduling events that are outdoors betwwen ${nonRainingTimesString}. " +
+        val systemContent = "Prioritize scheduling events that are outdoors between ${nonRainingTimesString}. " +
                 "Secondarily, attempt to change the start times and end times of my events so they are in this order: ${optimalEventOrderString} " +
                 "You can do this by changing the startTime and endTime of the events. " +
                 //If there are events that aren't allowed to be rescheduled, list them here.
@@ -213,7 +217,86 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             }
         })
     }
-    //Turn the response into OptimizedSchedule object (great naming scheme I know)
+    /** This function is only ran when the user has one or more event's that aren't allowed to be rescheduled.
+     * This function parses the response from the AI into the OptimizedSchedule object and calls the callback.
+     * @param onComplete: The callback function that is called after the response is parsed
+     */
+    fun getResponseBlockedEvents(onComplete: (String?) -> Unit) {
+        if (isFullyOptimized()) {
+            onComplete("FullyOptimized")
+            return
+        }
+
+        //Get only start time, end time, and location from FirestoreEvents. If location == "", then put homeAddress as location
+        val eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
+            .map { event ->
+                "${event.name} goes from ${event?.startTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event?.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event?.location == "") homeAddress else event?.location} " +
+                        if (event.isOutside) "and is outdoors." else "."
+            }
+
+        val eventString = eventList.joinToString(" ")
+        //Get the travel time, origin, and destination from the travelTime list
+        val travelTimeList = travelTime.map { travel -> "The time it takes to drive from ${travel?.startLocation} to ${travel?.endLocation} is ${travel?.duration}" }
+        val travelTimeString = travelTimeList.joinToString(" ")
+
+        var userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
+
+        val systemContent = "Attempt to change the start times and end times of my events so they are in this order: ${allowedOptimalEventOrderString} " +
+                "You can do this by changing the startTime and endTime of the events. " +
+                if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
+                "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
+                "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
+                "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
+
+        //Make a new request object
+        val httpPost = Request(model,
+            response_format,
+            systemContent,
+            "${userContent}")
+        //Request body builder
+        val requestBody = request.newBuilder()
+            .post(
+                """{
+    "model": "${httpPost.model}",
+    "response_format": ${httpPost.response_format},
+    "messages": [
+      {
+        "role": "system",
+        "content": "${httpPost.systemContent}"
+      },
+      {
+        "role": "user",
+        "content": "${httpPost.userContent}"
+      }
+    ]
+  }""".trimIndent().toRequestBody()
+            )
+            .build()
+
+        //Make the request
+        client.newCall(requestBody).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
+                onComplete("Error")
+            }
+
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                val body = response.body?.string()
+                if (response.code == 200) {
+                    val openAIResponse = gson.fromJson(body, OpenAIResponse::class.java)
+                    onComplete(openAIResponse.choices[0].message.content)
+                }
+                else {
+                    onComplete("Error")
+                }
+            }
+        })
+    }
+
+    /** This function is only ran when either it is not raining outside or there are no outdoor events for the day.
+     * This function parses the response from the AI into the OptimizedSchedule object and calls the callback.
+     * @param callback: The callback function that is called after the response is parsed
+     */
+    @Deprecated("This function is deprecated. Use the function with the nonRainingTimes parameter instead.")
     fun parseResponse(callback: (OptimizedSchedule) -> Unit) {
         val parse = GsonBuilder().create()
         //After 5 attempts, give up
@@ -244,8 +327,76 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         //It's called we do a little recursion
         retry(0)
     }
-    //This is the same as the above function, but with the addition of the nonRainingTimes parameter
+    /** This function is only ran when either it is raining outside for the day and there are outdoor events for the day.
+     * This function parses the response from the AI into the OptimizedSchedule object and calls the callback.
+     * @param nonRainingTimes: A list of non-raining times for the day
+     * @param callback: The callback function that is called after the response is parsed
+     */
     fun parseResponse(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, callback: (OptimizedSchedule) -> Unit) {
+
+        // Init nonRainingTimes bool
+        var hasRainingTimes = true
+
+        val parse = GsonBuilder().create()
+        //After 5 attempts, give up
+        val maxRetries = 5
+
+        // Check if the nonRainingTimes list is 0:00-00:00
+        if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0) {
+            hasRainingTimes = false
+        }
+
+        fun retry(retries: Int, hasRainingTimes: Boolean) {
+            if (retries > maxRetries) {
+                callback(OptimizedSchedule(emptyList(), emptyList()))
+                return
+            }
+            if (hasRainingTimes) {
+                getResponse(nonRainingTimes) { response ->
+                    if (response == "Error") {
+                        retry(retries + 1, hasRainingTimes)
+                    }
+                    //If the response is not an error, then parse the response
+                    else {
+                        val optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+                        //If the schedule is not null and the optimizedSchedule is different from the original schedule, then call the callback, else retry
+                        if (optimizedSchedule.nullCheck() && optimizedSchedule.events != optimizedSchedule.oldEvents) {
+                            callback(optimizedSchedule)
+                        }
+                        else {
+                            retry(retries + 1, hasRainingTimes)
+                        }
+                    }
+                }
+            }
+            else {
+                getResponse { response ->
+                    if (response == "Error") {
+                        retry(retries + 1, hasRainingTimes)
+                    }
+                    //If the response is not an error, then parse the response
+                    else {
+                        val optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+                        //If the schedule is not null and the optimizedSchedule is different from the original schedule, then call the callback, else retry
+                        if (optimizedSchedule.nullCheck() && optimizedSchedule.events != optimizedSchedule.oldEvents) {
+                            callback(optimizedSchedule)
+                        }
+                        else {
+                            retry(retries + 1, hasRainingTimes)
+                        }
+                    }
+                }
+            }
+
+        }
+        //It's called we do a little recursion
+        retry(0, hasRainingTimes)
+    }
+    /** This function is to be used when the user has one or more events that are not allowed to be rescheduled.
+     * This function parses the response from the AI into the OptimizedSchedule object and calls the callback.
+     * @param callback: The callback function that is called after the response is parsed
+     */
+    fun parseResponseBlockedEvents(callback: (OptimizedSchedule) -> Unit) {
         val parse = GsonBuilder().create()
         //After 5 attempts, give up
         val maxRetries = 5
@@ -255,15 +406,15 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                 callback(OptimizedSchedule(emptyList(), emptyList()))
                 return
             }
-            getResponse(nonRainingTimes) { response ->
+            getResponseBlockedEvents { response ->
                 if (response == "Error") {
                     retry(retries + 1)
                 }
                 //If the response is not an error, then parse the response
                 else {
                     val optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
-                    //If the schedule is not null and the optimizedSchedule is different from the original schedule, then call the callback, else retry
-                    if (optimizedSchedule.nullCheck() && optimizedSchedule.events != optimizedSchedule.oldEvents) {
+                    //If the schedule is not null, then call the callback, else retry
+                    if (optimizedSchedule.nullCheck()) {
                         callback(optimizedSchedule)
                     }
                     else {
@@ -275,6 +426,9 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         //It's called we do a little recursion
         retry(0)
     }
+    /** This function is a helper function to check if the schedule is fully optimized before returning the object to the callback.
+     * @return: Returns true if the schedule is fully optimized, else false
+     */
     private fun isFullyOptimized(): Boolean {
         //If there are no events, then it's fully optimized
         if (events.isEmpty()) {
@@ -290,4 +444,5 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         }
         return false
     }
+
 }
