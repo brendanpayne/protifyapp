@@ -114,17 +114,12 @@ class FirestoreHelper() {
     }
 
     fun toggleOfflineOnline(isConnected: Boolean) {
-        // [START disable_network]
         if (!isConnected) {
             db.disableNetwork()
                 .addOnCompleteListener {
                     Log.d("GoogleFirestore", "Network disabled")
                 }
-        }
-        // [END disable_network]
-
-        // [START enable_network]
-        if (isConnected) {
+        } else {
             db.enableNetwork()
                 .addOnSuccessListener {
                     Log.d("GoogleFirestore", "Network enabled")
@@ -133,8 +128,6 @@ class FirestoreHelper() {
                     Log.w("GoogleFirestore", "Error enabling network", e)
                 }
         }
-
-        // [END enable_network]
     }
 
     private fun offlineListener(uid: String) {
