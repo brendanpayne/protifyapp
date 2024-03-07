@@ -370,20 +370,8 @@ class FirestoreHelper() {
                             name = "",
                             startTime = LocalDateTime.now(),
                             endTime = LocalDateTime.now(),
-                            location = "",
-                            description = "",
-                            timeZone = "",
-                            importance = 0,
-                            attendees = null,
-                            rainCheck = false,
-                            isRaining = false,
-                            mapsCheck = false,
                             distance = 0,
-                            nameLower = "",
-                            isOutside = false,
-                            isOptimized = false,
-                            isAiSuggestion = false,
-                            isUserAccepted = false
+                            nameLower = ""
                         )
                     )
                 }
@@ -685,19 +673,7 @@ class FirestoreHelper() {
                         startTime = event.endTime,
                         endTime = dayEnd,
                         location = "6190 Falla Dr, Canal Winchester, OH 43110",
-                        description = "",
-                        timeZone = "",
-                        importance = 0,
-                        attendees = null,
-                        rainCheck = false,
-                        isRaining = false,
-                        mapsCheck = false,
-                        distance = 0,
                         nameLower = "",
-                        isOutside = false,
-                        isOptimized = false,
-                        isAiSuggestion = false,
-                        isUserAccepted = false
                     )
                     MapsDurationUtils(event.startTime).isChainedEvent(
                         event,
