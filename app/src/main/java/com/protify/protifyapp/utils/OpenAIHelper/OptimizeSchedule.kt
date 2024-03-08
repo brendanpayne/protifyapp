@@ -66,6 +66,19 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
     //Turn allowedOptimalEventOrder into a string
     private val allowedOptimalEventOrderString = allowedOptimalEventOrder.mapIndexed { index, event -> "${index + 1}: ${event.name}" }.joinToString(", ")
 
+    private val eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
+        .map { event ->
+            "${event.name} goes from ${event?.startTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event?.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event?.location == "") homeAddress else event?.location} " +
+                    if (event.isOutside) "and is outdoors." else "." // If the event is outside, then add "and is outdoors."
+        }
+
+    private val eventString = eventList.joinToString(" ")
+    //Get the travel time, origin, and destination from the travelTime list
+    private val travelTimeList = travelTime.map { travel -> "The distance between ${travel?.startLocation} and ${travel?.endLocation} is ${travel?.duration} " }
+    private val travelTimeString = travelTimeList.joinToString(" ")
+
+    private var userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
+
 
     /** This function is executed when it is not raining that day or there are no events that are outside.
      * @param onComplete: Returns the response from the AI
@@ -77,18 +90,6 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             onComplete("FullyOptimized")
             return
         }
-
-        //Get only start time, end time, and location from FirestoreEvents. If location == "", then put homeAddress as location
-        val eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
-            .map { event ->
-                "${event.name} goes from ${event?.startTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event?.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event?.location == "") homeAddress else event?.location} " +
-                        if (event.isOutside) "and is outdoors." else "." // If the event is outside, then add "and is outdoors."
-            }
-
-        val eventString = eventList.joinToString(" ")
-        //Get the travel time, origin, and destination from the travelTime list
-        val travelTimeList = travelTime.map { travel -> "The time it takes to drive from ${travel?.startLocation} to ${travel?.endLocation} is ${travel?.duration}" }
-        val travelTimeString = travelTimeList.joinToString(" ")
 
         var userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
 
@@ -105,75 +106,33 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             systemContent,
             "${userContent}")
 
-
-        //Request body builder
-        val requestBody = request.newBuilder()
-            .post(
-                """{
-    "model": "${httpPost.model}",
-    "response_format": ${httpPost.response_format},
-    "messages": [
-      {
-        "role": "system",
-        "content": "${httpPost.systemContent}"
-      },
-      {
-        "role": "user",
-        "content": "${httpPost.userContent}"
-      }
-    ]
-  }""".trimIndent().toRequestBody()
-            )
-            .build()
-
-        //Make the request
-        client.newCall(requestBody).enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
-                onComplete("Error")
-            }
-
-            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
-                val body = response.body?.string()
-                if (response.code == 200) {
-                    val openAIResponse = gson.fromJson(body, OpenAIResponse::class.java)
-                    onComplete(openAIResponse.choices[0].message.content)
-                }
-                else {
-                    onComplete("Error")
-                }
-            }
-        })
+        makeRequest(httpPost, onComplete)
     }
 
     /** This function is only when when both it is raining outside and there are outdoor events for the day.
      * @param nonRainingTimes: A list of non-raining times for the day
      * @param onComplete: Returns the response from the AI
      */
-    private fun getResponse(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, onComplete: (String?) -> Unit) {
+    fun getResponse(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, onComplete: (String?) -> Unit) {
         if (isFullyOptimized()) {
             onComplete("FullyOptimized")
             return
         }
 
+        // Init nonRainingTimes bool
+        var hasRainingTimes = true
+        // Check if the nonRainingTimes list is 0:00-00:00
+        if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0) {
+            hasRainingTimes = false
+        }
+
         //Turn the list of non-raining times into a string
         val nonRainingTimesString = nonRainingTimes.joinToString(" ") { (start, end) -> "${start.format(DateTimeFormatter.ofPattern("HH:mm"))} and ${end.format(DateTimeFormatter.ofPattern("HH:mm"))} " }
 
-        //Get only start time, end time, and location from FirestoreEvents. If location == "", then put homeAddress as location
-        val eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
-            .map { event ->
-                "${event.name} goes from ${event?.startTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event?.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event?.location == "") homeAddress else event?.location} " +
-                        if (event.isOutside) "and is outdoors." else "."
-            }
 
-        val eventString = eventList.joinToString(" ")
-        //Get the travel time, origin, and destination from the travelTime list
-        val travelTimeList = travelTime.map { travel -> "The distance between ${travel?.startLocation} and ${travel?.endLocation} is ${travel?.duration} " }
-        val travelTimeString = travelTimeList.joinToString(" ")
 
-        var userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
-
-        val systemContent = "Prioritize scheduling events that are outdoors between ${nonRainingTimesString}. " +
-                "Secondarily, attempt to change the start times and end times of my events so they are in this order: ${optimalEventOrderString} " +
+        val systemContent = (if (hasRainingTimes) "Prioritize scheduling events that are outdoors between ${nonRainingTimesString}. "  else "") +
+                "Attempt to change the start times and end times of my events so they are in this order: ${optimalEventOrderString} " +
                 "You can do this by changing the startTime and endTime of the events. " +
                 //If there are events that aren't allowed to be rescheduled, list them here.
                 if (dontRescheduleEvents.isNotEmpty()) { "You may not reschedule the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
@@ -187,44 +146,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             systemContent,
             "${userContent}")
 
-
-        //Request body builder
-        val requestBody = request.newBuilder()
-            .post(
-                """{
-    "model": "${httpPost.model}",
-    "response_format": ${httpPost.response_format},
-    "messages": [
-      {
-        "role": "system",
-        "content": "${httpPost.systemContent}"
-      },
-      {
-        "role": "user",
-        "content": "${httpPost.userContent}"
-      }
-    ]
-  }""".trimIndent().toRequestBody()
-            )
-            .build()
-
-        //Make the request
-        client.newCall(requestBody).enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
-                onComplete("Error")
-            }
-
-            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
-                val body = response.body?.string()
-                if (response.code == 200) {
-                    val openAIResponse = gson.fromJson(body, OpenAIResponse::class.java)
-                    onComplete(openAIResponse.choices[0].message.content)
-                }
-                else {
-                    onComplete("Error")
-                }
-            }
-        })
+        makeRequest(httpPost, onComplete)
     }
     /** This function is only ran when the user has one or more event's that aren't allowed to be rescheduled.
      * This function parses the response from the AI into the OptimizedSchedule object and calls the callback.
@@ -235,20 +157,6 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             onComplete("FullyOptimized")
             return
         }
-
-        //Get only start time, end time, and location from FirestoreEvents. If location == "", then put homeAddress as location
-        val eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
-            .map { event ->
-                "${event.name} goes from ${event?.startTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event?.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event?.location == "") homeAddress else event?.location} " +
-                        if (event.isOutside) "and is outdoors." else "."
-            }
-
-        val eventString = eventList.joinToString(" ")
-        //Get the travel time, origin, and destination from the travelTime list
-        val travelTimeList = travelTime.map { travel -> "The time it takes to drive from ${travel?.startLocation} to ${travel?.endLocation} is ${travel?.duration}" }
-        val travelTimeString = travelTimeList.joinToString(" ")
-
-        var userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
 
         val systemContent = "Attempt to change the start times and end times of my events so they are in this order: ${allowedOptimalEventOrderString} " +
                 "You can do this by changing the startTime and endTime of the events. " +
@@ -262,43 +170,30 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             response_format,
             systemContent,
             "${userContent}")
-        //Request body builder
-        val requestBody = request.newBuilder()
-            .post(
-                """{
-    "model": "${httpPost.model}",
-    "response_format": ${httpPost.response_format},
-    "messages": [
-      {
-        "role": "system",
-        "content": "${httpPost.systemContent}"
-      },
-      {
-        "role": "user",
-        "content": "${httpPost.userContent}"
-      }
-    ]
-  }""".trimIndent().toRequestBody()
-            )
-            .build()
 
-        //Make the request
-        client.newCall(requestBody).enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
-                onComplete("Error")
-            }
+        makeRequest(httpPost, onComplete)
+    }
 
-            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
-                val body = response.body?.string()
-                if (response.code == 200) {
-                    val openAIResponse = gson.fromJson(body, OpenAIResponse::class.java)
-                    onComplete(openAIResponse.choices[0].message.content)
-                }
-                else {
-                    onComplete("Error")
-                }
-            }
-        })
+    fun getResponseOverlappingEvents(onComplete: (String?) -> Unit) {
+        if (isFullyOptimized()) {
+            onComplete("FullyOptimized")
+            return
+        }
+        var userContentOverride: String = "Here are my events: $eventString."
+        val systemContentOverride = "Remove any events that have overlapping times" +
+                "You can do this by changing the startTime and endTime of the events. " +
+                if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
+                "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
+                "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
+                "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
+
+        val httpPost = Request(model,
+            response_format,
+            systemContentOverride,
+            "${userContentOverride}")
+
+        makeRequest(httpPost, onComplete)
+
     }
 
     /** This function is only ran when either it is not raining outside or there are no outdoor events for the day.
@@ -336,12 +231,46 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         //It's called we do a little recursion
         retry(0)
     }
+
     /** This function is only ran when either it is raining outside for the day and there are outdoor events for the day.
      * This function parses the response from the AI into the OptimizedSchedule object and calls the callback.
      * @param nonRainingTimes: A list of non-raining times for the day
      * @param callback: The callback function that is called after the response is parsed
      */
+    @Deprecated ("This function does not do any error checking and is meant for unit testing only.")
     fun parseResponse(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, callback: (OptimizedSchedule) -> Unit) {
+        val parse = GsonBuilder().create()
+        //After 5 attempts, give up
+        val maxRetries = 5
+
+        fun retry(retries: Int) {
+            if (retries > maxRetries) {
+                callback(OptimizedSchedule(emptyList(), emptyList()))
+                return
+            }
+            getResponse(nonRainingTimes) { response ->
+                if (response == "Error") {
+                    retry(retries + 1)
+                }
+                //If the response is not an error, then parse the response
+                else {
+                    val optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+                    //If the schedule is not null and the optimizedSchedule is different from the original schedule, then call the callback, else retry
+                    if (optimizedSchedule.nullCheck() && optimizedSchedule.events != optimizedSchedule.oldEvents) {
+                        callback(optimizedSchedule)
+                    }
+                    else {
+                        retry(retries + 1)
+                    }
+                }
+            }
+        }
+        //It's called we do a little recursion
+        retry(0)
+    }
+
+    fun makeCall(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, callback: (OptimizedSchedule) -> Unit) {
+
         // init hasOptimizedEvents bool
         var hasOptimizedEvents = false
         // Check if there are any events that are not allowed to be rescheduled
@@ -356,86 +285,76 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         }
 
         val parse = GsonBuilder().create()
-        //After 12 attempts, give up
-        val maxRetries = 12
 
+        // Try each call 3 times
+        var maxRetries = 3
 
-        fun retry(retries: Int, hasRainingTimes: Boolean) {
-            if (retries > maxRetries) {
-                // If there are no events, then return an empty list of oldEvents and events
+        fun secondCall(iterations: Int, hasRainingTime: Boolean) {
+            if (iterations > maxRetries) {
                 callback(OptimizedSchedule(emptyList(), emptyList()))
                 return
             }
-            // Call the "all encompassing" getResponse function initially
-            getResponse(nonRainingTimes) { response ->
-                if (response == "Error") {
-                    retry(retries + 1, hasRainingTimes)
-                }
-                //If the response is not an error, then parse the response
-                else {
+            getResponseBlockedEvents {
+                if (it == "Error") {
+                    secondCall(iterations + 1, hasRainingTime)
+                } else {
                     var optimizedSchedule: OptimizedSchedule
-                    // Always use protection
                     try {
-                        optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+                        optimizedSchedule = parse.fromJson(it, OptimizedSchedule::class.java)
+                    } catch (e: Exception) {
+                        secondCall(iterations + 1, hasRainingTime)
+                        return@getResponseBlockedEvents
                     }
-                    catch (e: Exception) {
-                        retry(retries + 1, hasRainingTimes)
+                    if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {
+                        callback(optimizedSchedule)
+                    } else {
+                        secondCall(iterations + 1, hasRainingTime)
+                    }
+                }
+            }
+        }
+
+        fun mainCall(iterations: Int, hasRainingTime: Boolean) {
+            if (iterations > maxRetries) {
+                maxRetries = 0
+                secondCall(maxRetries, hasRainingTime)
+                return
+            }
+            getResponse(nonRainingTimes) {
+                if (it == "Error") {
+                    mainCall(iterations + 1, hasRainingTime)
+                } else {
+                    var optimizedSchedule: OptimizedSchedule
+                    try {
+                        optimizedSchedule = parse.fromJson(it, OptimizedSchedule::class.java)
+                    } catch (e: Exception) {
+                        mainCall(iterations + 1, hasRainingTime)
                         return@getResponse
                     }
-                    // If hasRainingTimes is false, don't pass the nonRainingTimes list to the qualityCheck function
-                    if (hasRainingTimes) {
-                        // If the schedule is not null and passes the quality check, then call the callback, else retry
+                    if (hasRainingTime) {
                         if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule, nonRainingTimes)) {
                             callback(optimizedSchedule)
+                        } else {
+                            mainCall(iterations + 1, hasRainingTime)
                         }
-                        else {
-                            // This is where I need to add in another function that is more specific to the event list's scope
-                            retry(retries + 1, hasRainingTimes)
-                        }
-                    }
-                    else {
-                        // If the schedule is not null and passes the quality check, then call the callback, else retry
+                    } else {
                         if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {
                             callback(optimizedSchedule)
-                        }
-                        else {
-                            // If hasOptimizedEvents is true, then call the getResponseBlockedEvents function if it has already failed 5 times
-                            if (hasOptimizedEvents && retries > 5) {
-                                getResponseBlockedEvents { response ->
-                                    if (response == "Error") {
-                                        retry(retries + 1, hasRainingTimes)
-                                    }
-                                    else {
-                                        // Always use protection
-                                        try {
-                                            optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
-                                        }
-                                        catch (e: Exception) {
-                                            retry(retries + 1, hasRainingTimes)
-                                            return@getResponseBlockedEvents
-                                        }
-                                        // If the schedule is not null and passes the quality check, then call the callback, else retry
-                                        if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {
-                                            callback(optimizedSchedule)
-                                        }
-                                        else {
-                                            retry(retries + 1, hasRainingTimes)
-                                        }
-                                    }
-                                }
+                        } else {
+                            if (hasOptimizedEvents && iterations > 2) {
+                                mainCall(iterations, hasRainingTime)
+                            } else {
+                                mainCall(iterations + 1, hasRainingTime)
                             }
-                            else
-                            retry(retries + 1, hasRainingTimes)
                         }
                     }
-
-
                 }
             }
 
         }
-        //It's called we do a little recursion
-        retry(0, hasRainingTimes)
+
+        mainCall(0, hasRainingTimes)
+
     }
     /** This function is to be used when the user has one or more events that are not allowed to be rescheduled.
      * This function parses the response from the AI into the OptimizedSchedule object and calls the callback.
@@ -549,6 +468,46 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         }
 
         return passedQaulityCheck
+    }
+    private fun makeRequest(httpPost: Request, onComplete: (String) -> Unit) {
+
+        val requestBody = request.newBuilder()
+            .post(
+                """{
+    "model": "${httpPost.model}",
+    "response_format": ${httpPost.response_format},
+    "messages": [
+      {
+        "role": "system",
+        "content": "${httpPost.systemContent}"
+      },
+      {
+        "role": "user",
+        "content": "${httpPost.userContent}"
+      }
+    ]
+  }""".trimIndent().toRequestBody()
+            )
+            .build()
+
+        //Make the request
+        client.newCall(requestBody).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
+                onComplete("Error")
+            }
+
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                val body = response.body?.string()
+                if (response.code == 200) {
+                    val openAIResponse = gson.fromJson(body, OpenAIResponse::class.java)
+                    onComplete(openAIResponse.choices[0].message.content)
+                }
+                else {
+                    onComplete("Error")
+                }
+            }
+        })
+
     }
 
 }
