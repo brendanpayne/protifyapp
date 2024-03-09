@@ -174,6 +174,45 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         makeRequest(httpPost, onComplete)
     }
 
+    /** This function is nearly identical to the getResponse function, except it doesn't tell the AI which order to put the events in
+     * It also does not care about the physical distance between each location. This is more concerned with getting events that are outdoors
+     * into non-raining times and ensuring non-movable events are not moved
+     * @param nonRainingTimes list of non-raining times for the day
+     * @param onComplete Returns the AI response
+     */
+    fun getResponseNoLocationData(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, onComplete: (String?) -> Unit) {
+        if (isFullyOptimized()) {
+            onComplete("FullyOptimized")
+            return
+        }
+
+        // Init nonRainingTimes bool
+        var hasRainingTimes = true
+        // Check if the nonRainingTimes list is 0:00-00:00
+        if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0) {
+            hasRainingTimes = false
+        }
+
+        //Turn the list of non-raining times into a string
+        val nonRainingTimesString = nonRainingTimes.joinToString(" ") { (start, end) -> "${start.format(DateTimeFormatter.ofPattern("HH:mm"))} and ${end.format(DateTimeFormatter.ofPattern("HH:mm"))} " }
+
+        val userContentOverride = "Here is a list of the events I have today: $eventString"
+
+        val systemContentOverride =   (if (hasRainingTimes) "Prioritize scheduling events that are outdoors between ${nonRainingTimesString}. "  else "") +
+            if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
+                "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
+                "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
+                "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
+
+        // Build the request object
+        val httpPost = Request(model,
+            response_format,
+            systemContentOverride,
+            "${userContentOverride}")
+
+        makeRequest(httpPost, onComplete)
+    }
+
     fun getResponseOverlappingEvents(onComplete: (String?) -> Unit) {
         if (isFullyOptimized()) {
             onComplete("FullyOptimized")
@@ -269,6 +308,12 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         retry(0)
     }
 
+    /** This function is designed to be the main entry point into the AI call. It will start with a very strict prompt that gives it
+     * a lot of information that it needs to parse through. If quality cannot be ensured, it will resort to using less factors in the prompt so it can
+     * zero in on what the user needs from the AI
+     * @param nonRainingTimes Needed whether or not it is raining outside
+     * @param callback returns the schedule that will be handed off to firestore. In the event of an error, two empty lists will be passed to the callback
+     */
     fun makeCall(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, callback: (OptimizedSchedule) -> Unit) {
 
         // init hasOptimizedEvents bool
@@ -297,6 +342,33 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         // Try each call 3 times
         var maxRetries = 3
+        // Make a call to the least struct mf
+        fun thirdCall(iterations: Int, hasRainingTime: Boolean) {
+         if (iterations > maxRetries) {
+             callback(OptimizedSchedule(emptyList(), emptyList()))
+             return
+         }
+            getResponseNoLocationData(nonRainingTimes) {
+                if (it == "Error") {
+                    thirdCall(iterations + 1, hasRainingTime)
+                } else {
+                    // Create optimized schedule object and parse output into object
+                    var optimizedSchedule: OptimizedSchedule
+                    try {
+                        optimizedSchedule = parse.fromJson(it, OptimizedSchedule::class.java)
+                    } catch (e: Exception) {
+                        thirdCall(iterations + 1, hasRainingTime)
+                        return@getResponseNoLocationData
+                    }
+                    // At this point, we're down bad so we're not going to quality check it. If we got output, we giving it to the user
+                    if (optimizedSchedule.nullCheck()) {
+                        callback(optimizedSchedule)
+                    } else {
+                        thirdCall(iterations + 1, hasRainingTime)
+                    }
+                }
+            }
+        }
 
         /** Second call is a less comprehensive call that will be made to the AI. It will still go through the same
          * quality check as the main call, but will have less variables to work with.
@@ -306,6 +378,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         fun secondCall(iterations: Int, hasRainingTime: Boolean) {
             if (iterations > maxRetries) {
                 callback(OptimizedSchedule(emptyList(), emptyList()))
+                //thirdCall(0, hasRainingTime)
                 return
             }
             getResponseBlockedEvents {
@@ -558,6 +631,11 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         return passedQaulityCheck
     }
+
+    /** This formats the API request and makes a post to GPT API
+     * @param httpPost Request object
+     * @param onComplete Callback returns response in the form of a string, and if there was a failure, will return "Error"
+     */
     private fun makeRequest(httpPost: Request, onComplete: (String) -> Unit) {
 
         val requestBody = request.newBuilder()
