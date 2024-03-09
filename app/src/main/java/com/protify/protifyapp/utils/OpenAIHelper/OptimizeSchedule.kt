@@ -284,11 +284,25 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             hasRainingTimes = false
         }
 
+        // init parser
         val parse = GsonBuilder().create()
+
+        // init has overlapping events
+        var hasOverlappingEvents: Boolean = false
+
+        // Check for overlapping events
+        if (events.any { event -> events.any { it != event && it.startTime.isBefore(event.endTime) && it.endTime.isAfter(event.startTime) } }) {
+            hasOverlappingEvents = true
+        }
 
         // Try each call 3 times
         var maxRetries = 3
 
+        /** Second call is a less comprehensive call that will be made to the AI. It will still go through the same
+         * quality check as the main call, but will have less variables to work with.
+         * @param iterations: The number of times the function has been called
+         * @param hasRainingTime: A boolean that is true if there are non-raining times for the day
+         */
         fun secondCall(iterations: Int, hasRainingTime: Boolean) {
             if (iterations > maxRetries) {
                 callback(OptimizedSchedule(emptyList(), emptyList()))
@@ -314,10 +328,14 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             }
         }
 
+        /** Main call is the first call that will be made to the AI. This response is the most compresensive and will
+         * use all of the variables given
+         * @param iterations: The number of times the function has been called
+         * @param hasRainingTime: A boolean that is true if there are non-raining times for the day
+         */
         fun mainCall(iterations: Int, hasRainingTime: Boolean) {
             if (iterations > maxRetries) {
-                maxRetries = 0
-                secondCall(maxRetries, hasRainingTime)
+                secondCall(0, hasRainingTime)
                 return
             }
             getResponse(nonRainingTimes) {
@@ -331,6 +349,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                         mainCall(iterations + 1, hasRainingTime)
                         return@getResponse
                     }
+                    // If it has non rainging times, make sure to check for that
                     if (hasRainingTime) {
                         if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule, nonRainingTimes)) {
                             callback(optimizedSchedule)
@@ -352,8 +371,9 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             }
 
         }
-
+        // It's called we do a little recursion
         mainCall(0, hasRainingTimes)
+
 
     }
     /** This function is to be used when the user has one or more events that are not allowed to be rescheduled.
@@ -389,6 +409,75 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         }
         //It's called we do a little recursion
         retry(0)
+    }
+
+    /** This function is used to output a new list of firestore events so you can call other
+     * instance of this class with the new output. Once overlapping events
+     * are removed, we should have a better chance of the AI giving accurate responses
+     * @param callback: Returns a new list of firestore events that have been optimized
+     */
+    fun removeOverlappingEvents(callback: (List<FirestoreEvent>) -> Unit) {
+        getResponseOverlappingEvents { response ->
+            val parse = GsonBuilder().create()
+            val optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+            if (optimizedSchedule.nullCheck()) {
+                // map the start time and end times of the response.events to the events list
+                val newEvents: List<FirestoreEvent> = events.map { event ->
+                    val matchingEvent = optimizedSchedule.events.find { it.name == event.name }
+                    if (matchingEvent != null) {
+                        val timePartsStart = matchingEvent.startTime.split(":")
+                        val hourStringStart = timePartsStart[0]
+                        val minuteStringStart = timePartsStart[1]
+                        val timePartsEnd = matchingEvent.endTime.split(":")
+                        val hourStringEnd = timePartsEnd[0]
+                        val minuteStringEnd = timePartsEnd[1]
+                        // build start time and end time
+                        val startTime = LocalDateTime.of(
+                            event.startTime.year,
+                            event.startTime.month,
+                            event.startTime.dayOfMonth,
+                            hourStringStart.toInt(),
+                            minuteStringStart.toInt()
+                        )
+                        val endTime = LocalDateTime.of(
+                            event.endTime.year,
+                            event.endTime.month,
+                            event.endTime.dayOfMonth,
+                            hourStringEnd.toInt(),
+                            minuteStringEnd.toInt()
+                        )
+
+                        // Make a new firestore event except with new start times and end times
+                        FirestoreEvent(
+                            event.name,
+                            event.nameLower,
+                            startTime,
+                            endTime,
+                            event.location,
+                            event.description,
+                            event.timeZone,
+                            event.importance,
+                            event.attendees,
+                            event.rainCheck,
+                            event.isRaining,
+                            event.mapsCheck,
+                            event.distance,
+                            event.isOutside,
+                            event.isOptimized,
+                            event.isAiSuggestion,
+                            event.isUserAccepted
+                        )
+                    } else {
+                        event
+                    }
+
+                }
+                callback(newEvents)
+            } else {
+                callback(emptyList())
+            }
+
+        }
     }
     /** This function is a helper function to check if the schedule is fully optimized before returning the object to the callback.
      * @return: Returns true if the schedule is fully optimized, else false
