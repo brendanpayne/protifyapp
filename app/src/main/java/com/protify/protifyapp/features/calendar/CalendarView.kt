@@ -242,12 +242,13 @@ class CalendarView {
                                                 val eventEndTime = LocalTime.parse(event.endTime, DateTimeFormatter.ofPattern("h:mm a"))
                                                 if ((eventStartTime.isAfter(time) && eventStartTime.isBefore(time.plusHours(1))) ||
                                                     (eventEndTime.isAfter(time) && eventEndTime.isBefore(time.plusHours(1)))) {
-                                                    Text(
-                                                        text = "${event.title} (${event.startTime} - ${event.endTime})",
-                                                        modifier = Modifier.padding(8.dp),
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        color = MaterialTheme.colorScheme.onSurface,
-                                                        textAlign = TextAlign.Center
+                                                    EventBreakdown().DailySchedule(
+                                                        scale = 1.0,
+                                                        eventList = listOf(event),
+                                                        uid = FirebaseLoginHelper().getCurrentUser()?.uid ?: "",
+                                                        day = date.date.dayOfMonth.toString(),
+                                                        month = date.date.month.toString(),
+                                                        year = date.date.year.toString()
                                                     )
                                                 }
                                             }
@@ -327,6 +328,7 @@ class CalendarView {
     fun Calendar(navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
         //val selectedTabIndex by remember { mutableStateOf(0) }
+        var events by remember { mutableStateOf(listOf<Event>()) }
         var isMonthView by remember { mutableStateOf(false) }
         var calendarUiModel by remember {
             mutableStateOf(
@@ -337,6 +339,19 @@ class CalendarView {
             )
         }
         var isLoadingEvents by remember { mutableStateOf(true) }
+        val date = calendarUiModel.selectedDate
+        dataSource.getFirestoreEvents(
+            FirebaseLoginHelper().getCurrentUser()!!.uid,
+            FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
+            date.date.month.toString(),
+            date.date.dayOfMonth.toString(),
+            date.date.year.toString()
+        ) { fetchedEvents ->
+            if (fetchedEvents.isNotEmpty()) {
+                events = fetchedEvents
+            }
+            isLoadingEvents = false
+        }
 
         dataSource.getFirestoreEvents("uid", 1234567890L, "January", "1", "2023") { events ->
             if (events.isNotEmpty()) {
@@ -433,7 +448,14 @@ class CalendarView {
                     )
             ) {
                 if (!isMonthView) { // Only shows the EventCard in week view
-                    EventView().EventCard(calendarUiModel, navigateToAddEvent, isLoadingEvents)
+                    EventBreakdown().DailySchedule(
+                        scale = 1.0,
+                        eventList = events,
+                        uid = FirebaseLoginHelper().getCurrentUser()?.uid ?: "",
+                        day = date.date.dayOfMonth.toString(),
+                        month = date.date.month.toString(),
+                        year = date.date.year.toString()
+                    )
                 }
             }
         }
