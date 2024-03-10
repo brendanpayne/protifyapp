@@ -787,13 +787,21 @@ class AddEvent {
                                 isOutside = isOutside,
                                 //This will be used to determine whether or not an event is allowed to be optimized by the AI
                                 //My naming scheme is so bad that I have to reverse the boolean to make it make sense
-                                isOptimized = !isOptimized
+                                isOptimized = !isOptimized,
+                                isAiSuggestion = false,
+                                isUserAccepted = false
                             )
                             val errors = firestoreEvent.validateEvent(firestoreEvent)
                             if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {
-                                FirestoreHelper().createEvent(user, firestoreEvent)
-                                Toast.makeText(context, "Event added successfully", Toast.LENGTH_LONG).show()
-                                navigateBack()
+                                FirestoreHelper().createEvent(user, firestoreEvent) {
+                                    if (it) {
+                                        Toast.makeText(context, "Event added successfully", Toast.LENGTH_LONG).show()
+                                        navigateBack()
+                                    } else {
+                                        Toast.makeText(context, "Event could not be added. Please check your network connection", Toast.LENGTH_LONG).show()
+
+                                    }
+                                }
                             }
                             if (user == null) {
                                 Toast.makeText(context, "You are logged out. Please log in and try again", Toast.LENGTH_LONG).show()

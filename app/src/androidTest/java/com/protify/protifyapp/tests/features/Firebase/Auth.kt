@@ -91,10 +91,12 @@ class Auth {
                                 isOutside = false,
                                 isOptimized = false,
                                 mapsCheck = false,
-                                rainCheck = false)
+                                rainCheck = false,
+                                isAiSuggestion = false,
+                                isUserAccepted = false)
 
                             // Add an event to the user's calendar
-                            FirestoreHelper().createEvent(user.uid, event)
+                            FirestoreHelper().createEvent(user.uid, event) {}
                             // Wait 10 seconds for async
                             Thread.sleep(10000)
                             // Get the events from the user's calendar

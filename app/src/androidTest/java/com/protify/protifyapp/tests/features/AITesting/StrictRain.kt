@@ -82,7 +82,9 @@ class StrictRain {
                                     it.mapsCheck,
                                     it.distance,
                                     it.isOutside,
-                                    it.isOptimized
+                                    it.isOptimized,
+                                    isUserAccepted = false,
+                                    isAiSuggestion = false
                                 )
                             }
                             // Convert events to json
@@ -212,7 +214,9 @@ class StrictRain {
                 it.mapsCheck,
                 it.distance,
                 it.isOutside,
-                it.isOptimized
+                it.isOptimized,
+                isUserAccepted = false,
+                isAiSuggestion = false
             )
         }
         // Run the api call

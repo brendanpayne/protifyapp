@@ -39,6 +39,8 @@ class OptimizeScheduleTest {
                 mapsCheck = false,
                 rainCheck = false,
                 timeZone = "",
+                isAiSuggestion = false,
+                isUserAccepted = false
             ),
             FirestoreEvent(
                 name = "Grocery Store",
@@ -56,6 +58,8 @@ class OptimizeScheduleTest {
                 mapsCheck = false,
                 rainCheck = false,
                 timeZone = "",
+                isAiSuggestion = false,
+                isUserAccepted = false
             ),
             FirestoreEvent(
                 name = "Work",
@@ -73,6 +77,8 @@ class OptimizeScheduleTest {
                 mapsCheck = false,
                 rainCheck = false,
                 timeZone = "",
+                isAiSuggestion = false,
+                isUserAccepted = false
 
 
             )
