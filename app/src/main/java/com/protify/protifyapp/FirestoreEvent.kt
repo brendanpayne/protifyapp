@@ -17,7 +17,7 @@ class FirestoreEvent(
     val isRaining: Boolean,
     val mapsCheck: Boolean,
     val distance: Int,
-    val isOutside: Boolean,
+    val isOutside: Boolean?,
     val isOptimized: Boolean,
     val isAiSuggestion: Boolean,
     var isUserAccepted: Boolean,

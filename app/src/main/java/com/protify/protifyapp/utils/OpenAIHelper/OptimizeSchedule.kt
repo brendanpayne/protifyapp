@@ -71,8 +71,8 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         //Get only start time, end time, and location from FirestoreEvents. If location == "", then put homeAddress as location
         val eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
             .map { event ->
-                "${event.name} goes from ${event?.startTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event?.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event?.location == "") homeAddress else event?.location} " +
-                        if (event.isOutside) "and is outdoors." else "." // If the event is outside, then add "and is outdoors."
+                "${event.name} goes from ${event.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event?.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event?.location == "") homeAddress else event?.location} " +
+                        if (event.isOutside == true) "and is outdoors." else "." // If the event is outside, then add "and is outdoors."
             }
 
         val eventString = eventList.joinToString(" ")
@@ -93,7 +93,8 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         val httpPost = Request(model,
             response_format,
             systemContent,
-            "${userContent}")
+            userContent
+        )
 
 
         //Request body builder
@@ -149,7 +150,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         val eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
             .map { event ->
                 "${event.name} goes from ${event?.startTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event?.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event?.location == "") homeAddress else event?.location} " +
-                        if (event.isOutside) "and is outdoors." else "."
+                        if (event.isOutside == true) "and is outdoors." else "."
             }
 
         val eventString = eventList.joinToString(" ")
