@@ -219,7 +219,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             return
         }
         val userContentOverride: String = "Here are my events: $eventString."
-        val systemContentOverride = "Remove any events that have overlapping times" +
+        val systemContentOverride = "Remove any events that have overlapping times." +
                 "You can do this by changing the startTime and endTime of the events. " +
                 if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
                 "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +

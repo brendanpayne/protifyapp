@@ -492,11 +492,12 @@ class Essential {
 
 
         // Call the function to remove overlapping events, we're putting in a bunch of garbage because I wrote this class like garbage
-        OptimizeSchedule("", "", "", events, mutableListOf(), "", mutableListOf()).removeOverlappingEvents {
+        OptimizeSchedule("", "", "", events, mutableListOf(), "762 Morning Dew Lane, Maineville OH, 45039", mutableListOf()).removeOverlappingEvents {
 
-            val overlapping = events.any { event1 ->
-                events.any { event2 ->
-                    event1 != event2 && event1.startTime.isBefore(event2.endTime) && event1.endTime.isAfter(event2.startTime)
+            val overlapping = it.any { event1 ->
+                it.any { event2 ->
+                    event1 != event2 &&  // Ensure events are different
+                            (event1.startTime.isBefore(event2.endTime) && event1.endTime.isAfter(event2.startTime)) // Check for overlap
                 }
             }
 
