@@ -26,8 +26,6 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
     //initialize the events, travelTime, optimalEventOrder, and homeAddress
     private val events = events
-    private val travelTime = travelTime
-    private val homeAddress = homeAddress
     private val optimalEventOrder = optimalEventOrder
 
     //Request struct
@@ -51,7 +49,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
     private val request = okhttp3.Request.Builder()
         .url("https://api.openai.com/v1/chat/completions")
         .addHeader("Content-Type", "application/json")
-        .addHeader("Authorization", "${apiKey}")
+        .addHeader("Authorization", apiKey)
         .build()
 
     //Get a list of the events that are not allowed to be rescheduled by the AI
@@ -68,7 +66,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
     private val eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
         .map { event ->
-            "${event.name} goes from ${event?.startTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event?.endTime!!.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event?.location == "") homeAddress else event?.location} " +
+            "${event.name} goes from ${event.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event.location == "") homeAddress else event.location} " +
                     if (event.isOutside) "and is outdoors." else "." // If the event is outside, then add "and is outdoors."
         }
 
@@ -80,10 +78,8 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
     private var userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
 
 
-    /** This function is executed when it is not raining that day or there are no events that are outside.
-     * @param onComplete: Returns the response from the AI
+    /** This function is only for unit testing to test baseline functionality of the AI
      */
-    @Deprecated("This function is deprecated. Use the function with the nonRainingTimes parameter instead.")
     fun getResponse(onComplete: (String?) -> Unit) {
 
         if (isFullyOptimized()) {
@@ -91,7 +87,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             return
         }
 
-        var userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
+        val userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
 
         val systemContent = "Attempt to change the start times and end times of my events so they are in this order: ${optimalEventOrderString} " +
                 "You can do this by changing the startTime and endTime of the events. " +
@@ -104,7 +100,8 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         val httpPost = Request(model,
             response_format,
             systemContent,
-            "${userContent}")
+            userContent
+        )
 
         makeRequest(httpPost, onComplete)
     }
@@ -132,7 +129,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
 
         val systemContent = (if (hasRainingTimes) "Prioritize scheduling events that are outdoors between ${nonRainingTimesString}. "  else "") +
-                "Attempt to change the start times and end times of my events so they are in this order: ${optimalEventOrderString} " +
+                "Attempt to change the start times and end times of my events so they are in this order: $optimalEventOrderString " +
                 "You can do this by changing the startTime and endTime of the events. " +
                 //If there are events that aren't allowed to be rescheduled, list them here.
                 if (dontRescheduleEvents.isNotEmpty()) { "You may not reschedule the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
@@ -144,7 +141,8 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         val httpPost = Request(model,
             response_format,
             systemContent,
-            "${userContent}")
+            userContent
+        )
 
         makeRequest(httpPost, onComplete)
     }
@@ -158,7 +156,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             return
         }
 
-        val systemContent = "Attempt to change the start times and end times of my events so they are in this order: ${allowedOptimalEventOrderString} " +
+        val systemContent = "Attempt to change the start times and end times of my events so they are in this order: $allowedOptimalEventOrderString " +
                 "You can do this by changing the startTime and endTime of the events. " +
                 if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
                 "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
@@ -169,7 +167,8 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         val httpPost = Request(model,
             response_format,
             systemContent,
-            "${userContent}")
+            userContent
+        )
 
         makeRequest(httpPost, onComplete)
     }
@@ -208,7 +207,8 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         val httpPost = Request(model,
             response_format,
             systemContentOverride,
-            "${userContentOverride}")
+            userContentOverride
+        )
 
         makeRequest(httpPost, onComplete)
     }
@@ -218,7 +218,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             onComplete("FullyOptimized")
             return
         }
-        var userContentOverride: String = "Here are my events: $eventString."
+        val userContentOverride: String = "Here are my events: $eventString."
         val systemContentOverride = "Remove any events that have overlapping times" +
                 "You can do this by changing the startTime and endTime of the events. " +
                 if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
@@ -229,17 +229,16 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         val httpPost = Request(model,
             response_format,
             systemContentOverride,
-            "${userContentOverride}")
+            userContentOverride
+        )
 
         makeRequest(httpPost, onComplete)
 
     }
 
-    /** This function is only ran when either it is not raining outside or there are no outdoor events for the day.
-     * This function parses the response from the AI into the OptimizedSchedule object and calls the callback.
-     * @param callback: The callback function that is called after the response is parsed
+    /** This function should only be used for unit tests to make sure the output of the AI is parseable
+     * @param callback: Returns an OptimizedSchedule object
      */
-    @Deprecated("This function is deprecated. Use the function with the nonRainingTimes parameter instead.")
     fun parseResponse(callback: (OptimizedSchedule) -> Unit) {
         val parse = GsonBuilder().create()
         //After 5 attempts, give up
@@ -341,7 +340,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         }
 
         // Try each call 3 times
-        var maxRetries = 3
+        val maxRetries = 3
         // Make a call to the least struct mf
         fun thirdCall(iterations: Int, hasRainingTime: Boolean) {
          if (iterations > maxRetries) {
@@ -353,7 +352,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                     thirdCall(iterations + 1, hasRainingTime)
                 } else {
                     // Create optimized schedule object and parse output into object
-                    var optimizedSchedule: OptimizedSchedule
+                    val optimizedSchedule: OptimizedSchedule
                     try {
                         optimizedSchedule = parse.fromJson(it, OptimizedSchedule::class.java)
                     } catch (e: Exception) {
@@ -377,15 +376,15 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
          */
         fun secondCall(iterations: Int, hasRainingTime: Boolean) {
             if (iterations > maxRetries) {
-                callback(OptimizedSchedule(emptyList(), emptyList()))
-                //thirdCall(0, hasRainingTime)
+                //callback(OptimizedSchedule(emptyList(), emptyList()))
+                thirdCall(0, hasRainingTime)
                 return
             }
             getResponseBlockedEvents {
                 if (it == "Error") {
                     secondCall(iterations + 1, hasRainingTime)
                 } else {
-                    var optimizedSchedule: OptimizedSchedule
+                    val optimizedSchedule: OptimizedSchedule
                     try {
                         optimizedSchedule = parse.fromJson(it, OptimizedSchedule::class.java)
                     } catch (e: Exception) {
@@ -415,7 +414,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                 if (it == "Error") {
                     mainCall(iterations + 1, hasRainingTime)
                 } else {
-                    var optimizedSchedule: OptimizedSchedule
+                    val optimizedSchedule: OptimizedSchedule
                     try {
                         optimizedSchedule = parse.fromJson(it, OptimizedSchedule::class.java)
                     } catch (e: Exception) {

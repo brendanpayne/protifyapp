@@ -419,4 +419,97 @@ class Essential {
         // If the countDownLatch is not 0, the test will fail
         assert(countDownLatch.count == 0L)
     }
+
+    @Test
+    fun removeOverlappingEventsTest() {
+
+        // Create a list of events that are overlapping
+
+        val event1 = FirestoreEvent(
+            startTime = LocalDateTime.of(2024, 2, 20, 8, 0),
+            endTime = LocalDateTime.of(2024, 2, 20, 9, 0),
+            name = "Gaming",
+            nameLower = "",
+            location = "",
+            description = "",
+            timeZone = "",
+            importance = 0,
+            attendees = null,
+            rainCheck = false,
+            isRaining = false,
+            mapsCheck = false,
+            distance = 0,
+            isOutside = false,
+            isOptimized = false,
+            isAiSuggestion = false,
+            isUserAccepted = false
+        )
+        val event2 = FirestoreEvent(
+            startTime = LocalDateTime.of(2024, 2, 20, 8, 30),
+            endTime = LocalDateTime.of(2024, 2, 20, 10, 0),
+            name = "Work",
+            nameLower = "",
+            location = "",
+            description = "",
+            timeZone = "",
+            importance = 0,
+            attendees = null,
+            rainCheck = false,
+            isRaining = false,
+            mapsCheck = false,
+            distance = 0,
+            isOutside = false,
+            isOptimized = false,
+            isAiSuggestion = false,
+            isUserAccepted = false
+        )
+
+        val event3 = FirestoreEvent(
+            startTime = LocalDateTime.of(2024, 2, 20, 12, 0),
+            endTime = LocalDateTime.of(2024, 2, 20, 14, 0),
+            name = "Gym",
+            nameLower = "",
+            location = "",
+            description = "",
+            timeZone = "",
+            importance = 0,
+            attendees = null,
+            rainCheck = false,
+            isRaining = false,
+            mapsCheck = false,
+            distance = 0,
+            isOutside = false,
+            isOptimized = false,
+            isAiSuggestion = false,
+            isUserAccepted = false
+        )
+
+        // add the events to a list
+        val events = mutableListOf(event1, event2, event3)
+
+        // init countdown latch
+        val countDownLatch = CountDownLatch(1)
+
+
+        // Call the function to remove overlapping events, we're putting in a bunch of garbage because I wrote this class like garbage
+        OptimizeSchedule("", "", "", events, mutableListOf(), "", mutableListOf()).removeOverlappingEvents {
+
+            val overlapping = events.any { event1 ->
+                events.any { event2 ->
+                    event1 != event2 && event1.startTime.isBefore(event2.endTime) && event1.endTime.isAfter(event2.startTime)
+                }
+            }
+
+            if (!overlapping) {
+                countDownLatch.countDown()
+            } else {
+                assert(false) { "Events are overlapping" }
+            }
+        }
+        // Wait 20 seconds for the asynchronous code to finish
+        countDownLatch.await(20, java.util.concurrent.TimeUnit.SECONDS)
+        // If the countDownLatch is not 0, the test will fail
+        assert(countDownLatch.count == 0L) { "Timed out"}
+
+    }
 }
