@@ -25,8 +25,9 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
     val apiKey = APIKeys().getOpenAIKey()
 
     //initialize the events, travelTime, optimalEventOrder, and homeAddress
-    private val events = events
+    private var events = events
     private val optimalEventOrder = optimalEventOrder
+    private var homeAddress = homeAddress
 
     //Request struct
     data class Request(
@@ -64,13 +65,13 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
     //Turn allowedOptimalEventOrder into a string
     private val allowedOptimalEventOrderString = allowedOptimalEventOrder.mapIndexed { index, event -> "${index + 1}: ${event.name}" }.joinToString(", ")
 
-    private val eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
+    private var eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
         .map { event ->
             "${event.name} goes from ${event.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event.location == "") homeAddress else event.location} " +
                     if (event.isOutside) "and is outdoors." else "." // If the event is outside, then add "and is outdoors."
         }
 
-    private val eventString = eventList.joinToString(" ")
+    private var eventString = eventList.joinToString(" ")
     //Get the travel time, origin, and destination from the travelTime list
     private val travelTimeList = travelTime.map { travel -> "The distance between ${travel?.startLocation} and ${travel?.endLocation} is ${travel?.duration} " }
     private val travelTimeString = travelTimeList.joinToString(" ")
@@ -443,8 +444,16 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             }
 
         }
-        // It's called we do a little recursion
-        mainCall(0, hasRainingTimes)
+        if (hasOverlappingEvents) {
+            removeOverlappingEvents {
+                if (it.isNotEmpty()) {
+                    updateEvents(it) // Update the events list
+                    mainCall(0, hasRainingTimes) // Make the main call
+                }
+            }
+        } else {
+            mainCall(0, hasRainingTimes) // Make the main call
+        }
 
 
     }
@@ -674,6 +683,18 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             }
         })
 
+    }
+
+    private fun updateEvents(events: List<FirestoreEvent>) {
+        this.events = events
+        // Update eventList
+        this.eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
+            .map { event ->
+                "${event.name} goes from ${event.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event.location == "") homeAddress else event.location} " +
+                        if (event.isOutside) "and is outdoors." else "." // If the event is outside, then add "and is outdoors."
+            }
+        // update eventString
+        this.eventString = eventList.joinToString(" ")
     }
 
 }
