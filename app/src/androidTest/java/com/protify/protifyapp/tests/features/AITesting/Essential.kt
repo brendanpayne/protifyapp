@@ -429,59 +429,20 @@ class Essential {
             startTime = LocalDateTime.of(2024, 2, 20, 8, 0),
             endTime = LocalDateTime.of(2024, 2, 20, 9, 0),
             name = "Gaming",
-            nameLower = "",
-            location = "",
-            description = "",
-            timeZone = "",
-            importance = 0,
-            attendees = null,
-            rainCheck = false,
-            isRaining = false,
-            mapsCheck = false,
-            distance = 0,
-            isOutside = false,
-            isOptimized = false,
-            isAiSuggestion = false,
-            isUserAccepted = false
+            nameLower = ""
         )
         val event2 = FirestoreEvent(
             startTime = LocalDateTime.of(2024, 2, 20, 8, 30),
             endTime = LocalDateTime.of(2024, 2, 20, 10, 0),
             name = "Work",
-            nameLower = "",
-            location = "",
-            description = "",
-            timeZone = "",
-            importance = 0,
-            attendees = null,
-            rainCheck = false,
-            isRaining = false,
-            mapsCheck = false,
-            distance = 0,
-            isOutside = false,
-            isOptimized = false,
-            isAiSuggestion = false,
-            isUserAccepted = false
+            nameLower = ""
         )
 
         val event3 = FirestoreEvent(
             startTime = LocalDateTime.of(2024, 2, 20, 12, 0),
             endTime = LocalDateTime.of(2024, 2, 20, 14, 0),
             name = "Gym",
-            nameLower = "",
-            location = "",
-            description = "",
-            timeZone = "",
-            importance = 0,
-            attendees = null,
-            rainCheck = false,
-            isRaining = false,
-            mapsCheck = false,
-            distance = 0,
-            isOutside = false,
-            isOptimized = false,
-            isAiSuggestion = false,
-            isUserAccepted = false
+            nameLower = ""
         )
 
         // add the events to a list
