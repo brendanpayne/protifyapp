@@ -72,9 +72,11 @@ class Recipe {
         val systemContent = "Please give me a recipe that only includes the ingredients given to you and honors the type" +
                 " of diet specified. You must give me a recipe that I can make within the given time frame." +
                 " You must output in in the following json format. One object will be called ingredients and" +
-                " you will list the ingredients in a list. The other object will be called instructions and you will" +
-                " list the instructions in a list." +
-                " Another object will be called required time and you will list the time in minutes."
+                " you will list the ingredients in a list with their measurements in metric." +
+                " The other object will be called instructions and you will" +
+                " list the instructions in a numbered list." +
+                " Another object will be called required_time and you will list the time in minutes." +
+                " lastly, you will have an object called recipe_name and you will provide the name of the recipe."
 
         // Build user content
         val userContent = "I want a $dietString recipe that includes $ingredientsString ${if (excludeIngredientsString.isNotEmpty()) "but excludes $excludeIngredientsString" else ""} and takes $time minutes to make."
