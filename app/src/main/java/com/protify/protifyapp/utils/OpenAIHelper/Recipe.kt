@@ -48,6 +48,14 @@ class Recipe {
         .addHeader("Authorization", apiKey)
         .build()
 
+    /**
+     * Get a recipe based on the diet, time, ingredients, and optionally, exclude ingredients
+     * @param diet The diet type (Diet enum)
+     * @param time The time to make the recipe in minutes
+     * @param ingredients The ingredients to include in the recipe
+     * @param excludeIngredients The ingredients to exclude from the recipe
+     * @return Returns a string hopefully in the format of a RecipeResponse that needs to be serialized
+     */
     fun getRecipe(diet: Diet, time: Int, ingredients: List<String>, excludeIngredients: List<String>? = null, callback: (String) -> Unit) {
 
         // Convert diet to string
