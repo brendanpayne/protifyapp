@@ -1,0 +1,102 @@
+package com.protify.protifyapp.utils.OpenAIHelper
+
+import com.protify.protifyapp.FirestoreEvent
+import com.protify.protifyapp.FirestoreHelper
+import com.protify.protifyapp.features.GoogleMapsAPI.OptimizeRoute
+import com.protify.protifyapp.utils.MapsDurationUtils
+import com.protify.protifyapp.utils.MapsStopsUtils
+import com.protify.protifyapp.utils.WeatherUtils
+import java.time.LocalDateTime
+
+class GetAISchedule(uid: String, homeAddress: String) {
+
+    // Get the current time
+    val today: LocalDateTime = LocalDateTime.now() // This needs to be ran in a fashion like "today = today.PlusDays(1)" all the way to 7 days out
+    val uid = uid
+    val homeAddress = homeAddress
+    //TODO Need to make some logic so this will run for each day of the week (7 days out)
+
+    /** Gets the schedule for a day
+     * @param uid the user id
+     * @return A list of firestore events for that day and a boolean representing if the AI should be run
+     */
+    private fun getSchedule(today: LocalDateTime, callback: (List<FirestoreEvent>, Boolean) -> Unit) {
+        FirestoreHelper().getEvents(
+            uid = uid,
+            day = today.dayOfMonth.toString(),
+            month = today.month.toString(),
+            year = today.year.toString()
+        ) { events ->
+           // if there are no events, return an empty list
+            if (events.isEmpty()) {
+                callback(events, false)
+            } else {
+
+                // check to see isAiSuggestions is true and isUserSuggestions is false
+                val shouldOptimize = events.any { it.isAiSuggestion && !it.isUserAccepted }
+                callback(events, shouldOptimize)
+            }
+        }
+    }
+    /** This function attempts to get all of the events for a given day, and if there needs to be an optimization, it
+     * will get the optimized schedule and store it in the database
+     * @param callback a callback function that returns a boolean representing if the optimization was successful
+     */
+    fun getOptimizedSchedule(callback: (Boolean) -> Unit) {
+        //TODO probably add recursion here to run the optimization for each day of the week
+        getSchedule { events, shouldOptimize ->
+            if (shouldOptimize) {
+                // Get the locations from each of the events
+                val locations = events.map { it.location }.toMutableList()
+                // Get Travel time
+                MapsDurationUtils(today).getDrivingTimes(homeAddress = homeAddress, endLocations = locations) {drivingTimes ->
+                    // Get the matrix
+                    MapsDurationUtils(today).getMatrix(homeAddress = homeAddress, endLocations = locations) { matrix ->
+                        if (matrix != null && drivingTimes.isNotEmpty())
+                        {
+                            // Find the optimal order
+                            val optimalOrder = OptimizeRoute().findOptimalRoute(events, matrix)
+                            // Geocode the first event
+                            optimalOrder[0].location?.let {
+                                MapsDurationUtils(today).geocode(it) { lat, long ->
+                                    // Get the non raining times
+                                    WeatherUtils(lat, long).getNonRainingTimes(today) { nonRainingTimes ->
+                                        // Make the call
+                                        OptimizeSchedule(homeAddress = homeAddress,
+                                            day = today.dayOfMonth.toString(),
+                                            events = events,
+                                            month = today.monthValue.toString(),
+                                            optimalEventOrder = optimalOrder,
+                                            travelTime = drivingTimes.toMutableList(),
+                                            year = today.year.toString(),).makeCall(nonRainingTimes = nonRainingTimes) { optimizedEvents ->
+                                                if (optimizedEvents.events.isNotEmpty() && optimizedEvents.oldEvents.isNotEmpty()) {
+                                                    // Store the events into the database
+                                                    FirestoreHelper().importAIGeneratedEvent(optimizedSchedule = optimizedEvents, today, uid) { didSucceed ->
+                                                        if (didSucceed) {
+                                                            callback(true)
+                                                            // If the events were not able to be stored, then the optimization failed
+                                                        } else {
+                                                            callback(false)
+                                                        }
+                                                    }
+                                                        // If an empty list was returned, then the optimization failed
+                                                } else {
+                                                    callback(false)
+                                                }
+
+                                        }
+                                    }
+
+                                }
+                            }
+                            // If the matrix and the driving times were not able to be populated, then the optimization failed
+                        } else {
+                            callback(false)
+                        }
+                    }
+
+                }
+            }
+        }
+    }
+}
