@@ -4,14 +4,12 @@ import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.features.GoogleMapsAPI.OptimizeRoute
 import com.protify.protifyapp.utils.MapsDurationUtils
-import com.protify.protifyapp.utils.MapsStopsUtils
 import com.protify.protifyapp.utils.WeatherUtils
 import java.time.LocalDateTime
 
 class GetAISchedule(uid: String, homeAddress: String) {
 
     // Get the current time
-    val today: LocalDateTime = LocalDateTime.now() // This needs to be ran in a fashion like "today = today.PlusDays(1)" all the way to 7 days out
     val uid = uid
     val homeAddress = homeAddress
     //TODO Need to make some logic so this will run for each day of the week (7 days out)
@@ -20,7 +18,7 @@ class GetAISchedule(uid: String, homeAddress: String) {
      * @param uid the user id
      * @return A list of firestore events for that day and a boolean representing if the AI should be run
      */
-    private fun getSchedule(today: LocalDateTime, callback: (List<FirestoreEvent>, Boolean) -> Unit) {
+    fun getSchedule(today: LocalDateTime, callback: (List<FirestoreEvent>, Boolean) -> Unit) {
         FirestoreHelper().getEvents(
             uid = uid,
             day = today.dayOfMonth.toString(),
@@ -33,7 +31,7 @@ class GetAISchedule(uid: String, homeAddress: String) {
             } else {
 
                 // check to see isAiSuggestions is true and isUserSuggestions is false
-                val shouldOptimize = events.any { it.isAiSuggestion && !it.isUserAccepted }
+                val shouldOptimize = events.none { it.isAiSuggestion } || events.any { it.isAiSuggestion && !it.isUserAccepted }
                 callback(events, shouldOptimize)
             }
         }
@@ -42,9 +40,8 @@ class GetAISchedule(uid: String, homeAddress: String) {
      * will get the optimized schedule and store it in the database
      * @param callback a callback function that returns a boolean representing if the optimization was successful
      */
-    fun getOptimizedSchedule(callback: (Boolean) -> Unit) {
-        //TODO probably add recursion here to run the optimization for each day of the week
-        getSchedule { events, shouldOptimize ->
+    fun getOptimizedSchedule(today: LocalDateTime, callback: (Boolean) -> Unit) {
+        getSchedule(today) { events, shouldOptimize ->
             if (shouldOptimize) {
                 // Get the locations from each of the events
                 val locations = events.map { it.location }.toMutableList()
@@ -68,7 +65,7 @@ class GetAISchedule(uid: String, homeAddress: String) {
                                             month = today.monthValue.toString(),
                                             optimalEventOrder = optimalOrder,
                                             travelTime = drivingTimes.toMutableList(),
-                                            year = today.year.toString(),).makeCall(nonRainingTimes = nonRainingTimes) { optimizedEvents ->
+                                            year = today.year.toString()).makeCall(nonRainingTimes = nonRainingTimes) { optimizedEvents ->
                                                 if (optimizedEvents.events.isNotEmpty() && optimizedEvents.oldEvents.isNotEmpty()) {
                                                     // Store the events into the database
                                                     FirestoreHelper().importAIGeneratedEvent(optimizedSchedule = optimizedEvents, today, uid) { didSucceed ->
@@ -96,7 +93,19 @@ class GetAISchedule(uid: String, homeAddress: String) {
                     }
 
                 }
+                // If there are no events to optimize, don't run the optimization
+            } else {
+                callback(false)
             }
+        }
+    }
+    /** This function runs the optimization check for every day of the week (which is what weather data is available for)
+     */
+    fun checkWeekScheduleForOptimization() {
+        for (i in 0..6) {
+            val today = LocalDateTime.now().plusDays(i.toLong())
+            // I've got basic error checking to see if it failed, but I don't see a reason to do anything with the error
+            getOptimizedSchedule(today) {}
         }
     }
 }

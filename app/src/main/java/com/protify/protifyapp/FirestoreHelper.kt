@@ -154,6 +154,7 @@ class FirestoreHelper() {
         year: String,
         callback: (List<FirestoreEvent>) -> Unit
     ) {
+
         val upperMonth = month.uppercase()
         db.collection("users")
             .document(uid)
@@ -450,7 +451,7 @@ class FirestoreHelper() {
             .whereEqualTo("nameLower", FirebaseEvent.nameLower)
             .get()
             .addOnSuccessListener { result ->
-                if (result.size() == 1) {
+                if (result.size() != -1) {
                     for (document in result) {
                         db.collection("users")
                             .document(uid)
@@ -472,6 +473,9 @@ class FirestoreHelper() {
                     Log.w("GoogleFirestore", "More than one document found")
                     callback(false)
                 }
+            }.addOnFailureListener {
+                Log.w("GoogleFirestore", "EXCEPTION: $it")
+                callback(false)
             }
 
     }
@@ -799,7 +803,7 @@ class FirestoreHelper() {
                 // Create a map of the FirestoreEvent and the respective optmizedEvent
                 val eventMap = mutableMapOf<FirestoreEvent, OptimizedSchedule.Event>()
                 if (index >= optimizedSchedule.events.size) {
-                    callback(true)
+                    //callback(true)
                     return
                 }
                 // Get the event at the index
@@ -865,6 +869,9 @@ class FirestoreHelper() {
             }
             // Init importEvent
             importEvent(0)
+
+        } else {
+            callback(false)
 
         }
 
@@ -994,6 +1001,8 @@ class FirestoreHelper() {
                                     }
                             }
                         }
+                    }.addOnFailureListener {
+                        Log.w("GoogleFirestore", "Nothing found")
                     }
             }
 

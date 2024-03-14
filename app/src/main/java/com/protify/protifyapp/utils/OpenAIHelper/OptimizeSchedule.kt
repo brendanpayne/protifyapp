@@ -363,6 +363,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                     // At this point, we're down bad so we're not going to quality check it. If we got output, we giving it to the user
                     if (optimizedSchedule.nullCheck()) {
                         callback(optimizedSchedule)
+                        return@getResponseNoLocationData
                     } else {
                         thirdCall(iterations + 1, hasRainingTime)
                     }
@@ -432,6 +433,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                     } else {
                         if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {
                             callback(optimizedSchedule)
+                            return@getResponse
                         } else {
                             if (hasOptimizedEvents && iterations > 2) {
                                 mainCall(iterations, hasRainingTime)
@@ -500,7 +502,14 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
     fun removeOverlappingEvents(callback: (List<FirestoreEvent>) -> Unit) {
         getResponseOverlappingEvents { response ->
             val parse = GsonBuilder().create()
-            val optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+            // try catch
+            val optimizedSchedule: OptimizedSchedule
+            try {
+                optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+            } catch (e: Exception) {
+                callback(emptyList())
+                return@getResponseOverlappingEvents
+            }
             if (optimizedSchedule.nullCheck()) {
                 // map the start time and end times of the response.events to the events list
                 val newEvents: List<FirestoreEvent> = events.map { event ->
