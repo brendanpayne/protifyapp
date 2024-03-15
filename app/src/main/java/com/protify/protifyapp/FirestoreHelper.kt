@@ -820,49 +820,52 @@ class FirestoreHelper() {
                         // Map the OptmizedEvent to the FirestoreEvent
                         eventMap[firestoreEvent] = optimizedEvent
                         nonNullEvents++
-                    }
-                    if (nonNullEvents == optimizedSchedule.events.size) {
-                        // init int to count the number of events that were successfully imported
-                        var importedEvents = 0
-                        // If all events are found, import them
-                        for (event in optimizedSchedule.events) {
-                            // Get the FirestoreEvent from the map
-                            val firestoreEvent = eventMap.filterValues { it == event }.keys.first()
-                            // Make a new FirestoreEvent with the new start and end times
-                            val newFirestoreEvent = FirestoreEvent(
-                                name = firestoreEvent.name,
-                                startTime = ParseTime().parseTime(event.startTime, today),
-                                endTime = ParseTime().parseTime(event.endTime, today),
-                                location = firestoreEvent.location,
-                                description = firestoreEvent.description,
-                                timeZone = firestoreEvent.timeZone,
-                                importance = firestoreEvent.importance,
-                                attendees = firestoreEvent.attendees,
-                                rainCheck = firestoreEvent.rainCheck,
-                                isRaining = firestoreEvent.isRaining,
-                                mapsCheck = firestoreEvent.mapsCheck,
-                                distance = firestoreEvent.distance,
-                                nameLower = firestoreEvent.nameLower,
-                                isOutside = firestoreEvent.isOutside,
-                                isOptimized = false, // This is false because if the event was optimized, it means the user would have had to set this value to false
-                                isAiSuggestion = true,
-                                isUserAccepted = false
-                            )
-                            // Add the new FirestoreEvent to the database
-                            createEvent(uid, newFirestoreEvent) {
-                                // If the event is successfully imported, increment the importedEvents int
-                                if (it) {
-                                    importedEvents++
-                                    if (importedEvents == optimizedSchedule.events.size) {
-                                        callback(true)
-                                    }
 
-                                } else {
-                                    // fail if any of the events fail to import
-                                    callback(false)
+                        if (nonNullEvents == optimizedSchedule.events.size) {
+                            // init int to count the number of events that were successfully imported
+                            var importedEvents = 0
+                            // If all events are found, import them
+                            for (event in optimizedSchedule.events) {
+                                // Get the FirestoreEvent from the map
+                                val firestoreEvent = eventMap.filterValues { it == event }.keys.first()
+                                // Make a new FirestoreEvent with the new start and end times
+                                val newFirestoreEvent = FirestoreEvent(
+                                    name = firestoreEvent.name,
+                                    startTime = ParseTime().parseTime(event.startTime, today),
+                                    endTime = ParseTime().parseTime(event.endTime, today),
+                                    location = firestoreEvent.location,
+                                    description = firestoreEvent.description,
+                                    timeZone = firestoreEvent.timeZone,
+                                    importance = firestoreEvent.importance,
+                                    attendees = firestoreEvent.attendees,
+                                    rainCheck = firestoreEvent.rainCheck,
+                                    isRaining = firestoreEvent.isRaining,
+                                    mapsCheck = firestoreEvent.mapsCheck,
+                                    distance = firestoreEvent.distance,
+                                    nameLower = firestoreEvent.nameLower,
+                                    isOutside = firestoreEvent.isOutside,
+                                    isOptimized = false, // This is false because if the event was optimized, it means the user would have had to set this value to false
+                                    isAiSuggestion = true,
+                                    isUserAccepted = false
+                                )
+                                // Add the new FirestoreEvent to the database
+                                createEvent(uid, newFirestoreEvent) {
+                                    // If the event is successfully imported, increment the importedEvents int
+                                    if (it) {
+                                        importedEvents++
+                                        if (importedEvents == optimizedSchedule.events.size) {
+                                            callback(true)
+                                        }
+
+                                    } else {
+                                        // fail if any of the events fail to import
+                                        callback(false)
+                                    }
                                 }
                             }
                         }
+                    } else {
+                        callback(false)
                     }
                 }
                 importEvent(index + 1)
