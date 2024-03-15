@@ -786,99 +786,58 @@ class FirestoreHelper() {
      * @param uid: The user's uid
      * @param callback: A callback function that will return true if the all events were imported successfully, and false if they were not
      */
-    fun importAIGeneratedEvent(
-        optimizedSchedule: OptimizedSchedule,
-        today: LocalDateTime,
-        uid: String,
-        callback: (Boolean) -> Unit
-    ) {
+   fun importAIGeneratedEvent(
+    optimizedSchedule: OptimizedSchedule,
+    today: LocalDateTime,
+    uid: String,
+    callback: (Boolean) -> Unit
+) {
+    // Make sure old events and new events are different
+    if (optimizedSchedule.events == optimizedSchedule.oldEvents) {
+        callback(false)
+        return
+    }
 
-        // Make sure old events and new events are different
-        if (optimizedSchedule.events != optimizedSchedule.oldEvents) {
+    var importedEvents = 0
 
-            // Recursive function to import events sequentially
-            fun importEvent(index: Int) {
-                // Count the number of events that can be queried from the database
-                var nonNullEvents: Int = 0
-                // Create a map of the FirestoreEvent and the respective optmizedEvent
-                val eventMap = mutableMapOf<FirestoreEvent, OptimizedSchedule.Event>()
-                if (index >= optimizedSchedule.events.size) {
-                    //callback(true)
-                    return
-                }
-                // Get the event at the index
-                val optimizedEvent = optimizedSchedule.events[index]
-                // Make sure all of the events can be found in the database first
-                getEvent(
-                    uid,
-                    today.dayOfMonth.toString(),
-                    today.month.toString(),
-                    today.year.toString(),
-                    optimizedEvent.name
-                ) { eventId, firestoreEvent ->
-                    if (eventId != null) {
-                        // Map the OptmizedEvent to the FirestoreEvent
-                        eventMap[firestoreEvent] = optimizedEvent
-                        nonNullEvents++
+    for (optimizedEvent in optimizedSchedule.events) {
+        // Get the event from the db
+        getEvent(
+            uid,
+            today.dayOfMonth.toString(),
+            today.month.toString(),
+            today.year.toString(),
+            optimizedEvent.name,
+        ) { eventId, event ->
+            // If the event is found, modify it
+            if (eventId != null) {
+                event.startTime = ParseTime().parseTime(optimizedEvent.startTime, today)
+                event.endTime = ParseTime().parseTime(optimizedEvent.endTime, today)
+                event.isAiSuggestion = true
+                event.isUserAccepted = false
 
-                        if (nonNullEvents == optimizedSchedule.events.size) {
-                            // init int to count the number of events that were successfully imported
-                            var importedEvents = 0
-                            // If all events are found, import them
-                            for (event in optimizedSchedule.events) {
-                                // Get the FirestoreEvent from the map
-                                val firestoreEvent = eventMap.filterValues { it == event }.keys.first()
-                                // Make a new FirestoreEvent with the new start and end times
-                                val newFirestoreEvent = FirestoreEvent(
-                                    name = firestoreEvent.name,
-                                    startTime = ParseTime().parseTime(event.startTime, today),
-                                    endTime = ParseTime().parseTime(event.endTime, today),
-                                    location = firestoreEvent.location,
-                                    description = firestoreEvent.description,
-                                    timeZone = firestoreEvent.timeZone,
-                                    importance = firestoreEvent.importance,
-                                    attendees = firestoreEvent.attendees,
-                                    rainCheck = firestoreEvent.rainCheck,
-                                    isRaining = firestoreEvent.isRaining,
-                                    mapsCheck = firestoreEvent.mapsCheck,
-                                    distance = firestoreEvent.distance,
-                                    nameLower = firestoreEvent.nameLower,
-                                    isOutside = firestoreEvent.isOutside,
-                                    isOptimized = false, // This is false because if the event was optimized, it means the user would have had to set this value to false
-                                    isAiSuggestion = true,
-                                    isUserAccepted = false
-                                )
-                                // Add the new FirestoreEvent to the database
-                                createEvent(uid, newFirestoreEvent) {
-                                    // If the event is successfully imported, increment the importedEvents int
-                                    if (it) {
-                                        importedEvents++
-                                        if (importedEvents == optimizedSchedule.events.size) {
-                                            callback(true)
-                                        }
-
-                                    } else {
-                                        // fail if any of the events fail to import
-                                        callback(false)
-                                    }
-                                }
-                            }
+                // Shove the event back into the database :D
+                createEvent(uid, event) { success ->
+                    if (success) {
+                        importedEvents++
+                        if (importedEvents == optimizedSchedule.events.size) {
+                            callback(true)
                         }
                     } else {
                         callback(false)
+                        return@createEvent
                     }
                 }
-                importEvent(index + 1)
-            }
-            // Init importEvent
-            importEvent(0)
 
-        } else {
-            callback(false)
+            }
+            else { // Event ID was null either because there was more than one event with that name or other
+                callback(false)
+                return@getEvent
+            }
 
         }
-
     }
+}
 
     /** This function will get all of the AI generated events for a given day that the user has not accepted.
      * @param uid: The user's uid
