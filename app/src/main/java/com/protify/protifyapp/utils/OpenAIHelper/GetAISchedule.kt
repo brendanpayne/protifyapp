@@ -12,7 +12,6 @@ class GetAISchedule(uid: String, homeAddress: String) {
     // Get the current time
     val uid = uid
     val homeAddress = homeAddress
-    //TODO Need to make some logic so this will run for each day of the week (7 days out)
 
     /** Gets the schedule for a day
      * @param uid the user id

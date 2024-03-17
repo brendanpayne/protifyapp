@@ -22,7 +22,7 @@ import java.time.format.DateTimeFormatter
  */
 class OptimizeSchedule(day: String, month: String, year: String, events: List<FirestoreEvent>, travelTime: MutableList<DrivingTime?>, homeAddress: String, optimalEventOrder: List<FirestoreEvent>) {
     //Get openAI key
-    val apiKey = APIKeys().getOpenAIKey()
+    private val apiKey = APIKeys().getOpenAIKey()
 
     //initialize the events, travelTime, optimalEventOrder, and homeAddress
     private var events = events
@@ -32,7 +32,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
     //Request struct
     data class Request(
         val model: String,
-        val response_format: String,
+        val responseFormat: String,
         var systemContent: String,
         var userContent: String
     )
@@ -91,21 +91,14 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         val userContent = "Here are my events: $eventString. Here are the times it takes to get to each location: $travelTimeString"
 
-        val systemContent = "Attempt to change the start times and end times of my events so they are in this order: ${optimalEventOrderString} " +
+        val systemContent = "Attempt to change the start times and end times of my events so they are in this order: $optimalEventOrderString " +
                 "You can do this by changing the startTime and endTime of the events. " +
                  if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
                 "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
                 "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
                 "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
 
-        //Make a new request object
-        val httpPost = Request(model,
-            responseFormat,
-            systemContent,
-            userContent
-        )
-
-        makeRequest(httpPost, onComplete)
+        makeRequest(systemContent, userContent, onComplete)
     }
 
     /** This function is only when when both it is raining outside and there are outdoor events for the day.
@@ -121,7 +114,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         // Init nonRainingTimes bool
         val hasRainingTimes = hasRainingTimes(nonRainingTimes)
 
-        var systemContent: String
+        val systemContent: String
         if (use4) {
             systemContent = AIPrompts().prioritizeEventOrderPrompt(hasRainingTimes, nonRainingTimes.formatNonRainingTimesToString(), dontRescheduleEvents)
 
@@ -129,20 +122,13 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             systemContent = AIPrompts().comprehensivePromptWithOptimalEventOrder(hasRainingTimes, nonRainingTimes.formatNonRainingTimesToString(), optimalEventOrderString, dontRescheduleEvents)
         }
 
-        //Make a new request object
-        val httpPost = Request(model,
-            responseFormat,
-            systemContent,
-            userContent
-        )
-
-        makeRequest(httpPost, onComplete)
+        makeRequest(systemContent, userContent, onComplete)
     }
     /** This function is only ran when the user has one or more event's that aren't allowed to be rescheduled.
      * This function parses the response from the AI into the OptimizedSchedule object and calls the callback.
      * @param onComplete: The callback function that is called after the response is parsed
      */
-    fun getResponseBlockedEvents(onComplete: (String?) -> Unit) {
+    private fun getResponseBlockedEvents(onComplete: (String?) -> Unit) {
         if (isFullyOptimized()) {
             onComplete("FullyOptimized")
             return
@@ -150,14 +136,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         val systemContent = AIPrompts().blockedEventsPrompt(allowedOptimalEventOrderString, dontRescheduleEvents)
 
-        //Make a new request object
-        val httpPost = Request(model,
-            responseFormat,
-            systemContent,
-            userContent
-        )
-
-        makeRequest(httpPost, onComplete)
+        makeRequest(systemContent, userContent, onComplete)
     }
 
     /** This function is nearly identical to the getResponse function, except it doesn't tell the AI which order to put the events in
@@ -166,44 +145,31 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
      * @param nonRainingTimes list of non-raining times for the day
      * @param onComplete Returns the AI response
      */
-    fun getResponseNoLocationData(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, onComplete: (String?) -> Unit) {
+    private fun getResponseNoLocationData(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, onComplete: (String?) -> Unit) {
         if (isFullyOptimized()) {
             onComplete("FullyOptimized")
             return
         }
 
         // Init nonRainingTimes bool
-        var hasRainingTimes = hasRainingTimes(nonRainingTimes)
+        val hasRainingTimes = hasRainingTimes(nonRainingTimes)
 
         val userContentOverride = "Here is a list of the events I have today: $eventString"
 
         val systemContentOverride = AIPrompts().noEventOrderPrompt(hasRainingTimes, nonRainingTimes.formatNonRainingTimesToString(), dontRescheduleEvents)
 
-        // Build the request object
-        val httpPost = Request(model,
-            responseFormat,
-            systemContentOverride,
-            userContentOverride
-        )
-
-        makeRequest(httpPost, onComplete)
+        makeRequest(systemContentOverride, userContentOverride, onComplete)
     }
 
-    fun getResponseOverlappingEvents(onComplete: (String?) -> Unit) {
+    private fun getResponseOverlappingEvents(onComplete: (String?) -> Unit) {
         if (isFullyOptimized()) {
             onComplete("FullyOptimized")
             return
         }
-        val userContentOverride: String = "Here are my events: $eventString."
+        val userContentOverride = "Here are my events: $eventString."
         val systemContentOverride = AIPrompts().overlappingEventsPrompt(dontRescheduleEvents)
 
-        val httpPost = Request(model,
-            responseFormat,
-            systemContentOverride,
-            userContentOverride
-        )
-
-        makeRequest(httpPost, onComplete)
+        makeRequest(systemContentOverride, userContentOverride, onComplete)
 
     }
 
@@ -308,7 +274,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         val parse = GsonBuilder().create()
 
         // init has overlapping events
-        var hasOverlappingEvents: Boolean = false
+        var hasOverlappingEvents = false
 
         // Check for overlapping events
         if (events.any { event -> events.any { it != event && it.startTime.isBefore(event.endTime) && it.endTime.isAfter(event.startTime) } }) {
@@ -410,9 +376,9 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                             return@getResponse
                         } else {
                             if (hasOptimizedEvents && iterations > 2) {
-                                mainCall(iterations, hasRainingTime)
+                                mainCall(iterations, false)
                             } else {
-                                mainCall(iterations + 1, hasRainingTime)
+                                mainCall(iterations + 1, false)
                             }
                         }
                     }
@@ -625,16 +591,24 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
     }
 
     /** This formats the API request and makes a post to GPT API
-     * @param httpPost Request object
-     * @param onComplete Callback returns response in the form of a string, and if there was a failure, will return "Error"
+     * @param systemContent: The system content that is to be sent to the API
+     * @param userContent: The user content that is to be sent to the API
+     * @param onComplete: The callback function that is called after the response is parsed
      */
-    private fun makeRequest(httpPost: Request, onComplete: (String) -> Unit) {
+    private fun makeRequest(systemContent: String, userContent: String, onComplete: (String) -> Unit) {
+
+        // Make a request object
+        val httpPost = Request(model,
+            responseFormat,
+            systemContent,
+            userContent
+        )
 
         val requestBody = request.newBuilder()
             .post(
                 """{
     "model": "${httpPost.model}",
-    "response_format": ${httpPost.response_format},
+    "response_format": ${httpPost.responseFormat},
     "messages": [
       {
         "role": "system",
