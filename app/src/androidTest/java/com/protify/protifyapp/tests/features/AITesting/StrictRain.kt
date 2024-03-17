@@ -228,9 +228,18 @@ class StrictRain {
             drivingTimes,
             Essential.homeAddress,
             optimalOrder
-        ).parseResponse(nonRainingTimes) { response ->
+        ).getResponse(nonRainingTimes) { response ->
+
+            // Parse response into OptimizedSchedule object
+            var optimizedSchedule: OptimizedSchedule = OptimizedSchedule(events = emptyList(), oldEvents = emptyList()) // Create empty list
+            try {
+                optimizedSchedule = gson.fromJson(response, OptimizedSchedule::class.java)
+            } catch (e: Exception) {
+                assert(false) {"The response is not in the correct format"}
+            }
+
             // In the function, if it fails 5 times in a row, it will return empty lists
-            if (response.events.isEmpty() || response.oldEvents.isEmpty()) {
+            if (optimizedSchedule.events.isEmpty() || optimizedSchedule.oldEvents.isEmpty()) {
                 // If the response is empty, the test will fail
                 assert(false) {"The response is empty likely due to incorrect formatting of the input data or an error in the API call."}
             } else {
@@ -241,15 +250,15 @@ class StrictRain {
                     responseFile.createNewFile()
                 }
                 // Write the response to the file
-                responseFile.writeText(gson.toJson(response))
+                responseFile.writeText(gson.toJson(optimizedSchedule))
                 // If the response is not empty, the test will pass
                 countDownLatch.countDown()
             }
         }
-        // Wait 60 seconds for the asynchronous code to finish
-        countDownLatch.await()
+        // Wait 25 seconds for the asynchronous code to finish
+        countDownLatch.await(85, java.util.concurrent.TimeUnit.SECONDS)
         // If the countDownLatch is not 0, the test will fail
-        assert(countDownLatch.count == 0L)
+        assert(countDownLatch.count == 0L) {"No response was received from the AI"}
 
     }
 
@@ -375,5 +384,76 @@ class StrictRain {
         }
         // If you made it this far, the test will pass
         assert(true)
+    }
+
+    @Test
+    fun makeCallTest() {
+
+        // init latch
+        val countDownLatch = CountDownLatch(1)
+        // init gson
+        val gson = Gson()
+        //Get the json files
+        val eventsFile = File(context.filesDir, "events.json")
+        val drivingTimesFile = File(context.filesDir, "drivingTimes.json")
+        val optimalOrderFile = File(context.filesDir, "optimalOrder.json")
+
+        // Convert the json files to objects
+        val eventsString: List<FirestoreEventString> =
+            gson.fromJson(eventsFile.readText(), Array<FirestoreEventString>::class.java).toList()
+        val drivingTimes: MutableList<DrivingTime?> =
+            gson.fromJson(drivingTimesFile.readText(), Array<DrivingTime>::class.java)
+                .toMutableList()
+        val optimalOrder: List<FirestoreEvent> =
+            gson.fromJson(optimalOrderFile.readText(), Array<FirestoreEvent>::class.java).toList()
+
+        // Convert List<FirestoreEventString> to List<FirestoreEvent>
+        val events = eventsString.map {
+            FirestoreEvent(
+                it.name,
+                it.nameLower,
+                LocalDateTime.parse(it.startTime),
+                LocalDateTime.parse(it.endTime),
+                it.location,
+                it.description,
+                it.timeZone,
+                it.importance,
+                it.attendees,
+                it.rainCheck,
+                it.isRaining,
+                it.mapsCheck,
+                it.distance,
+                it.isOutside,
+                it.isOptimized,
+                isUserAccepted = false,
+                isAiSuggestion = false
+            )
+        }
+
+        // Make the call
+        OptimizeSchedule(
+            Essential.today.dayOfMonth.toString(),
+            Essential.today.month.toString(),
+            Essential.today.year.toString(),
+            events,
+            drivingTimes,
+            Essential.homeAddress,
+            optimalOrder
+        ).makeCall(nonRainingTimes) { response ->
+
+            // In the function, if it fails 5 times in a row, it will return empty lists
+            if (response.events.isEmpty() || response.oldEvents.isEmpty()) {
+                // If the response is empty, the test will fail
+                assert(false) {"The response is empty likely due to incorrect formatting of the input data or an error in the API call."}
+            } else {
+                // If the response is not empty, the test will pass
+                countDownLatch.countDown()
+            }
+        }
+        // Wait 2 minutes for the asynchronous code to finish
+        countDownLatch.await(120, java.util.concurrent.TimeUnit.SECONDS)
+        // If the countDownLatch is not 0, the test will fail
+        assert(countDownLatch.count == 0L) {"No response was received from the AI"}
+
     }
 }
