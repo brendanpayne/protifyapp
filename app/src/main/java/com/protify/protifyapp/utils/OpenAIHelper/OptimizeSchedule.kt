@@ -36,10 +36,10 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         var systemContent: String,
         var userContent: String
     )
-    private val model = "gpt-3.5-turbo-0125"
+    private var model = "gpt-3.5-turbo" // Use 3.5 by default
     //GPT 4 goated. GPT 3.5 is not reorganizing the shcedule properly, but GPT 4 is
     //private val model = "gpt-4-0125-preview"
-    private val response_format = """{ "type": "json_object" }"""
+    private val responseFormat = """{ "type": "json_object" }"""
 
     private val client: OkHttpClient = OkHttpClient().newBuilder()
         .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
@@ -81,6 +81,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
     /** This function is only for unit testing to test baseline functionality of the AI
      */
+    @Deprecated("This function is only for unit testing")
     fun getResponse(onComplete: (String?) -> Unit) {
 
         if (isFullyOptimized()) {
@@ -99,7 +100,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         //Make a new request object
         val httpPost = Request(model,
-            response_format,
+            responseFormat,
             systemContent,
             userContent
         )
@@ -111,36 +112,26 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
      * @param nonRainingTimes: A list of non-raining times for the day
      * @param onComplete: Returns the response from the AI
      */
-    fun getResponse(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, onComplete: (String?) -> Unit) {
+    fun getResponse(use4: Boolean = false, nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, onComplete: (String?) -> Unit) {
         if (isFullyOptimized()) {
             onComplete("FullyOptimized")
             return
         }
 
         // Init nonRainingTimes bool
-        var hasRainingTimes = true
-        // Check if the nonRainingTimes list is 0:00-00:00
-        if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0) {
-            hasRainingTimes = false
+        val hasRainingTimes = hasRainingTimes(nonRainingTimes)
+
+        var systemContent: String
+        if (use4) {
+            systemContent = AIPrompts().prioritizeEventOrderPrompt(hasRainingTimes, nonRainingTimes.formatNonRainingTimesToString(), dontRescheduleEvents)
+
+        } else {
+            systemContent = AIPrompts().comprehensivePromptWithOptimalEventOrder(hasRainingTimes, nonRainingTimes.formatNonRainingTimesToString(), optimalEventOrderString, dontRescheduleEvents)
         }
-
-        //Turn the list of non-raining times into a string
-        val nonRainingTimesString = nonRainingTimes.joinToString(" ") { (start, end) -> "${start.format(DateTimeFormatter.ofPattern("HH:mm"))} and ${end.format(DateTimeFormatter.ofPattern("HH:mm"))} " }
-
-
-
-        val systemContent = (if (hasRainingTimes) "Prioritize scheduling events that are outdoors between ${nonRainingTimesString}. "  else "") +
-                "Attempt to change the start times and end times of my events so they are in this order: $optimalEventOrderString " +
-                "You can do this by changing the startTime and endTime of the events. " +
-                //If there are events that aren't allowed to be rescheduled, list them here.
-                if (dontRescheduleEvents.isNotEmpty()) { "You may not reschedule the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
-                "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
-                "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
-                "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
 
         //Make a new request object
         val httpPost = Request(model,
-            response_format,
+            responseFormat,
             systemContent,
             userContent
         )
@@ -157,16 +148,11 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             return
         }
 
-        val systemContent = "Attempt to change the start times and end times of my events so they are in this order: $allowedOptimalEventOrderString " +
-                "You can do this by changing the startTime and endTime of the events. " +
-                if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
-                "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
-                "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
-                "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
+        val systemContent = AIPrompts().blockedEventsPrompt(allowedOptimalEventOrderString, dontRescheduleEvents)
 
         //Make a new request object
         val httpPost = Request(model,
-            response_format,
+            responseFormat,
             systemContent,
             userContent
         )
@@ -187,26 +173,15 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         }
 
         // Init nonRainingTimes bool
-        var hasRainingTimes = true
-        // Check if the nonRainingTimes list is 0:00-00:00
-        if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0) {
-            hasRainingTimes = false
-        }
-
-        //Turn the list of non-raining times into a string
-        val nonRainingTimesString = nonRainingTimes.joinToString(" ") { (start, end) -> "${start.format(DateTimeFormatter.ofPattern("HH:mm"))} and ${end.format(DateTimeFormatter.ofPattern("HH:mm"))} " }
+        var hasRainingTimes = hasRainingTimes(nonRainingTimes)
 
         val userContentOverride = "Here is a list of the events I have today: $eventString"
 
-        val systemContentOverride =   (if (hasRainingTimes) "Prioritize scheduling events that are outdoors between ${nonRainingTimesString}. "  else "") +
-            if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
-                "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
-                "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
-                "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
+        val systemContentOverride = AIPrompts().noEventOrderPrompt(hasRainingTimes, nonRainingTimes.formatNonRainingTimesToString(), dontRescheduleEvents)
 
         // Build the request object
         val httpPost = Request(model,
-            response_format,
+            responseFormat,
             systemContentOverride,
             userContentOverride
         )
@@ -220,15 +195,10 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             return
         }
         val userContentOverride: String = "Here are my events: $eventString."
-        val systemContentOverride = "Remove any events that have overlapping times." +
-                "You can do this by changing the startTime and endTime of the events. " +
-                if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
-                "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
-                "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
-                "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
+        val systemContentOverride = AIPrompts().overlappingEventsPrompt(dontRescheduleEvents)
 
         val httpPost = Request(model,
-            response_format,
+            responseFormat,
             systemContentOverride,
             userContentOverride
         )
@@ -240,6 +210,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
     /** This function should only be used for unit tests to make sure the output of the AI is parseable
      * @param callback: Returns an OptimizedSchedule object
      */
+    @Deprecated("This function is only for unit testing")
     fun parseResponse(callback: (OptimizedSchedule) -> Unit) {
         val parse = GsonBuilder().create()
         //After 5 attempts, give up
@@ -287,7 +258,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                 callback(OptimizedSchedule(emptyList(), emptyList()))
                 return
             }
-            getResponse(nonRainingTimes) { response ->
+            getResponse(false, nonRainingTimes) { response ->
                 if (response == "Error") {
                     retry(retries + 1)
                 }
@@ -314,7 +285,11 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
      * @param nonRainingTimes Needed whether or not it is raining outside
      * @param callback returns the schedule that will be handed off to firestore. In the event of an error, two empty lists will be passed to the callback
      */
-    fun makeCall(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, callback: (OptimizedSchedule) -> Unit) {
+    fun makeCall(use4: Boolean = false, nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, callback: (OptimizedSchedule) -> Unit) {
+
+        if (use4) {
+            model = "gpt-4-turbo-preview" // This points to the latest (best?) model
+        }
 
         // init hasOptimizedEvents bool
         var hasOptimizedEvents = false
@@ -340,8 +315,8 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             hasOverlappingEvents = true
         }
 
-        // Try each call 3 times
-        val maxRetries = 3
+        // If 4.0 is used, only try twice, else try 3 times (cost savings!)
+        val maxRetries = if(use4) 2 else 3
         // Make a call to the least struct mf
         fun thirdCall(iterations: Int, hasRainingTime: Boolean) {
          if (iterations > maxRetries) {
@@ -412,7 +387,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                 secondCall(0, hasRainingTime)
                 return
             }
-            getResponse(nonRainingTimes) {
+            getResponse(use4, nonRainingTimes) {
                 if (it == "Error") {
                     mainCall(iterations + 1, hasRainingTime)
                 } else {
@@ -423,7 +398,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                         mainCall(iterations + 1, hasRainingTime)
                         return@getResponse
                     }
-                    // If it has non rainging times, make sure to check for that
+                    // If it has non raining times, make sure to check for that
                     if (hasRainingTime) {
                         if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule, nonRainingTimes)) {
                             callback(optimizedSchedule)
@@ -446,6 +421,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             }
 
         }
+        // If there are overlapping events, then remove them before making the main call
         if (hasOverlappingEvents) {
             removeOverlappingEvents {
                 if (it.isNotEmpty()) {
@@ -593,18 +569,18 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
      * @return: Returns true if the schedule is fully optimized, else false
      */
     private fun qualityCheck(optimizedSchedule: OptimizedSchedule, nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>? = null): Boolean {
-        var passedQaulityCheck = true
+        var passedQualityCheck = true
         // Check that the number of events is the same
         if (optimizedSchedule.events.size != events.size) {
-            passedQaulityCheck = false
+            passedQualityCheck = false
         }
         // Check that the events all have the same name
         if (optimizedSchedule.events.map { it.name.lowercase() } != events.map { it.name.lowercase() }) {
-            passedQaulityCheck = false
+            passedQualityCheck = false
         }
         // Check that the old events and the new events don't all have the same start and end times
         if (optimizedSchedule.events.map { it.startTime } == optimizedSchedule.oldEvents.map { it.startTime } && optimizedSchedule.events.map { it.endTime } == optimizedSchedule.oldEvents.map { it.endTime }) {
-            passedQaulityCheck = false
+            passedQualityCheck = false
         }
         // If there are nonRainingTimes, then check that the events that have isOutside are scheduled during the non-raining times
         if (nonRainingTimes != null) {
@@ -619,7 +595,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                     val hourStringEnd = timePartsEnd[0]
                     val minuteStringEnd = timePartsEnd[1]
                     // Will return true if the event is scheduled during a non-raining time
-                     passedQaulityCheck = nonRainingTimes.any {
+                     passedQualityCheck = nonRainingTimes.any {
                         val startHour = it.first.hour
                         val startMinute = it.first.minute
                         val endHour = it.second.hour
@@ -641,12 +617,12 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             val matchingEvent = optimizedSchedule.events.find { it.name == event.name }
             if (matchingEvent != null) {
                 if (matchingEvent.startTime != event.startTime.format(DateTimeFormatter.ofPattern("HH:mm")) || matchingEvent.endTime != event.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))) {
-                    passedQaulityCheck = false
+                    passedQualityCheck = false
                 }
             }
         }
 
-        return passedQaulityCheck
+        return passedQualityCheck
     }
 
     /** This formats the API request and makes a post to GPT API
@@ -693,6 +669,9 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         })
 
     }
+    /** This function is used to update the events list
+     * @param events: The new list of events
+     */
 
     private fun updateEvents(events: List<FirestoreEvent>) {
         this.events = events
@@ -705,5 +684,18 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         // update eventString
         this.eventString = eventList.joinToString(" ")
     }
+    /** Returns true if it is raining that day and there are outdoor events
+     * @param nonRainingTimes: A list of non-raining times for the day
+     * @return: Returns true if it is raining that day and there are outdoor events
+     */
+    private fun hasRainingTimes(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>): Boolean {
+        return !(nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0)
+    }
+    private fun List<Pair<LocalDateTime, LocalDateTime>>.formatNonRainingTimesToString(): String {
+        return joinToString(" ") { timeRange ->
+            "${timeRange.first.format(DateTimeFormatter.ofPattern("HH:mm"))} and ${timeRange.second.format(DateTimeFormatter.ofPattern("HH:mm"))}"
+        }
+    }
+
 
 }

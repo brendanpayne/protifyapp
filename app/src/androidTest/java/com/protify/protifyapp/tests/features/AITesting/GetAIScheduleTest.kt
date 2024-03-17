@@ -13,6 +13,9 @@ import java.time.LocalDateTime
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+/** This class is for testing if the output of the AI can be put into the database and then be retrieved
+ *
+ */
 class GetAIScheduleTest {
 
     companion object {
