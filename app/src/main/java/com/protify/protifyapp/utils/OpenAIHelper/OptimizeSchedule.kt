@@ -42,8 +42,8 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
     private val responseFormat = """{ "type": "json_object" }"""
 
     private val client: OkHttpClient = OkHttpClient().newBuilder()
-        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS) // Had to change to 30 seconds because gpt 4 takes forever and a day
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .build()
     private val gson = GsonBuilder().create()
 
@@ -288,7 +288,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
     fun makeCall(use4: Boolean = false, nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, callback: (OptimizedSchedule) -> Unit) {
 
         if (use4) {
-            model = "gpt-4-turbo-preview" // This points to the latest (best?) model
+            model = "gpt-4-1106-preview" // This points to the latest (best?) model
         }
 
         // init hasOptimizedEvents bool
@@ -314,9 +314,8 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         if (events.any { event -> events.any { it != event && it.startTime.isBefore(event.endTime) && it.endTime.isAfter(event.startTime) } }) {
             hasOverlappingEvents = true
         }
-
-        // If 4.0 is used, only try twice, else try 3 times (cost savings!)
-        val maxRetries = if(use4) 2 else 3
+        // Tries for a good response up to 3 times.
+        val maxRetries = 3
         // Make a call to the least struct mf
         fun thirdCall(iterations: Int, hasRainingTime: Boolean) {
          if (iterations > maxRetries) {
@@ -403,7 +402,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                         if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule, nonRainingTimes)) {
                             callback(optimizedSchedule)
                         } else {
-                            mainCall(iterations + 1, hasRainingTime)
+                            mainCall(iterations + 1, true)
                         }
                     } else {
                         if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {

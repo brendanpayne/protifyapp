@@ -232,8 +232,8 @@ class OptimizeScheduleTest {
             // Signal that the optimization was successful
             countDownLatch.countDown()
         }
-        // Wait 45 seconds for the asynchronous code to finish
-        countDownLatch.await(45, java.util.concurrent.TimeUnit.SECONDS)
+        // Wait 3 minutes for the asynchronous code to finish
+        countDownLatch.await(180, java.util.concurrent.TimeUnit.SECONDS)
         // If the countDownLatch is not 0, the test will fail
         assert(countDownLatch.count == 0L) {"No response"}
     }
