@@ -39,7 +39,7 @@ class GetAISchedule(uid: String, homeAddress: String) {
      * will get the optimized schedule and store it in the database
      * @param callback a callback function that returns a boolean representing if the optimization was successful
      */
-    fun getOptimizedSchedule(today: LocalDateTime, callback: (Boolean) -> Unit) {
+    fun getOptimizedSchedule(use4: Boolean, today: LocalDateTime, callback: (Boolean) -> Unit) {
         getSchedule(today) { events, shouldOptimize ->
             if (shouldOptimize) {
                 // Get the locations from each of the events
@@ -64,7 +64,7 @@ class GetAISchedule(uid: String, homeAddress: String) {
                                             month = today.monthValue.toString(),
                                             optimalEventOrder = optimalOrder,
                                             travelTime = drivingTimes.toMutableList(),
-                                            year = today.year.toString()).makeCall(use4 = false, nonRainingTimes = nonRainingTimes) { optimizedEvents ->
+                                            year = today.year.toString()).makeCall(use4 = use4, nonRainingTimes = nonRainingTimes) { optimizedEvents ->
                                                 if (optimizedEvents.events.isNotEmpty() && optimizedEvents.oldEvents.isNotEmpty()) {
                                                     // Store the events into the database
                                                     FirestoreHelper().importAIGeneratedEvent(optimizedSchedule = optimizedEvents, today, uid) { didSucceed ->
@@ -100,11 +100,11 @@ class GetAISchedule(uid: String, homeAddress: String) {
     }
     /** This function runs the optimization check for every day of the week (which is what weather data is available for)
      */
-    fun checkWeekScheduleForOptimization() {
+    fun checkWeekScheduleForOptimization(use4: Boolean) {
         for (i in 0..6) {
             val today = LocalDateTime.now().plusDays(i.toLong())
             // I've got basic error checking to see if it failed, but I don't see a reason to do anything with the error
-            getOptimizedSchedule(today) {}
+            getOptimizedSchedule(use4, today) {}
         }
     }
 }

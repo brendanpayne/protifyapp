@@ -23,6 +23,7 @@ class GetAIScheduleTest {
         var loginHelper = FirebaseLoginHelper()
         val firestoreHelper = FirestoreHelper()
         var eventsList: List<FirestoreEvent> = listOf()
+        var homeAddress: String = ""
         @JvmStatic
         @BeforeClass
         fun setUp() {
@@ -34,6 +35,11 @@ class GetAIScheduleTest {
             loginLatch.await(10, TimeUnit.SECONDS)
 
             user = loginHelper.getCurrentUser()
+
+            // Get user's home address
+            if (user != null) {
+                homeAddress = firestoreHelper.getUserHomeAddress(user!!.uid)
+            }
 
             // Mock events
             val events = listOf<FirestoreEvent>().toMutableList()
@@ -97,9 +103,10 @@ class GetAIScheduleTest {
             removeEventsLatch.await(100, TimeUnit.SECONDS)
             assert(removeEventsLatch.count == 0L) { "Unable to remove all events"}
 
+            // Wait 10 seconds for database to settle
+            Thread.sleep(10000)
 
-
-                val latch = CountDownLatch(4)
+                val latch = CountDownLatch(events.size)
                 // Get the schedule
                 if (user != null) {
                     // Put these mfs in the database
@@ -152,7 +159,10 @@ class GetAIScheduleTest {
         // init count down latch
         var latch = CountDownLatch(1)
         if (user != null) {
-            GetAISchedule(user!!.uid, "6190 Falla Drive, Canal Winchester OH, 43110").getSchedule(
+            if (homeAddress == "" || homeAddress == "No home address found") {
+                assert(false) { "No home address found and is required" }
+            }
+            GetAISchedule(user!!.uid, homeAddress).getSchedule(
                 LocalDateTime.of(2024, 3, 14, 0, 0) // March 14th, 2024
             ) { events, _ ->
                 assert(events.isNotEmpty()) { "No events found" }
@@ -171,10 +181,13 @@ class GetAIScheduleTest {
         // init count down latch
         var latch = CountDownLatch(1)
         if (user != null) {
-            GetAISchedule(user!!.uid, "6190 Falla Drive, Canal Winchester OH, 43110").getOptimizedSchedule(
+            if (homeAddress == "" || homeAddress == "No home address found") {
+                assert(false) { "No home address found and is required" }
+            }
+            GetAISchedule(user!!.uid, homeAddress).getOptimizedSchedule(false,
                 LocalDateTime.of(2024, 3, 14, 0, 0) // March 14th, 2024
             ) { success ->
-                assert(success) { "Optimization failed" }
+                assert(success) { "Unable to optimize schedule" }
                 latch.countDown()
             }
 
@@ -198,7 +211,7 @@ class GetAIScheduleTest {
         }
         // Assert success and the events are in the database
         newEventsLatch.await(15, TimeUnit.SECONDS)
-        Log.d("GetAIScheduleTest", "AI Events: ${aiEventList}")
+        Log.d("GetAIScheduleTest", "AI Events: $aiEventList")
         assert(latch.count == 0L) { "Events not found in the database" }
     }
 
