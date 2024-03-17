@@ -285,6 +285,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         // Make a call to the least struct mf
         fun thirdCall(iterations: Int, hasRainingTime: Boolean) {
          if (iterations > maxRetries) {
+             // If we get to here, we're down bad. Return nothing
              callback(OptimizedSchedule(emptyList(), emptyList()))
              return
          }
@@ -300,8 +301,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                         thirdCall(iterations + 1, hasRainingTime)
                         return@getResponseNoLocationData
                     }
-                    // At this point, we're down bad so we're not going to quality check it. If we got output, we giving it to the user
-                    if (optimizedSchedule.nullCheck()) {
+                    if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {
                         callback(optimizedSchedule)
                         return@getResponseNoLocationData
                     } else {
@@ -584,6 +584,13 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                 if (matchingEvent.startTime != event.startTime.format(DateTimeFormatter.ofPattern("HH:mm")) || matchingEvent.endTime != event.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))) {
                     passedQualityCheck = false
                 }
+            }
+        }
+
+        // Check that the start time is before the end time
+        for (event in optimizedSchedule.events) {
+            if (event.startTime >= event.endTime) {
+                passedQualityCheck = false
             }
         }
 
