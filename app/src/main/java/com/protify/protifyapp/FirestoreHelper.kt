@@ -381,7 +381,15 @@ class FirestoreHelper() {
 
             }
             .addOnFailureListener { exception ->
-                //Don't callback if there is an error
+                callback(
+                    null, FirestoreEvent(
+                        name = "",
+                        startTime = LocalDateTime.now(),
+                        endTime = LocalDateTime.now(),
+                        distance = 0,
+                        nameLower = ""
+                    )
+                )
                 Log.w("GoogleFirestore", "Error getting documents.", exception)
             }
     }
