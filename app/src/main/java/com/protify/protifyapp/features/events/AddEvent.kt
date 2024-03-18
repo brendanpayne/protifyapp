@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -60,6 +61,8 @@ import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.NetworkManager
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
+import com.protify.protifyapp.utils.MapsDurationUtils
+import com.protify.protifyapp.utils.WeatherUtils
 import java.time.LocalDateTime
 
 class AddEvent {
@@ -78,6 +81,8 @@ class AddEvent {
     private var dateError: Boolean by mutableStateOf(false)
     private var contactList: List<Attendee> by mutableStateOf(listOf())
     private var contactNames: List<String> by mutableStateOf(listOf())
+    private var rainingTimesMessage: String by mutableStateOf("")
+    private var isRainingTimeConfirmed: Boolean by mutableStateOf(true) // True by default... innocent until guilty
 
     private fun updateName(newName: String) {
         name = newName
@@ -324,6 +329,28 @@ class AddEvent {
                 }
             }
         }
+        // Get the non-raining times if there are values for start time and end time and update when any of those change
+        LaunchedEffect(startTime, endTime, location, isOutside) {
+            if (startTime != LocalDateTime.now() && endTime != LocalDateTime.MAX && location != "" && isOutside) { // Make sure the user has already selected a start time, end time, isOutside is true, and location is not empty
+                if (startTime.isAfter(LocalDateTime.now()) && endTime.isBefore(LocalDateTime.now().plusDays(7))) // Make sure the start time is in the future and the end time is within a week
+                MapsDurationUtils(startTime).geocode(location!!) { lat, long -> // Geocode the location to get the latitude and longitude
+                    if (lat != 0.0 && long != 0.0) { // If response is not bad, then proceed
+                        WeatherUtils(long, lat).getNonRainingTimes(startTime) { nonRainingTimes -> // Get non raining times for the day of the event
+                            getNonRainingTimes(nonRainingTimes, startTime, long, lat, startTime, endTime) { isRaining, message -> // Run function to check if the event is within the non-raining times
+                                if (isRaining) {
+                                    rainingTimesMessage = message // If it's raining, then set the message to the message returned from the function
+                                    isRainingTimeConfirmed = false // Set the boolean to false if the event is during the raining time
+                                } else {
+                                    rainingTimesMessage = "" // If it's not raining, then set the message to an empty string
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+        eventDuringRainingTimesConfirmDialog(eventDuringRainingTime = isRainingTimeConfirmed, message =rainingTimesMessage) // Show the dialog if the event is during the raining time
 
         val listState = rememberLazyListState()
         Surface(
@@ -792,7 +819,7 @@ class AddEvent {
                                 isUserAccepted = false
                             )
                             val errors = firestoreEvent.validateEvent(firestoreEvent)
-                            if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {
+                            if (errors.isEmpty() && user != null && !dateError && isTimeSelected() && isRainingTimeConfirmed)  {
                                 FirestoreHelper().createEvent(user, firestoreEvent) {
                                     if (it) {
                                         Toast.makeText(context, "Event added successfully", Toast.LENGTH_LONG).show()
@@ -837,6 +864,56 @@ class AddEvent {
                     }
                 }
             }
+        }
+    }
+
+    /** Function getNonRainingTimes checks if an event is within the non-raining times
+     * @param nonRainingTimes List of non-raining times
+     * @param today Current date
+     * @param long Longitude of the event
+     * @param lat Latitude of the event
+     * @param startTime Start time of the event
+     * @param endTime End time of the event
+     * @param onComplete Callback function that returns false and an empty string if it's not raining during the event and true and a message if it is
+     */
+    fun getNonRainingTimes(nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, today: LocalDateTime, long: Double, lat: Double, startTime: LocalDateTime, endTime: LocalDateTime, onComplete: (Boolean, String) -> Unit) {
+        // Get the times that it will rain for the given day
+            if (nonRainingTimes.isEmpty()) {
+                onComplete(false, "")
+            } else {
+                // Check if the event is within the non-raining times
+                val isRaining = nonRainingTimes.any { it.first.isBefore(startTime) && it.second.isAfter(endTime) }
+                val nonRainingTimesString = nonRainingTimes.joinToString(", ") { "${it.first} - ${it.second}" }
+                if (isRaining) {
+                    onComplete(true, "It will be raining during your event, you should move it within ${if (nonRainingTimes.size > 1) "these times: $nonRainingTimesString" else "this time: $nonRainingTimesString"}")
+                } else {
+                    onComplete(false, "")
+                }
+            }
+    }
+    @Composable
+    fun eventDuringRainingTimesConfirmDialog(eventDuringRainingTime: Boolean, message: String) {
+        val openDialog = remember { mutableStateOf(true) } // False by default
+        if (eventDuringRainingTime && openDialog.value) {
+            AlertDialog(
+                onDismissRequest = { openDialog.value = false },
+                title = { Text("Confirmation") },
+                text = { Text("$message") },
+                confirmButton = {
+                    Button(onClick = {
+                        openDialog.value = false
+                        isRainingTimeConfirmed = true // Set the boolean to true if the user confirms that they want to schedule the event during the raining time
+                    }) {
+                        Text("Yes")
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = { openDialog.value = false }) {
+                        Text("No") // Just close the dialog if the user doesn't denies
+                    }
+                }
+            )
+
         }
     }
 
