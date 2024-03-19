@@ -64,6 +64,7 @@ import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.utils.MapsDurationUtils
 import com.protify.protifyapp.utils.WeatherUtils
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class AddEvent {
 
@@ -83,6 +84,7 @@ class AddEvent {
     private var contactNames: List<String> by mutableStateOf(listOf())
     private var rainingTimesMessage: String by mutableStateOf("")
     private var isRainingTimeConfirmed: Boolean by mutableStateOf(true) // True by default... innocent until guilty
+    private var showRainingTimesDialog: Boolean by mutableStateOf(false)
 
     private fun updateName(newName: String) {
         name = newName
@@ -349,9 +351,12 @@ class AddEvent {
                         }
                     }
 
+            } else { // If the user has not selected a start time, end time, location, or isOutside is false, then set the message to an empty string and the boolean to true
+                showRainingTimesDialog = false
+                isRainingTimeConfirmed = true
             }
         }
-        eventDuringRainingTimesConfirmDialog(eventDuringRainingTime = isRainingTimeConfirmed, message =rainingTimesMessage) // Show the dialog if the event is during the raining time
+
 
         val listState = rememberLazyListState()
         Surface(
@@ -796,60 +801,69 @@ class AddEvent {
                             .fillMaxSize()
                             .padding(16.dp),
                         onClick = {
-                            var firestoreEvent:FirestoreEvent = FirestoreEvent(
-                                attendees = contactList,
-                                description = description,
-                                endTime = endTime,
-                                startTime = startTime,
-                                timeZone = timeZone?.displayName,
-                                name = name,
-                                //Additional field to store the name in lowercase for searching
-                                nameLower = name.trim().lowercase(),
-                                importance = importance,
-                                location = location,
-                                rainCheck = false,
-                                isRaining = false,
-                                mapsCheck = false,
-                                distance = 0,
-                                //This will be used in the AI model to determine whether this event can be scheduled if it's raining outside
-                                isOutside = isOutside,
-                                //This will be used to determine whether or not an event is allowed to be optimized by the AI
-                                //My naming scheme is so bad that I have to reverse the boolean to make it make sense
-                                isOptimized = !isOptimized,
-                                isAiSuggestion = false,
-                                isUserAccepted = false
-                            )
-                            val errors = firestoreEvent.validateEvent(firestoreEvent)
-                            if (errors.isEmpty() && user != null && !dateError && isTimeSelected() && isRainingTimeConfirmed)  {
-                                FirestoreHelper().createEvent(user, firestoreEvent) {
-                                    if (it) {
-                                        Toast.makeText(context, "Event added successfully", Toast.LENGTH_LONG).show()
-                                        navigateBack()
-                                    } else {
-                                        Toast.makeText(context, "Event could not be added. Please check your network connection", Toast.LENGTH_LONG).show()
+                            if (isRainingTimeConfirmed) {
+                                var firestoreEvent:FirestoreEvent = FirestoreEvent(
+                                    attendees = contactList,
+                                    description = description,
+                                    endTime = endTime,
+                                    startTime = startTime,
+                                    timeZone = timeZone?.displayName,
+                                    name = name,
+                                    //Additional field to store the name in lowercase for searching
+                                    nameLower = name.trim().lowercase(),
+                                    importance = importance,
+                                    location = location,
+                                    rainCheck = false,
+                                    isRaining = false,
+                                    mapsCheck = false,
+                                    distance = 0,
+                                    //This will be used in the AI model to determine whether this event can be scheduled if it's raining outside
+                                    isOutside = isOutside,
+                                    //This will be used to determine whether or not an event is allowed to be optimized by the AI
+                                    //My naming scheme is so bad that I have to reverse the boolean to make it make sense
+                                    isOptimized = !isOptimized,
+                                    isAiSuggestion = false,
+                                    isUserAccepted = false
+                                )
+                                val errors = firestoreEvent.validateEvent(firestoreEvent)
+                                if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {
+                                    FirestoreHelper().createEvent(user, firestoreEvent) {
+                                        if (it) {
+                                            Toast.makeText(context, "Event added successfully", Toast.LENGTH_LONG).show()
+                                            navigateBack()
+                                        } else {
+                                            Toast.makeText(context, "Event could not be added. Please check your network connection", Toast.LENGTH_LONG).show()
 
+                                        }
                                     }
                                 }
-                            }
-                            if (user == null) {
-                                Toast.makeText(context, "You are logged out. Please log in and try again", Toast.LENGTH_LONG).show()
-                                //Add redirection to login screen
-                            }
-                            if (!isTimeSelected()) {
-                                Toast.makeText(context, "Please select a valid start and end time", Toast.LENGTH_LONG).show()
-                            }
-                            if (dateError) {
-                                Toast.makeText(context, "Start time cannot be after end time", Toast.LENGTH_LONG).show()
-                            }
-                            else {
-                                requiredEmpty = true
-                                errors.forEach { error ->
-                                    Toast.makeText(context, error.localizedMessage, Toast.LENGTH_LONG).show()
+                                if (user == null) {
+                                    Toast.makeText(context, "You are logged out. Please log in and try again", Toast.LENGTH_LONG).show()
+                                    //Add redirection to login screen
                                 }
+                                if (!isTimeSelected()) {
+                                    Toast.makeText(context, "Please select a valid start and end time", Toast.LENGTH_LONG).show()
+                                }
+                                if (dateError) {
+                                    Toast.makeText(context, "Start time cannot be after end time", Toast.LENGTH_LONG).show()
+                                }
+                                else {
+                                    requiredEmpty = true
+                                    errors.forEach { error ->
+                                        Toast.makeText(context, error.localizedMessage, Toast.LENGTH_LONG).show()
+                                    }
+                                }
+
+                            } else {
+                                showRainingTimesDialog = true
+                                Toast.makeText(context, "You need to confirm your event time", Toast.LENGTH_LONG).show()
                             }
 
                         }) {
                         Text("Add Event")
+                    }
+                    if (showRainingTimesDialog) {
+                        eventDuringRainingTimesConfirmDialog(isRainingTimeConfirmed, rainingTimesMessage)
                     }
                 }
                 item {
@@ -883,8 +897,13 @@ class AddEvent {
                 onComplete(false, "")
             } else {
                 // Check if the event is within the non-raining times
-                val isRaining = nonRainingTimes.any { it.first.isBefore(startTime) && it.second.isAfter(endTime) }
-                val nonRainingTimesString = nonRainingTimes.joinToString(", ") { "${it.first} - ${it.second}" }
+                val isRaining = nonRainingTimes.any { nonRaining ->
+                    // Check if the time between the start time and the end time fall between the non-raining times
+                    !(startTime.isAfter(nonRaining.first) && startTime.isBefore(nonRaining.second)) || !(endTime.isAfter(nonRaining.first) && endTime.isBefore(nonRaining.second))
+                }
+                val nonRainingTimesString = nonRainingTimes.joinToString(", ") { "${it.first.format(
+                    DateTimeFormatter.ofPattern("hh:mm a"))} - ${it.second.format(
+                    DateTimeFormatter.ofPattern("hh:mm a"))}" }
                 if (isRaining) {
                     onComplete(true, "It will be raining during your event, you should move it within ${if (nonRainingTimes.size > 1) "these times: $nonRainingTimesString" else "this time: $nonRainingTimesString"}")
                 } else {
@@ -893,13 +912,13 @@ class AddEvent {
             }
     }
     /** Function eventDuringRainingTimesConfirmDialog shows a dialog to confirm if the user wants to schedule the event during the raining time
-     * @param eventDuringRainingTime Boolean that checks if the event is during the raining time
+     * @param rainingTimeConfirmed Boolean that checks if the event is during the raining time
      * @param message Message to display in the dialog
      */
     @Composable
-    fun eventDuringRainingTimesConfirmDialog(eventDuringRainingTime: Boolean, message: String) {
-        val openDialog = remember { mutableStateOf(true) } // False by default
-        if (eventDuringRainingTime && openDialog.value && message != "") { // Only show the event if the event is during the raining time and the message is not empty
+    fun eventDuringRainingTimesConfirmDialog(rainingTimeConfirmed: Boolean, message: String) {
+        val openDialog = remember { mutableStateOf(true) } // True by default
+        if (!rainingTimeConfirmed && openDialog.value && message != "") { // Only show the event if the event is during the raining time and the message is not empty
             AlertDialog(
                 onDismissRequest = { openDialog.value = false },
                 title = { Text("Confirmation") },
@@ -908,12 +927,16 @@ class AddEvent {
                     Button(onClick = {
                         openDialog.value = false
                         isRainingTimeConfirmed = true // Set the boolean to true if the user confirms that they want to schedule the event during the raining time
+                        showRainingTimesDialog = false
                     }) {
                         Text("Yes")
                     }
                 },
                 dismissButton = {
-                    Button(onClick = { openDialog.value = false }) {
+                    Button(onClick = {
+                        openDialog.value = false
+                        showRainingTimesDialog = true
+                    }) {
                         Text("No") // Just close the dialog if the user doesn't denies
                     }
                 }
