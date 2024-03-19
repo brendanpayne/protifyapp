@@ -333,20 +333,21 @@ class AddEvent {
         LaunchedEffect(startTime, endTime, location, isOutside) {
             if (startTime != LocalDateTime.now() && endTime != LocalDateTime.MAX && location != "" && isOutside) { // Make sure the user has already selected a start time, end time, isOutside is true, and location is not empty
                 if (startTime.isAfter(LocalDateTime.now()) && endTime.isBefore(LocalDateTime.now().plusDays(7))) // Make sure the start time is in the future and the end time is within a week
-                MapsDurationUtils(startTime).geocode(location!!) { lat, long -> // Geocode the location to get the latitude and longitude
-                    if (lat != 0.0 && long != 0.0) { // If response is not bad, then proceed
-                        WeatherUtils(long, lat).getNonRainingTimes(startTime) { nonRainingTimes -> // Get non raining times for the day of the event
-                            getNonRainingTimes(nonRainingTimes, startTime, long, lat, startTime, endTime) { isRaining, message -> // Run function to check if the event is within the non-raining times
-                                if (isRaining) {
-                                    rainingTimesMessage = message // If it's raining, then set the message to the message returned from the function
-                                    isRainingTimeConfirmed = false // Set the boolean to false if the event is during the raining time
-                                } else {
-                                    rainingTimesMessage = "" // If it's not raining, then set the message to an empty string
+                    MapsDurationUtils(startTime).geocode(location!!) { lat, long -> // Geocode the location to get the latitude and longitude
+                        if (lat != 0.0 && long != 0.0) { // If response is not bad, then proceed
+                            WeatherUtils(long, lat).getNonRainingTimes(startTime) { nonRainingTimes -> // Get non raining times for the day of the event
+                                getNonRainingTimes(nonRainingTimes, startTime, long, lat, startTime, endTime) { isRaining, message -> // Run function to check if the event is within the non-raining times
+                                    if (isRaining) {
+                                        rainingTimesMessage = message // If it's raining, then set the message to the message returned from the function
+                                        isRainingTimeConfirmed = false // Set the boolean to false if the event is during the raining time
+                                    } else {
+                                        rainingTimesMessage = "" // If it's not raining, then set the message to an empty string
+                                        isRainingTimeConfirmed = true // Set back to true if the user changed the event to a time that is not raining
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
             }
         }
@@ -891,10 +892,14 @@ class AddEvent {
                 }
             }
     }
+    /** Function eventDuringRainingTimesConfirmDialog shows a dialog to confirm if the user wants to schedule the event during the raining time
+     * @param eventDuringRainingTime Boolean that checks if the event is during the raining time
+     * @param message Message to display in the dialog
+     */
     @Composable
     fun eventDuringRainingTimesConfirmDialog(eventDuringRainingTime: Boolean, message: String) {
         val openDialog = remember { mutableStateOf(true) } // False by default
-        if (eventDuringRainingTime && openDialog.value) {
+        if (eventDuringRainingTime && openDialog.value && message != "") { // Only show the event if the event is during the raining time and the message is not empty
             AlertDialog(
                 onDismissRequest = { openDialog.value = false },
                 title = { Text("Confirmation") },
