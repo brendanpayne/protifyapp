@@ -85,6 +85,7 @@ class AddEvent {
     private var rainingTimesMessage: String by mutableStateOf("")
     private var isRainingTimeConfirmed: Boolean by mutableStateOf(true) // True by default... innocent until guilty
     private var showRainingTimesDialog: Boolean by mutableStateOf(false)
+    private var rainCheck: Boolean = false
 
     private fun updateName(newName: String) {
         name = newName
@@ -333,6 +334,7 @@ class AddEvent {
         }
         // Get the non-raining times if there are values for start time and end time and update when any of those change
         LaunchedEffect(startTime, endTime, location, isOutside) {
+            rainCheck = false
             if (startTime != LocalDateTime.now() && endTime != LocalDateTime.MAX && location != "" && isOutside) { // Make sure the user has already selected a start time, end time, isOutside is true, and location is not empty
                 if (startTime.isAfter(LocalDateTime.now()) && endTime.isBefore(LocalDateTime.now().plusDays(7))) // Make sure the start time is in the future and the end time is within a week
                     MapsDurationUtils(startTime).geocode(location!!) { lat, long -> // Geocode the location to get the latitude and longitude
@@ -346,6 +348,7 @@ class AddEvent {
                                         rainingTimesMessage = "" // If it's not raining, then set the message to an empty string
                                         isRainingTimeConfirmed = true // Set back to true if the user changed the event to a time that is not raining
                                     }
+                                    rainCheck = true
                                 }
                             }
                         }
@@ -813,7 +816,7 @@ class AddEvent {
                                     nameLower = name.trim().lowercase(),
                                     importance = importance,
                                     location = location,
-                                    rainCheck = true, // Setting to true now since we're constantly checking for rain
+                                    rainCheck = rainCheck, // Setting to true now since we're constantly checking for rain
                                     isRaining = (rainingTimesMessage != ""), // If the message is not empty, then it's raining during the event
                                     mapsCheck = false,
                                     distance = 0,
