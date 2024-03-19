@@ -813,8 +813,8 @@ class AddEvent {
                                     nameLower = name.trim().lowercase(),
                                     importance = importance,
                                     location = location,
-                                    rainCheck = false,
-                                    isRaining = false,
+                                    rainCheck = true, // Setting to true now since we're constantly checking for rain
+                                    isRaining = (rainingTimesMessage != ""), // If the message is not empty, then it's raining during the event
                                     mapsCheck = false,
                                     distance = 0,
                                     //This will be used in the AI model to determine whether this event can be scheduled if it's raining outside
