@@ -1,6 +1,7 @@
 package com.protify.protifyapp
 
 import android.annotation.SuppressLint
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import com.protify.protifyapp.features.calendar.CalendarView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.ui.theme.ProtifyTheme
@@ -47,7 +49,7 @@ class HomeActivity {
 
     @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
     @Composable
-    fun HomePage(navigateToAddEvent: () -> Unit) {
+    fun HomePage(navController: NavHostController, navigateToAddEvent: () -> Unit) {
         val scaffoldState = rememberScaffoldState()
         val scope = rememberCoroutineScope()
         val firestoreHelper = FirestoreHelper()
@@ -78,7 +80,7 @@ class HomeActivity {
                         Spacer(modifier = Modifier.height(32.dp))
                             Text(
                                 "Profile",
-                                modifier = Modifier.padding(top = 10.dp),
+                                modifier = Modifier.padding(top = 10.dp).clickable { navController.navigate("profile") },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 20.sp,
                                 color = MaterialTheme.colors.onSurface
@@ -88,7 +90,7 @@ class HomeActivity {
                         Spacer(modifier = Modifier.height(32.dp))
                             Text(
                                 "Privacy & Location",
-                                modifier = Modifier.padding(top = 10.dp),
+                                modifier = Modifier.padding(top = 10.dp).clickable { navController.navigate("privacyLocation") },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 20.sp,
                                 color = MaterialTheme.colors.onSurface
@@ -102,7 +104,7 @@ class HomeActivity {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Button(
-                            onClick = { /* Handle logout here */ },
+                            onClick = { navController.navigate("login") },
                             modifier = Modifier
                                 .padding(bottom = 48.dp)
                                 .width(200.dp)
@@ -172,8 +174,9 @@ class HomeActivity {
     @Preview(showSystemUi = true)
     @Composable
     fun CalendarAppPreview() {
+        val navController = rememberNavController()
         ProtifyTheme {
-            HomePage(navigateToAddEvent = {})
+            HomePage(navController, navigateToAddEvent = {})
         }
     }
 
@@ -181,3 +184,4 @@ class HomeActivity {
         navController.navigate("addEvent")
     }
 }
+
