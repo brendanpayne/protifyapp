@@ -110,6 +110,10 @@ class AccountActivity {
                 composable("profile") {
                     ProfileActivity().ProfilePage(navController)
                 }
+
+                composable("privacyLocation") {
+                    PrivacyActivity().PrivacyPage(navController)
+                }
                 /*
                 composable("eventDetails/{date}/{eventId}") { backStackEntry ->
                     val date = backStackEntry.arguments?.getString("date")
