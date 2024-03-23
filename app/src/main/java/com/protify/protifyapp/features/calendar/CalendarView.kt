@@ -70,7 +70,7 @@ class CalendarView {
     ) {
         var selectedTabIndex by remember { mutableStateOf(1) }
         val tabTitles =
-            listOf("Month View", "Home View", "Add Event") // Adds the new tab title here
+            listOf("Month View", "Home", "Add Event") // Adds the new tab title here
 
         Column {
             Row {
@@ -219,7 +219,7 @@ class CalendarView {
                                             val currentTime = LocalTime.now().format(DateTimeFormatter.ofPattern("h:mm a"))
                                             Text(
                                                 text = formattedTime,
-                                                modifier = Modifier.padding(8.dp),
+                                                modifier = Modifier.padding(16.dp),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 color = if (formattedTime == currentTime) Color.Red else MaterialTheme.colorScheme.onSurface,
                                                 textAlign = TextAlign.Center
@@ -254,6 +254,7 @@ class CalendarView {
                                         }
                                     }
                                 }
+
                             },
                             confirmButton = {
                                 Button(onClick = { showDialog = false }) {
