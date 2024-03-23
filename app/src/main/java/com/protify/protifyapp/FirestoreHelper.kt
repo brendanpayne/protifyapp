@@ -2,6 +2,7 @@ package com.protify.protifyapp
 
 import OptimizedSchedule
 import android.util.Log
+import com.google.android.gms.tasks.Task
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.ktx.firestore
@@ -10,8 +11,8 @@ import com.protify.protifyapp.features.events.Attendee
 import com.protify.protifyapp.utils.MapsDurationUtils
 import com.protify.protifyapp.utils.OpenAIHelper.ParseTime
 import java.time.LocalDateTime
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class FirestoreHelper() {
     private val db: FirebaseFirestore = Firebase.firestore
@@ -981,53 +982,34 @@ class FirestoreHelper() {
         }
 
     }
-    /** This function will get the user's home address from the database
+    /** This asynchronous function will get the user's home address from the database
      * @param uid: The user's uid
-     * @return The user's home address. If the user does not have a home address, return "No home address found"
+     * @return The user's home address. If the user does not have a home address, return "No home address found". If the user does not exist, return an empty string
      */
-    fun getUserHomeAddress(uid: String): String {
-        val latch = CountDownLatch(1)
-        var result = ""
-
+    suspend fun getUserHomeAddress(uid: String): String = suspendCoroutine { continuation ->
         db.collection("users").document(uid).get()
             .addOnSuccessListener { document ->
                 if (document != null) {
                     if (document.data?.get("homeAddress") != null) {
-                        result = document.data?.get("homeAddress").toString()
+                        // simulate a delay of 15 seconds
+                        continuation.resume(document.data?.get("homeAddress").toString())
                     } else {
-                        result = "No home address found"
+                        continuation.resume("No home address found")
                     }
                 } else {
-                    result = "No home address found"
+                    continuation.resume("No home address found")
                 }
-                latch.countDown()
             }
             .addOnFailureListener {
-                Log.d("GoogleFirestore", "Error getting home address", it)
-                latch.countDown()
+                continuation.resume("")
             }
-
-        latch.await(15, TimeUnit.SECONDS)
-        return result
     }
     /** This function sets the user's home address in their root document in the database
      * @param uid: The user's uid
      * @param homeAddress: The user's home address
-     * @param callback: A callback function that will return true if the home address was set successfully, and false if it was not
+     * @return A task that will return true if the home address was set successfully, and false if it was not
      */
-    fun setUserHomeAddress(uid: String, homeAddress: String, callback: (Boolean) -> Unit) {
-        val userAddress = hashMapOf(
-            "homeAddress" to homeAddress
-        )
-        db.collection("users").document(uid)
-            .set(userAddress)
-            .addOnSuccessListener { documentReference ->
-                Log.d("GoogleFirestore", "Home address added successfully to Firestore with uid: $uid")
-                callback(true)
-            }
-            .addOnFailureListener { e ->
-                Log.d("GoogleFirestore", "Error adding home address to Firestore", e)
-                callback(false)
-            }
+    fun setUserHomeAddress(uid: String, homeAddress: String): Task<Void> {
+        return db.collection("users").document(uid).set(hashMapOf("homeAddress" to homeAddress))
     }
 }
