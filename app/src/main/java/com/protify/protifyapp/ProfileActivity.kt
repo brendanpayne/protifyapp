@@ -31,7 +31,7 @@ import com.google.firebase.auth.FirebaseAuth
 
 class ProfileActivity {
     val user = FirebaseAuth.getInstance().currentUser
-    val name = user?.displayName ?: "Unknown"
+    val name = user?.displayName.takeIf { it?.isNotEmpty() == true } ?: "Unknown"
     val email = user?.email ?: "Unknown"
 
     @Composable

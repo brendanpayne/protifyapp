@@ -23,12 +23,14 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -44,10 +46,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.widget.Autocomplete
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
+import com.protify.protifyapp.APIKeys
 import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.NetworkManager
@@ -182,7 +190,7 @@ class AddEvent {
         val networkManager = NetworkManager(context)
         //Date Picker Dialog
         val dayOfMonth = LocalDateTime.now().dayOfMonth
-        val month = LocalDateTime.now().monthValue
+        val month = LocalDateTime.now().monthValue - 1 //Subtract 1 to select the right day in the DatePickerDialog
         val year = LocalDateTime.now().year
         val selectedDate = remember { mutableStateOf("")}
         var selectedMonth = 0
@@ -285,6 +293,23 @@ class AddEvent {
                 }
             }
         )
+        //Auto Complete
+        val mapsAPI = APIKeys().getMapsKey()
+        Places.initialize(context, mapsAPI)
+        val placesClient = remember { Places.createClient(context) }
+        val autocompleteLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.StartActivityForResult(),
+            onResult = {
+                if (it.resultCode == android.app.Activity.RESULT_OK) {
+                    val place = Autocomplete.getPlaceFromIntent(it.data!!)
+                    updateLocation(place.address ?: "")
+                }
+            }
+        )
+        //isOutside boolean
+        var isOutside by remember { mutableStateOf(false) }
+        //isOptimized boolean
+        var isOptimized by remember { mutableStateOf(true)}
         //Get network state so we can toggle Firestore offline/online
         val isConnected by remember { mutableStateOf(false) }
         LaunchedEffect(networkManager) {
@@ -475,19 +500,61 @@ class AddEvent {
 
                 }
                 item {
+                    var isFocused by remember { mutableStateOf(false) }
+
                     OutlinedTextField(
                         value = location ?: "",
-                        onValueChange = { location -> updateLocation(location) },
+                        onValueChange = { location = it },
                         label = { Text("Location") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        trailingIcon = {
+                            IconButton(onClick = { location = "" }) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.outline,
+                                )
+                            }
+                        },
+                        modifier = Modifier.onFocusChanged { focusState ->
+                            if (focusState.isFocused && !isFocused) {
+                                isFocused = true
+                                autocompleteLauncher.launch(
+                                    Autocomplete.IntentBuilder(
+                                        AutocompleteActivityMode.OVERLAY,
+                                        listOf(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS)
+                                    ).build(context)
+                                )
+                            } else if (!focusState.isFocused) {
+                                isFocused = false
+                            }
+                        },
                         supportingText = {
                             Text(
                                 text = "Optional",
                                 color = MaterialTheme.colorScheme.outline,
                             )
-                        }
+                        },
+                        readOnly = true
                     )
+                }
+                item {
+                    //Make a tick box to check if the event is outdoors
+                    Row {
+                        Text(
+                            text = "Is this event outdoors?",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                        Checkbox(
+                            checked =isOutside,
+                            onCheckedChange = { isChecked -> isOutside = isChecked },
+                            modifier = Modifier.padding(16.dp),
+                        )
+
+
+                    }
                 }
                 item {
                     OutlinedTextField(
@@ -681,6 +748,21 @@ class AddEvent {
 
                 }
                 item {
+                    Row {
+                        //Button to allows the AI to make optimizations to this event or not
+                        Text (
+                            text = "Do you want to allow the AI to optimize this event?",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                        Checkbox(
+                            checked = isOptimized,
+                            onCheckedChange = { isChecked -> isOptimized = isChecked },
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
+                }
+                item {
                     Button(
                         modifier = Modifier
                             .fillMaxSize()
@@ -693,14 +775,33 @@ class AddEvent {
                                 startTime = startTime,
                                 timeZone = timeZone?.displayName,
                                 name = name,
+                                //Additional field to store the name in lowercase for searching
+                                nameLower = name.trim().lowercase(),
                                 importance = importance,
-                                location = location
+                                location = location,
+                                rainCheck = false,
+                                isRaining = false,
+                                mapsCheck = false,
+                                distance = 0,
+                                //This will be used in the AI model to determine whether this event can be scheduled if it's raining outside
+                                isOutside = isOutside,
+                                //This will be used to determine whether or not an event is allowed to be optimized by the AI
+                                //My naming scheme is so bad that I have to reverse the boolean to make it make sense
+                                isOptimized = !isOptimized,
+                                isAiSuggestion = false,
+                                isUserAccepted = false
                             )
                             val errors = firestoreEvent.validateEvent(firestoreEvent)
                             if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {
-                                FirestoreHelper().createEvent(user, firestoreEvent)
-                                Toast.makeText(context, "Event added successfully", Toast.LENGTH_LONG).show()
-                                navigateBack()
+                                FirestoreHelper().createEvent(user, firestoreEvent) {
+                                    if (it) {
+                                        Toast.makeText(context, "Event added successfully", Toast.LENGTH_LONG).show()
+                                        navigateBack()
+                                    } else {
+                                        Toast.makeText(context, "Event could not be added. Please check your network connection", Toast.LENGTH_LONG).show()
+
+                                    }
+                                }
                             }
                             if (user == null) {
                                 Toast.makeText(context, "You are logged out. Please log in and try again", Toast.LENGTH_LONG).show()
