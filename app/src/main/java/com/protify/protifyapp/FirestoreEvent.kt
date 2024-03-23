@@ -5,16 +5,22 @@ import java.time.LocalDateTime
 
 class FirestoreEvent(
     val name: String,
-    val startTime: LocalDateTime,
-    val endTime: LocalDateTime,
-    val location: String?, //TODO: Change to location object
-    val description: String?,
-    val timeZone: String?, //TODO: Create a timezone object
-    val importance: Int?,
-    val attendees: List<Attendee>?
-
-
-
+    val nameLower: String,
+    var startTime: LocalDateTime,
+    var endTime: LocalDateTime,
+    var location: String? = "",
+    val description: String? = "",
+    val timeZone: String? = "",
+    val importance: Int? = 1,
+    val attendees: List<Attendee>? = null,
+    val rainCheck: Boolean = false,
+    val isRaining: Boolean = false,
+    val mapsCheck: Boolean = false,
+    val distance: Int = 0,
+    val isOutside: Boolean = false,
+    val isOptimized: Boolean = false,
+    val isAiSuggestion: Boolean = false,
+    var isUserAccepted: Boolean = false,
 ) {
     fun validateEvent(event: FirestoreEvent): List<Error> {
         val errors = mutableListOf<Error>()
