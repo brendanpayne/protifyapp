@@ -12,14 +12,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -39,6 +43,9 @@ class ProfileActivity {
 
     @Composable
     fun ProfilePage(navController: NavController) {
+        var displayName by remember { mutableStateOf(name) }
+        var homeAddress by remember { mutableStateOf("") }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -63,10 +70,16 @@ class ProfileActivity {
                         .size(120.dp)
                         .padding(16.dp)
                 )
-                Text(
-                    text = name,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
+                OutlinedTextField(
+                    value = displayName,
+                    onValueChange = { newDisplayName -> displayName = newDisplayName },
+                    label = { Text("Display Name") },
+                    modifier = Modifier.padding(16.dp)
+                )
+                OutlinedTextField(
+                    value = homeAddress,
+                    onValueChange = { newHomeAddress -> homeAddress = newHomeAddress },
+                    label = { Text("Home Address") },
                     modifier = Modifier.padding(16.dp)
                 )
                 Text(
