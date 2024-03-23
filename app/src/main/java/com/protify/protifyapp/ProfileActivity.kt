@@ -1,6 +1,9 @@
 package com.protify.protifyapp
 
+import android.app.Activity
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,6 +21,8 @@ import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -26,11 +31,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.widget.Autocomplete
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 
@@ -59,6 +69,18 @@ class ProfileActivity {
             homeAddress = fetchedResult
             newHomeAddress = fetchedResult
         }
+        // Maps API for autocomplete on home address
+        val mapsAPI = APIKeys().getMapsKey()
+        Places.initialize(context, mapsAPI)
+        val autocompleteLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.StartActivityForResult(),
+            onResult = {
+                if (it.resultCode == Activity.RESULT_OK) {
+                    val place = Autocomplete.getPlaceFromIntent(it.data!!)
+                    newHomeAddress = place.address ?: ""
+                }
+            }
+        )
 
         Column(
             modifier = Modifier
@@ -94,7 +116,26 @@ class ProfileActivity {
                     value = newHomeAddress,
                     onValueChange = { newHomeAddress = it },
                     label = { Text("Home Address") },
-                    modifier = Modifier.padding(16.dp)
+                    trailingIcon = {
+                        androidx.compose.material3.IconButton(onClick = { newHomeAddress = "" }) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.outline,
+                            )
+                        }
+                    },
+                    modifier = Modifier.onFocusChanged { focusState ->
+                        if (focusState.isFocused) {
+                            autocompleteLauncher.launch(
+                                Autocomplete.IntentBuilder(
+                                    AutocompleteActivityMode.OVERLAY,
+                                    listOf(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS)
+                                ).build(context)
+                            )
+                        }
+                    }.padding(16.dp),
+                    readOnly = true
                 )
                 Text(
                     text = email,
