@@ -27,8 +27,8 @@ import com.google.firebase.auth.FirebaseAuth
 
 class ProfileActivity {
     val user = FirebaseAuth.getInstance().currentUser
-    val name = user?.displayName
-    val email = user?.email
+    val name = user?.displayName ?: "Unknown"
+    val email = user?.email ?: "Unknown"
 
     @Composable
     fun BackButton(navController: NavController) {
@@ -64,13 +64,13 @@ class ProfileActivity {
                         .padding(16.dp)
                 )
                 Text(
-                    text = name ?: "Unknown",
+                    text = name,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(16.dp)
                 )
                 Text(
-                    text = email ?: "Unknown",
+                    text = email,
                     fontSize = 16.sp,
                     modifier = Modifier.padding(16.dp)
                 )
