@@ -228,7 +228,7 @@ class StrictRain {
             drivingTimes,
             Essential.homeAddress,
             optimalOrder
-        ).getResponse(nonRainingTimes) { response ->
+        ).getResponse(false, nonRainingTimes) { response ->
 
             // Parse response into OptimizedSchedule object
             var optimizedSchedule: OptimizedSchedule = OptimizedSchedule(events = emptyList(), oldEvents = emptyList()) // Create empty list
@@ -439,7 +439,7 @@ class StrictRain {
             drivingTimes,
             Essential.homeAddress,
             optimalOrder
-        ).makeCall(nonRainingTimes) { response ->
+        ).makeCall(false, nonRainingTimes) { response ->
 
             // In the function, if it fails 5 times in a row, it will return empty lists
             if (response.events.isEmpty() || response.oldEvents.isEmpty()) {

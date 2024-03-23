@@ -53,6 +53,10 @@ class WeatherUtils(val longitude: Double, val latitude: Double) {
                 }
 
                 override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                    if (response.code != 200) {
+                        onComplete(null)
+                        return
+                    }
                     val body = response.body?.string()
                     val forecast = gson.fromJson(body, WeatherForecast::class.java)
                     for (period in forecast.properties.periods) {
