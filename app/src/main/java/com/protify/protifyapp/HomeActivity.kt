@@ -1,8 +1,6 @@
 package com.protify.protifyapp
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,7 +28,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -163,7 +160,7 @@ class HomeActivity {
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.h6
                         )
-                        CalendarView().Calendar(navigateToAddEvent)
+                        CalendarView().Calendar(context, navigateToAddEvent)
                     }
 
                     SettingsIconButton(onClick = { scope.launch { scaffoldState.drawerState.open() } })
@@ -185,27 +182,27 @@ class HomeActivity {
 //                    }
 
                     // Optimize schedule for today in a new coroutine
-                    var isOptimizing by rememberSaveable { // Only allow optimization once (if a user navigates away, this will remember)
-                        mutableStateOf(false)
-                    }
-                    LaunchedEffect(user) {
-                        user?.let {
-                            if (isOptimizing) {
-                                Toast.makeText(context, "Optimizing schedule for today...", Toast.LENGTH_SHORT).show() // Runs when a user navigates away and back
-                                return@LaunchedEffect
-                            }
-                                isOptimizing = true
-                                scaffoldState.snackbarHostState.showSnackbar("Optimizing schedule for today...")
-                                val result = optimizeScheduleForToday(it.uid, context)
-                                isOptimizing = false
-                                if (result) {
-                                    scaffoldState.snackbarHostState.showSnackbar("Optimized schedule for today!")
-                                } else {
-                                    scaffoldState.snackbarHostState.showSnackbar("No optimization needed for today.")
-
-                                }
-                        }
-                    }
+//                    var isOptimizing by rememberSaveable { // Only allow optimization once (if a user navigates away, this will remember)
+//                        mutableStateOf(false)
+//                    }
+//                    LaunchedEffect(user) {
+//                        user?.let {
+//                            if (isOptimizing) {
+//                                Toast.makeText(context, "Optimizing schedule for today...", Toast.LENGTH_SHORT).show() // Runs when a user navigates away and back
+//                                return@LaunchedEffect
+//                            }
+//                                isOptimizing = true
+//                                scaffoldState.snackbarHostState.showSnackbar("Optimizing schedule for today...")
+//                                val result = optimizeScheduleForToday(it.uid, context)
+//                                isOptimizing = false
+//                                if (result) {
+//                                    scaffoldState.snackbarHostState.showSnackbar("Optimized schedule for today!")
+//                                } else {
+//                                    scaffoldState.snackbarHostState.showSnackbar("No optimization needed for today.")
+//
+//                                }
+//                        }
+//                    }
                 }
             }
 
@@ -239,13 +236,13 @@ class HomeActivity {
      * @param context The context for showing toasts
      * @return True if the schedule was optimized successfully, false otherwise
      */
-    suspend fun optimizeScheduleForToday(uid: String, context: Context): Boolean {
+    suspend fun optimizeScheduleForToday(uid: String, today: LocalDateTime): Boolean {
         val result = CompletableDeferred<Boolean>()
         CoroutineScope(Dispatchers.IO).launch {
             // Get user's home address
             val homeAddress = FirestoreHelper().getUserHomeAddress(uid)
             // Optimize schedule for today
-            GetAISchedule(uid, homeAddress).getOptimizedSchedule(false, LocalDateTime.now().plusDays(1)) { success -> // For now, do one day in advance
+            GetAISchedule(uid, homeAddress).getOptimizedSchedule(false, today) { success -> // For now, do one day in advance
                 result.complete(success)
             }
         }
