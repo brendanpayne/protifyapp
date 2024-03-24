@@ -1,4 +1,5 @@
 package com.protify.protifyapp.features.calendar
+import android.content.Context
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -326,7 +327,7 @@ class CalendarView {
         return allDates.map { CalendarUiModel.Date(it, false, it.isEqual(dataSource.today), false) }
     }
     @Composable
-    fun Calendar(navigateToAddEvent: () -> Unit) {
+    fun Calendar(context: Context, navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
         //val selectedTabIndex by remember { mutableStateOf(0) }
         var isMonthView by remember { mutableStateOf(false) }
@@ -340,15 +341,6 @@ class CalendarView {
         }
         var isLoadingEvents by remember { mutableStateOf(true) }
 
-        dataSource.getFirestoreEvents("uid", 1234567890L, "January", "1", "2023") { events ->
-            if (events.isNotEmpty()) {
-                calendarUiModel.selectedDate.events = events
-                isLoadingEvents = false
-            } else {
-
-                println("No events found for the given date.")
-            }
-        }
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -402,7 +394,7 @@ class CalendarView {
                             isMonthView = isMonthView
                         )
                         isLoadingEvents = true
-                        dataSource.getFirestoreEvents(
+                        dataSource.getFirestoreEventsAndIds(
                             FirebaseLoginHelper().getCurrentUser()!!.uid,
                             FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
                             date.date.month.toString(),
@@ -435,7 +427,7 @@ class CalendarView {
                     )
             ) {
                 if (!isMonthView) { // Only shows the EventCard in week view
-                    EventView().EventCard(calendarUiModel, navigateToAddEvent, isLoadingEvents)
+                    EventView().EventCard(calendarUiModel, navigateToAddEvent, isLoadingEvents, context)
                 }
             }
         }

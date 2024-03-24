@@ -85,7 +85,28 @@ class CalendarDataSource {
             }
         }
     }
-    private fun convertFirestoreEvent (firestoreEvent: FirestoreEvent): Event {
+    fun getFirestoreEventsAndIds(uid: String, dateCreated: Long, month: String, day: String, year: String, callback: (List<Event>) -> Unit) {
+        FirestoreHelper().userExists(uid,dateCreated) { userExists ->
+            if (userExists) {
+                FirestoreHelper().getEventsAndIds(uid, day, month, year) { hashMap ->
+                    if (hashMap.isNotEmpty()) {
+                        val convertedEvents = mutableListOf<Event>()
+                        hashMap.forEach {
+                            convertedEvents.add(convertFirestoreEvent(it.key, it.value))
+                        }
+                        callback(convertedEvents)
+                    }
+                    else {
+                        callback(listOf())
+                    }
+
+                }
+            }
+            else {
+            }
+        }
+    }
+    private fun convertFirestoreEvent (firestoreEvent: FirestoreEvent, id: String? = null): Event {
         val convertedEvent = Event()
         convertedEvent.attendees = firestoreEvent.attendees!!
         convertedEvent.description = firestoreEvent.description!!
@@ -94,6 +115,10 @@ class CalendarDataSource {
         convertedEvent.location = firestoreEvent.location!!
         convertedEvent.title = firestoreEvent.name!!
         convertedEvent.isAiSuggestion = firestoreEvent.isAiSuggestion
+        if (id != null && id != "") {
+            convertedEvent.id = id
+        }
+
         return convertedEvent
 
         }
