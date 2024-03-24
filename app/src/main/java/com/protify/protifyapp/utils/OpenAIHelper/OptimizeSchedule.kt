@@ -547,7 +547,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             passedQualityCheck = false
         }
         // Check that the old events and the new events don't all have the same start and end times
-        if (optimizedSchedule.events.map { it.startTime } == optimizedSchedule.oldEvents.map { it.startTime } && optimizedSchedule.events.map { it.endTime } == optimizedSchedule.oldEvents.map { it.endTime }) {
+        if (optimizedSchedule.events.map { it.startTime }.sorted() == optimizedSchedule.oldEvents.map { it.startTime }.sorted() && optimizedSchedule.events.map { it.endTime }.sorted() == optimizedSchedule.oldEvents.map { it.endTime }.sorted()) {
             passedQualityCheck = false
         }
         // If there are nonRainingTimes, then check that the events that have isOutside are scheduled during the non-raining times
