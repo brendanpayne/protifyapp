@@ -442,15 +442,16 @@ class CalendarView {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(if (isMonthView) 0.15f else 0.5f)
+                    .weight(if (isMonthView) 0.15f else 1f)
                     .background(
                         color = MaterialTheme.colorScheme.surface,
                     )
             ) {
+                val sortedEvents = events.sortedBy { it.startTime }
                 if (!isMonthView) { // Only shows the EventCard in week view
                     EventBreakdown().DailySchedule(
                         scale = 1.0,
-                        eventList = events,
+                        eventList = sortedEvents,
                         uid = FirebaseLoginHelper().getCurrentUser()?.uid ?: "",
                         day = date.date.dayOfMonth.toString(),
                         month = date.date.month.toString(),

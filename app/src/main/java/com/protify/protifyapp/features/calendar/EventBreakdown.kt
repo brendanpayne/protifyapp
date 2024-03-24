@@ -32,7 +32,8 @@ class EventBreakdown {
         val color: Color,
         val height: Float = 1f,
         val endTime: String = "",
-        val layer: Int = 0
+        val layer: Int = 0,
+        val id: String = ""
     )
 
     private fun createListEvent(): List<Event> {
@@ -48,24 +49,24 @@ class EventBreakdown {
             },
             Event().apply {
                 title = "Event 2"
-                startTime = "11:00"
-                endTime = "12:00"
+                startTime = "08:30"
+                endTime = "10:00"
                 description = "Description for Event 2"
                 location = "Location for Event 2"
                 attendees = listOf()
             },
             Event().apply {
                 title = "Event 3"
-                startTime = "15:00"
-                endTime = "18:00"
+                startTime = "12:00"
+                endTime = "13:00"
                 description = "Description for Event 3"
                 location = "Location for Event 3"
                 attendees = listOf()
             },
             Event().apply {
                 title = "Event 4"
-                startTime = "20:00"
-                endTime = "20:30"
+                startTime = "14:00"
+                endTime = "15:30"
                 description = "Description for Event 4"
                 location = "Location for Event 4"
                 attendees = listOf()
@@ -123,11 +124,11 @@ class EventBreakdown {
         val timeArray = time.split(":")
         var hour = timeArray[0].toFloat()
         val minute = timeArray[1].substring(0, 2).toFloat()
-        val amPm = timeArray[1].substring(2)
+        val amPm = timeArray[1].substring(2).trim()
 
         if (amPm == "PM" && hour < 12) {
             hour += 12
-        } else if (amPm == "AM" && hour.toInt() == 12) {
+        } else if (amPm == "AM" && hour == 12f) {
             hour = 0f
         }
         return (hour * 60 + minute) / 60
@@ -199,6 +200,74 @@ class EventBreakdown {
     }
 
     @Composable
+    fun EventBreakdownCard(
+        timeSlot: TimeSlot,
+        scale: Int,
+        layerColor: Color,
+        context: Context,
+        uid: String,
+        day: String,
+        month: String,
+        year: String,
+        overlappingEventsCount: Int
+    ) {
+        val durationInMinutes =
+            (convertTimeToFloat(timeSlot.endTime) - convertTimeToFloat(timeSlot.startTime)) * 60
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(1f / overlappingEventsCount)
+                .height((durationInMinutes * scale).dp)
+                .padding(vertical = 1.dp)
+                .clickable {
+                    FirestoreHelper().getEvent(
+                        uid,
+                        day,
+                        month,
+                        year,
+                        timeSlot.text
+                    ) { id, _ ->
+                        if (id == null) {
+                            Toast
+                                .makeText(
+                                    context,
+                                    "Event not found",
+                                    Toast.LENGTH_SHORT
+                                )
+                                .show()
+                        }
+                    }
+                },
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = layerColor
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                if (timeSlot.text.isNotEmpty()) {
+                    Text(
+                        text = timeSlot.text,
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .fillMaxWidth(0.6f),
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    Text(
+                        text = ("${timeSlot.startTime} - ${timeSlot.endTime}"),
+                        modifier = Modifier.padding(end = 4.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
     fun TimeSlotLayer(
         timeSlots: List<TimeSlot>,
         scale: Int,
@@ -212,7 +281,7 @@ class EventBreakdown {
     ) {
         val layerColor = when (layer) {
             0 -> MaterialTheme.colorScheme.primary
-            1 -> MaterialTheme.colorScheme.primary
+            1 -> MaterialTheme.colorScheme.secondary
             else -> MaterialTheme.colorScheme.error
         }
         Box(
@@ -229,65 +298,36 @@ class EventBreakdown {
             ) {
                 val startTimeMinutes = (convertTimeToFloat(timeSlots[0].startTime)) * 60
                 Spacer(modifier = Modifier.height(((30 + startTimeMinutes) * scale).dp)) // top padding
+                val displayedEvents = mutableMapOf<String, Int>()
                 for (i in timeSlots.indices) {
                     val timeSlot = timeSlots[i]
-                    val durationInMinutes =
-                        (convertTimeToFloat(timeSlot.endTime) - convertTimeToFloat(timeSlot.startTime)) * 60
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height((durationInMinutes * scale).dp)
-                            .padding(vertical = 1.dp)
-                            .clickable {
-                                FirestoreHelper().getEvent(
-                                    uid,
-                                    day,
-                                    month,
-                                    year,
-                                    timeSlot.text
-                                ) { id, _ ->
-                                    if (id == null) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                "Event not found",
-                                                Toast.LENGTH_SHORT
-                                            )
-                                            .show()
-                                    }
-                                }
-                            }
-                            .align(Alignment.End),
-                        colors = CardDefaults.elevatedCardColors(
-                            containerColor = layerColor
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            if (timeSlot.text.isNotEmpty()) {
-                                Text(
-                                    text = timeSlot.text,
-                                    modifier = Modifier
-                                        .padding(horizontal = 4.dp)
-                                        .fillMaxWidth(0.6f),
-                                    style = MaterialTheme.typography.headlineSmall
-                                )
-                                Text(
-                                    text = ("${timeSlot.startTime} - ${timeSlot.endTime}"),
-                                    modifier = Modifier.padding(end = 4.dp),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
+
                     val nextEventStartTime = if (i < timeSlots.size - 1) convertTimeToFloat(timeSlots[i + 1].startTime) else 24f
                     val currentEventEndTime = convertTimeToFloat(timeSlot.endTime)
                     val differenceInMinutes = (nextEventStartTime - currentEventEndTime) * 60
+
+                    val overlappingEvents = timeSlots.filter{ checkOverlap(
+                        Event().apply { startTime = it.startTime; endTime = it.endTime },
+                        Event().apply { startTime = timeSlot.startTime; endTime = timeSlot.endTime }
+                    )}
+
+                    if (overlappingEvents.size > 1) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            for (event in overlappingEvents) {
+                                val count = displayedEvents.getOrDefault(event.id, 0)
+                                if (count < overlappingEvents.size) {
+                                    EventBreakdownCard(event, scale, layerColor, context, uid, day, month, year, overlappingEvents.size)
+                                    displayedEvents[event.id] = count + 1
+                                }
+                            }
+                        }
+                    } else if (!displayedEvents.containsKey(timeSlot.id) || displayedEvents[timeSlot.id]!! < 1) {
+                        EventBreakdownCard(timeSlot, scale, layerColor, context, uid, day, month, year, 1)
+                        displayedEvents[timeSlot.id] = 1
+                    }
 
                     Spacer(modifier = Modifier.height((differenceInMinutes * scale).dp))
                 }
@@ -296,28 +336,12 @@ class EventBreakdown {
         }
     }
 
-
-    @Composable
-    fun renderTimeSlotLayer(timeSlots: List<TimeSlot>, layer: Int): List<TimeSlot> {
-        return timeSlots.filter { it.layer == layer }
-    }
-
     @Preview
     @Composable
     fun EventBreakdownPopulatedPreview() {
         ProtifyTheme {
             Surface {
                 DailySchedule(scale = 1.0, eventList = createListEvent())
-            }
-        }
-    }
-
-    @Preview
-    @Composable
-    fun EventBreakdownEmptyPreview() {
-        ProtifyTheme {
-            Surface {
-                TimeGrid(scale = 1)
             }
         }
     }
