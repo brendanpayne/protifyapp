@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,6 +47,12 @@ import kotlinx.coroutines.launch
 
 
 class HomeActivity {
+    enum class TimeOfDay(val displayName: String) {
+        MORNING("Good Morning"),
+        AFTERNOON("Good Afternoon"),
+        EVENING("Good Evening"),
+        NIGHT("Good Night")
+    }
 
     @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
     @Composable
@@ -55,6 +62,14 @@ class HomeActivity {
         val firestoreHelper = FirestoreHelper()
         val user = FirebaseLoginHelper().getCurrentUser()
         val context = LocalContext.current
+
+        // Calculate the time of day
+        val timeOfDay = when (java.time.LocalTime.now().hour) {
+            in 6..11 -> TimeOfDay.MORNING
+            in 12..16 -> TimeOfDay.AFTERNOON
+            in 17..20 -> TimeOfDay.EVENING
+            else -> TimeOfDay.NIGHT
+        }
 
         Scaffold(
             scaffoldState = scaffoldState,
@@ -127,8 +142,10 @@ class HomeActivity {
                 Box(modifier = Modifier.fillMaxSize(),contentAlignment = Alignment.TopEnd)  {
 
                     Column {
-                        // TODO: Add a greeting based on the time of day and logged in user.
-                        val greeting = "Good Morning, ${user?.email}!"
+                        var greeting by remember { mutableStateOf(timeOfDay.displayName) }
+                        if (user?.displayName != null || user?.displayName != "") {
+                            greeting = "${timeOfDay.displayName}, ${user?.displayName}!"
+                        }
                         Text(
                             text = greeting,
                             modifier = Modifier.padding(16.dp),
