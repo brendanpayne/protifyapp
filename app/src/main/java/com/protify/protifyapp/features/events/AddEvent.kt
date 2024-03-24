@@ -315,15 +315,16 @@ class AddEvent {
         LaunchedEffect(networkManager) {
             networkManager.startListening()
         }
-        LaunchedEffect(isConnected) {
-            networkManager.setNetworkChangeListener {
-                if(it) {
-                    FirestoreHelper().toggleOfflineOnline(true)
-                } else {
-                    FirestoreHelper().toggleOfflineOnline(false)
-                }
-            }
-        }
+        // This is junk
+//        LaunchedEffect(isConnected) {
+//            networkManager.setNetworkChangeListener {
+//                if(it) {
+//                    FirestoreHelper().toggleOfflineOnline(true)
+//                } else {
+//                    FirestoreHelper().toggleOfflineOnline(false)
+//                }
+//            }
+//        }
 
         val listState = rememberLazyListState()
         Surface(

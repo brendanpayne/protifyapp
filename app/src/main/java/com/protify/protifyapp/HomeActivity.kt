@@ -1,6 +1,8 @@
 package com.protify.protifyapp
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,7 +46,12 @@ import androidx.navigation.compose.rememberNavController
 import com.protify.protifyapp.features.calendar.CalendarView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.ui.theme.ProtifyTheme
+import com.protify.protifyapp.utils.OpenAIHelper.GetAISchedule
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 
 
 class HomeActivity {
@@ -95,7 +103,9 @@ class HomeActivity {
                         Spacer(modifier = Modifier.height(32.dp))
                             Text(
                                 "Profile",
-                                modifier = Modifier.padding(top = 10.dp).clickable { navController.navigate("profile") },
+                                modifier = Modifier
+                                    .padding(top = 10.dp)
+                                    .clickable { navController.navigate("profile") },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 20.sp,
                                 color = MaterialTheme.colors.onSurface
@@ -105,7 +115,9 @@ class HomeActivity {
                         Spacer(modifier = Modifier.height(32.dp))
                             Text(
                                 "Privacy & Location",
-                                modifier = Modifier.padding(top = 10.dp).clickable { navController.navigate("privacyLocation") },
+                                modifier = Modifier
+                                    .padding(top = 10.dp)
+                                    .clickable { navController.navigate("privacyLocation") },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 20.sp,
                                 color = MaterialTheme.colors.onSurface
@@ -139,7 +151,7 @@ class HomeActivity {
 
             },
             content = {
-                Box(modifier = Modifier.fillMaxSize(),contentAlignment = Alignment.TopEnd)  {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
 
                     Column {
                         var greeting by remember { mutableStateOf(timeOfDay.displayName) }
@@ -162,17 +174,39 @@ class HomeActivity {
                     LaunchedEffect(networkManager) {
                         networkManager.startListening()
                     }
-                    LaunchedEffect(isConnected) {
-                        networkManager.setNetworkChangeListener {
-                            if (it) {
-                                firestoreHelper.toggleOfflineOnline(true)
-                            } else {
-                                firestoreHelper.toggleOfflineOnline(false)
+//                    LaunchedEffect(isConnected) {
+//                        networkManager.setNetworkChangeListener {
+//                            if (it) {
+//                                firestoreHelper.toggleOfflineOnline(true)
+//                            } else {
+//                                firestoreHelper.toggleOfflineOnline(false)
+//                            }
+//                        }
+//                    }
+
+                    // Optimize schedule for today in a new coroutine
+                    var isOptimizing by rememberSaveable { // Only allow optimization once (if a user navigates away, this will remember)
+                        mutableStateOf(false)
+                    }
+                    LaunchedEffect(user) {
+                        user?.let {
+                            if (isOptimizing) {
+                                Toast.makeText(context, "Optimizing schedule for today...", Toast.LENGTH_SHORT).show() // Runs when a user navigates away and back
+                                return@LaunchedEffect
                             }
+                                isOptimizing = true
+                                scaffoldState.snackbarHostState.showSnackbar("Optimizing schedule for today...")
+                                val result = optimizeScheduleForToday(it.uid, context)
+                                isOptimizing = false
+                                if (result) {
+                                    scaffoldState.snackbarHostState.showSnackbar("Optimized schedule for today!")
+                                } else {
+                                    scaffoldState.snackbarHostState.showSnackbar("No optimization needed for today.")
+
+                                }
                         }
                     }
                 }
-
             }
 
         )
@@ -199,6 +233,23 @@ class HomeActivity {
 
     fun navigateToAddEvent(navController: NavHostController) {
         navController.navigate("addEvent")
+    }
+    /** This function runs asynchronously to optimize the schedule for today
+     * @param uid The user's unique identifier
+     * @param context The context for showing toasts
+     * @return True if the schedule was optimized successfully, false otherwise
+     */
+    suspend fun optimizeScheduleForToday(uid: String, context: Context): Boolean {
+        val result = CompletableDeferred<Boolean>()
+        CoroutineScope(Dispatchers.IO).launch {
+            // Get user's home address
+            val homeAddress = FirestoreHelper().getUserHomeAddress(uid)
+            // Optimize schedule for today
+            GetAISchedule(uid, homeAddress).getOptimizedSchedule(false, LocalDateTime.now().plusDays(1)) { success -> // For now, do one day in advance
+                result.complete(success)
+            }
+        }
+        return result.await()
     }
 }
 
