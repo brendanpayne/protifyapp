@@ -542,14 +542,39 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         if (optimizedSchedule.events.size != events.size) {
             passedQualityCheck = false
         }
-        // Check that the events all have the same name
-        if (optimizedSchedule.events.map { it.name.lowercase() }.sorted() != events.map { it.name.lowercase() }.sorted()) {
+        // Check that the events in events has a respective optimized event in optimizedSchedule.events
+        if (events.any { event -> optimizedSchedule.events.none { it.name == event.name } }) {
             passedQualityCheck = false
         }
-        // Check that the old events and the new events don't all have the same start and end times
-        if (optimizedSchedule.events.map { it.startTime }.sorted() == optimizedSchedule.oldEvents.map { it.startTime }.sorted() && optimizedSchedule.events.map { it.endTime }.sorted() == optimizedSchedule.oldEvents.map { it.endTime }.sorted()) {
+        // Check that the old events start and end times don't match the new events start and end times
+        if (optimizedSchedule.oldEvents.all { event ->
+                optimizedSchedule.events.all { it.name == event.name &&
+                        (it.startTime == event.startTime && it.endTime == event.endTime) }
+            }) {
             passedQualityCheck = false
         }
+        // Check that the events and old events have the same value when you subtract the start time from the end time
+        val today = events[0].startTime
+        var count = 0
+        for (event in optimizedSchedule.events) {
+            val matchingEvent = events.find { it.name == event.name }
+            if (matchingEvent != null) {
+                val oldMatchingEvent = optimizedSchedule.oldEvents.find { it.name == event.name }
+                if (oldMatchingEvent != null) {
+                    val oldDuration = ParseTime().parseTime(oldMatchingEvent.endTime, today).toLocalTime().toSecondOfDay() - ParseTime().parseTime(oldMatchingEvent.startTime, today).toLocalTime().toSecondOfDay()
+                    val newDuration = ParseTime().parseTime(oldMatchingEvent.endTime, today).toLocalTime().toSecondOfDay() - ParseTime().parseTime(oldMatchingEvent.startTime, today).toLocalTime().toSecondOfDay()
+                    if (oldDuration == newDuration) {
+                        count++
+                    }
+                }
+            }
+        }
+        if (count != optimizedSchedule.events.size) {
+            passedQualityCheck = false
+        }
+
+
+
         // If there are nonRainingTimes, then check that the events that have isOutside are scheduled during the non-raining times
         if (nonRainingTimes != null) {
             for (event in events) {
