@@ -246,7 +246,8 @@ class CalendarView {
                                                         text = "${event.title} (${event.startTime} - ${event.endTime})",
                                                         modifier = Modifier.padding(8.dp),
                                                         style = MaterialTheme.typography.bodyMedium,
-                                                        color = MaterialTheme.colorScheme.onSurface,
+                                                        //color = MaterialTheme.colorScheme.onSurface,
+                                                        color = if (event.isAiSuggestion) Color.Green else MaterialTheme.colorScheme.onSurface,
                                                         textAlign = TextAlign.Center
                                                     )
                                                 }

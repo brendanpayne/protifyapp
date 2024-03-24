@@ -50,8 +50,10 @@ class EventView {
         } else {
             if (data.selectedDate.hasEvents) {
                 LazyColumn(content = {
-                    items(data.selectedDate.events.size) { event ->
-                        EventItem(event = data.selectedDate.events[event])
+                    // Sort events by start time
+                    val sortedEvents = data.selectedDate.events.sortedBy { it.startTime }
+                    items(sortedEvents.size) { event ->
+                        EventItem(event = sortedEvents[event])
                     }
                 })
             } else {
@@ -72,6 +74,15 @@ class EventView {
     @Composable
     private fun EventItem(event: Event) {
         Card(
+            colors = if(event.isAiSuggestion) {
+                CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                )
+            } else {
+                CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                )
+            },
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),

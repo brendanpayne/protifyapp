@@ -93,6 +93,7 @@ class CalendarDataSource {
         convertedEvent.startTime = firestoreEvent.startTime.format(DateTimeFormatter.ofPattern("h:mm a"))
         convertedEvent.location = firestoreEvent.location!!
         convertedEvent.title = firestoreEvent.name!!
+        convertedEvent.isAiSuggestion = firestoreEvent.isAiSuggestion
         return convertedEvent
 
         }

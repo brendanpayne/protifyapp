@@ -11,4 +11,5 @@ class Event {
     var startTime: String = ""
     var endTime: String = ""
     var attendees: List<Attendee> = listOf()
+    var isAiSuggestion: Boolean = false
 }
