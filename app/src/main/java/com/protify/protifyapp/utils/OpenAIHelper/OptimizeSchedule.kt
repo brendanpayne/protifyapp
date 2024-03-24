@@ -2,6 +2,7 @@ package com.protify.protifyapp.utils.OpenAIHelper
 
 import OpenAIResponse
 import OptimizedSchedule
+import android.util.Log
 import com.google.gson.GsonBuilder
 import com.protify.protifyapp.APIKeys
 import com.protify.protifyapp.FirestoreEvent
@@ -266,7 +267,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         // Init nonRainingTimes bool
         var hasRainingTimes = true
         // Check if the nonRainingTimes list is 0:00-00:00
-        if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0) {
+        if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0 && events.any { it.isOutside }) {
             hasRainingTimes = false
         }
 
@@ -286,6 +287,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         fun thirdCall(iterations: Int, hasRainingTime: Boolean) {
          if (iterations > maxRetries) {
              // If we get to here, we're down bad. Return nothing
+             Log.w("OptimizeSchedule", "Third call failed after 3 attempts.")
              callback(OptimizedSchedule(emptyList(), emptyList()))
              return
          }
@@ -318,7 +320,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
          */
         fun secondCall(iterations: Int, hasRainingTime: Boolean) {
             if (iterations > maxRetries) {
-                //callback(OptimizedSchedule(emptyList(), emptyList()))
+                Log.i("OptimizeSchedule", "Second call failed after 3 attempts.")
                 thirdCall(0, hasRainingTime)
                 return
             }
@@ -350,6 +352,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         fun mainCall(iterations: Int, hasRainingTime: Boolean) {
             if (iterations > maxRetries) {
                 secondCall(0, hasRainingTime)
+                Log.i("OptimizeSchedule", "Main call failed after 3 attempts.")
                 return
             }
             getResponse(use4, nonRainingTimes) {
@@ -540,7 +543,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             passedQualityCheck = false
         }
         // Check that the events all have the same name
-        if (optimizedSchedule.events.map { it.name.lowercase() } != events.map { it.name.lowercase() }) {
+        if (optimizedSchedule.events.map { it.name.lowercase() }.sorted() != events.map { it.name.lowercase() }.sorted()) {
             passedQualityCheck = false
         }
         // Check that the old events and the new events don't all have the same start and end times
