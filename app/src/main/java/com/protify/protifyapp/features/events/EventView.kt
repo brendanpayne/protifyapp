@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.protify.protifyapp.features.calendar.CalendarUiModel
 import com.protify.protifyapp.features.calendar.Event
+import com.protify.protifyapp.utils.OpenAIHelper.ParseTime
 
 
 class EventView {
@@ -51,7 +52,7 @@ class EventView {
             if (data.selectedDate.hasEvents) {
                 LazyColumn(content = {
                     // Sort events by start time
-                    val sortedEvents = data.selectedDate.events.sortedBy { it.startTime }
+                    val sortedEvents = data.selectedDate.events.sortedBy { ParseTime().parseAMPMTime(it.startTime, data.selectedDate.date.atStartOfDay()) }
                     items(sortedEvents.size) { event ->
                         EventItem(event = sortedEvents[event])
                     }
