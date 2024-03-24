@@ -241,6 +241,10 @@ class HomeActivity {
         CoroutineScope(Dispatchers.IO).launch {
             // Get user's home address
             val homeAddress = FirestoreHelper().getUserHomeAddress(uid)
+            if (homeAddress == "" || homeAddress == "No home address found") {
+                result.complete(false)
+                return@launch
+            }
             // Optimize schedule for today
             GetAISchedule(uid, homeAddress).getOptimizedSchedule(false, today) { success -> // For now, do one day in advance
                 result.complete(success)

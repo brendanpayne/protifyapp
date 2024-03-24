@@ -68,6 +68,11 @@ class EventView {
                 Button(
                     onClick = {
                         CoroutineScope(Dispatchers.Main).launch {
+                            val homeAddress = FirestoreHelper().getUserHomeAddress(user!!.uid)
+                            if (homeAddress == "" || homeAddress == "No home address found") {
+                                Toast.makeText(context, "Please set your home address in the settings", Toast.LENGTH_SHORT).show()
+                                return@launch
+                            }
                             if (isLoading) {
                                 Toast.makeText(context, "Optimization already in progress", Toast.LENGTH_SHORT).show()
                                 return@launch
