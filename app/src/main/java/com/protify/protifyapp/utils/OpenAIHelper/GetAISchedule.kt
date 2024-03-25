@@ -24,13 +24,24 @@ class GetAISchedule(uid: String, homeAddress: String) {
             month = today.month.toString(),
             year = today.year.toString()
         ) { events ->
-           // if there are no events, return an empty list
-            if (events.isEmpty()) {
+            // Get the count of AI suggestions not user accepted and the count of non AI suggestions
+            val aiSuggestions = events.filter { it.isAiSuggestion && !it.isUserAccepted } // AI suggestions that are not user accepted
+            val nonAiSuggestions = events.filter { !it.isAiSuggestion } // Non AI suggestions
+            // If there are less AI suggestions than non AI suggestions, then we should run the AI
+           // Wait for at least 3 event or return an empty list
+            if (events.size < 3) {
                 callback(events, false)
+            } else if (aiSuggestions.size < nonAiSuggestions.size && aiSuggestions.isNotEmpty()) { // If there are any ai suggestions and there are less ai suggestions than non ai suggestions
+                // Delete the old AI suggestions
+                FirestoreHelper().deleteAIGeneratedEvents(uid = uid, day = today.dayOfMonth.toString(), month = today.month.toString(), year = today.year.toString()) {
+                    if (it) {
+                        callback(nonAiSuggestions, true)
+                    }
+                }
             } else {
 
-                // check to see isAiSuggestions is true and isUserSuggestions is false
-                val shouldOptimize = events.none { it.isAiSuggestion } || events.any { it.isAiSuggestion && !it.isUserAccepted }
+                // If there are no AI suggestions, run it back
+                val shouldOptimize = events.none { it.isAiSuggestion }
                 callback(events, shouldOptimize)
             }
         }
