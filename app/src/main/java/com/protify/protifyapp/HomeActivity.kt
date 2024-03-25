@@ -246,7 +246,7 @@ class HomeActivity {
                 return@launch
             }
             // Optimize schedule for today
-            GetAISchedule(uid, homeAddress).getOptimizedSchedule(false, today) { success -> // For now, do one day in advance
+            GetAISchedule(uid, homeAddress).getOptimizedSchedule(true, today) { success -> // For now, do one day in advance
                 result.complete(success)
             }
         }

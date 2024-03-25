@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ContentAlpha
+import androidx.compose.material.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
@@ -51,21 +53,26 @@ import java.time.LocalDateTime
 
 class EventView {
     val user = FirebaseLoginHelper().getCurrentUser()
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun EventHeader(context: Context, today: LocalDateTime) {
         var isLoading by remember { mutableStateOf(false) }
-        // get user
+        val user = FirebaseLoginHelper().getCurrentUser()
 
-        Row {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
                 text = "Events",
-                modifier = Modifier
-                    .padding(16.dp)
-                    .weight(1f), // Align to the left
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
             )
             if (today.withHour(0).withMinute(0).withSecond(0) >= LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).plusHours(22)) {
-                Button(
+                IconButton(
                     onClick = {
                         CoroutineScope(Dispatchers.Main).launch {
                             val homeAddress = FirestoreHelper().getUserHomeAddress(user!!.uid)
@@ -79,7 +86,7 @@ class EventView {
                             }
                             isLoading = true
                             Toast.makeText(context, "Optimizing schedule...", Toast.LENGTH_SHORT).show()
-                            var success = HomeActivity().optimizeScheduleForToday(user!!.uid, today)
+                            val success = HomeActivity().optimizeScheduleForToday(user!!.uid, today)
                             if (success) {
                                 Toast.makeText(context, "Schedule optimized!", Toast.LENGTH_SHORT).show()
                             } else {
@@ -89,11 +96,9 @@ class EventView {
                         }
 
                     },
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .size(width = 110.dp, height = 90.dp),
+                    modifier = Modifier.padding(8.dp)
                 ) {
-                    optimizingIcon(isLoading = isLoading)
+                    OptimizingIcon(isLoading = isLoading)
                 }
             }
         }
@@ -118,7 +123,7 @@ class EventView {
                     // Sort events by start time
                     val sortedEvents = data.selectedDate.events.sortedBy { ParseTime().parseAMPMTime(it.startTime, data.selectedDate.date.atStartOfDay()) }
                     items(sortedEvents.size) { event ->
-                        EventItem(event = sortedEvents[event], context = context, selectedDate = selectedDate)
+                        EventItem(event = sortedEvents[event], context = context, selectedDate = selectedDate, isAiSuggested = sortedEvents[event].isAiSuggestion)
                     }
                 })
             } else {
@@ -137,53 +142,60 @@ class EventView {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun EventItem(event: Event, context: Context, selectedDate: LocalDateTime) {
+    private fun EventItem(event: Event, context: Context, selectedDate: LocalDateTime, isAiSuggested: Boolean) {
         Card(
-            colors = if(event.isAiSuggestion) {
-                CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                )
-            } else {
-                CardDefaults.elevatedCardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                )
-            },
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
-            onClick = {
-
-            }
+            onClick = { /* Handle click event */ },
+            shape = RoundedCornerShape(8.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            colors = CardDefaults.cardColors(
+                contentColor = if (isAiSuggested) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
+            )
         ) {
-            Column {
-                EventItemContent(event, context, selectedDate)
-            }
+            EventItemContent(event, context, selectedDate, isAiSuggested)
         }
     }
 
     @Composable
-    private fun EventItemContent(event: Event, context: Context, selectedDate: LocalDateTime) {
-        Row {
-            Text(
-                text = event.title,
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = "${event.startTime} - ${event.endTime}",
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            deleteEventButton(onClick = {
-                FirestoreHelper().deleteEventById(user!!.uid, selectedDate.month.toString(), selectedDate.year.toString(), event.id) {
-                    if (it) {
-                        Toast.makeText(context, "Event deleted", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "Failed to delete event", Toast.LENGTH_SHORT).show()
+    private fun EventItemContent(event: Event, context: Context, selectedDate: LocalDateTime, isAiSuggested: Boolean) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = event.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (isAiSuggested) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "${event.startTime} - ${event.endTime}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = ContentAlpha.medium)
+                )
+            }
+            IconButton(
+                onClick = {
+                    FirestoreHelper().deleteEventById(user!!.uid, selectedDate.month.toString(), selectedDate.year.toString(), event.id) {
+                        if (it) {
+                            Toast.makeText(context, "Event deleted", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Failed to delete event", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete Event",
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
-            )
         }
     }
 
@@ -228,27 +240,30 @@ class EventView {
             }
         }
     }
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun optimizingIcon(isLoading: Boolean) {
+    fun OptimizingIcon(isLoading: Boolean) {
         val infiniteRotation by animateFloatAsState(
             targetValue = if (isLoading) 360f else 0f,
             animationSpec = infiniteRepeatable(
                 animation = tween(durationMillis = 500, easing = LinearEasing),
                 repeatMode = RepeatMode.Restart
             ),
+            label = "",
         )
 
         Icon(
             imageVector = Icons.Default.Refresh,
             contentDescription = "Loading",
             modifier = Modifier
-                .padding(16.dp)
-                .size(60.dp)
-                .rotate(if (isLoading) infiniteRotation else 0f) // Use the animated value directly
+                .padding(4.dp)
+                .size(30.dp)
+                .rotate(if (isLoading) infiniteRotation else 0f), // Use the animated value directly
+            tint = MaterialTheme.colorScheme.onSurface
         )
     }
     @Composable
-    fun deleteEventButton(onClick : () -> Unit, modifier: Modifier = Modifier) {
+    fun DeleteEventButton(onClick : () -> Unit, modifier: Modifier = Modifier) {
         Button(
             onClick = onClick,
             modifier = modifier,

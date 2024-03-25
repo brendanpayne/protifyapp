@@ -421,7 +421,7 @@ class CalendarView {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(if (isMonthView) 0.15f else 0.5f)
+                    .weight(if (isMonthView) 0.15f else 1f)
                     .background(
                         color = MaterialTheme.colorScheme.surface,
                     )
