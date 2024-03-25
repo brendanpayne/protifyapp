@@ -246,6 +246,76 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         retry(0)
     }
 
+    /** Function that is called when the user didn't set any event locations for the entire day
+     *
+     */
+    fun makeCallNoLocation(use4: Boolean = false, nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, callback: (OptimizedSchedule) -> Unit) {
+        if (use4) {
+            model = "gpt-4-1106-preview" // This points to the latest (best?) model
+        }
+
+        // init hasOptimizedEvents bool
+        var hasOptimizedEvents = false
+        // Check if there are any events that are not allowed to be rescheduled
+        if(events.any { it.isOptimized }) {
+            hasOptimizedEvents = true
+        }
+        // Init nonRainingTimes bool
+        var hasRainingTimes = true
+        // Check if the nonRainingTimes list is 0:00-00:00
+        if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0 && events.any { it.isOutside }) {
+            hasRainingTimes = false
+        }
+
+        // init parser
+        val parse = GsonBuilder().create()
+
+        // init has overlapping events
+        var hasOverlappingEvents = false
+
+        // Check for overlapping events
+        if (events.any { event -> events.any { it != event && it.startTime.isBefore(event.endTime) && it.endTime.isAfter(event.startTime) } }) {
+            hasOverlappingEvents = true
+        }
+
+        fun mainCall(iterations: Int, hasRainingTime: Boolean) {
+            if (iterations > 3) {
+                Log.i("OptimizeSchedule", "Main call failed after 3 attempts.")
+                return
+            }
+            getResponseNoLocationData(nonRainingTimes) {
+                if (it == "Error") {
+                    mainCall(iterations + 1, hasRainingTime)
+                } else {
+                    val optimizedSchedule: OptimizedSchedule
+                    try {
+                        optimizedSchedule = parse.fromJson(it, OptimizedSchedule::class.java)
+                    } catch (e: Exception) {
+                        mainCall(iterations + 1, hasRainingTime)
+                        return@getResponseNoLocationData
+                    }
+                    if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {
+                        callback(optimizedSchedule)
+                    } else {
+                        mainCall(iterations + 1, hasRainingTime)
+                    }
+                }
+            }
+        }
+
+        // If there are overlapping events, then remove them before making the main call
+        if (hasOverlappingEvents) {
+            removeOverlappingEvents {
+                if (it.isNotEmpty()) {
+                    updateEvents(it) // Update the events list
+                    mainCall(0, hasRainingTimes) // Make the main call
+                }
+            }
+        } else {
+            mainCall(0, hasRainingTimes) // Make the main call
+        }
+    }
+
     /** This function is designed to be the main entry point into the AI call. It will start with a very strict prompt that gives it
      * a lot of information that it needs to parse through. If quality cannot be ensured, it will resort to using less factors in the prompt so it can
      * zero in on what the user needs from the AI
@@ -523,10 +593,6 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         }
         //If there are no events that are not allowed to be rescheduled, then it's fully optimized
         if (dontRescheduleEvents.size >= events.size) {
-            return true
-        }
-        //If the optimalEventOrder is in the same order as the events by start time, then it's fully optimized
-        if (events.sortedBy { it.startTime } == optimalEventOrder) {
             return true
         }
         return false

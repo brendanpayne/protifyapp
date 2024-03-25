@@ -47,5 +47,12 @@ class AIPrompts {
         "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
         "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
     }
+    fun noLocationPrompt(dontRescheduleEvents: List<FirestoreEvent>): String {
+                return "Please optimize my schedule for today. You must return every event that is given to you" +
+                if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
+                "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
+                "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
+                "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
+    }
 
 }
