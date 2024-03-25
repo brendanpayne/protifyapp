@@ -538,24 +538,33 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
      */
     private fun qualityCheck(optimizedSchedule: OptimizedSchedule, nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>? = null): Boolean {
         var passedQualityCheck = true
+        val today = events[0].startTime // Get the day of the events by sampling the first event
         // Check that the number of events is the same
         if (optimizedSchedule.events.size != events.size) {
             passedQualityCheck = false
         }
         // Check that the events in events has a respective optimized event in optimizedSchedule.events
-        if (events.any { event -> optimizedSchedule.events.none { it.name == event.name } }) {
-            passedQualityCheck = false
+        for (event in events) {
+            val matchingEvent = optimizedSchedule.events.find { it.name == event.name }
+            if (matchingEvent == null) {
+                passedQualityCheck = false
+            }
         }
         // Check that the old events start and end times don't match the new events start and end times
-        if (optimizedSchedule.oldEvents.all { event ->
-                optimizedSchedule.events.all { it.name == event.name &&
-                        (it.startTime == event.startTime && it.endTime == event.endTime) }
-            }) {
+        var matchingStartAndEndTime = 0
+        for (event in events) {
+            val matchingEvent = optimizedSchedule.events.find { it.name == event.name }
+            if (matchingEvent != null) {
+                if (event.startTime == ParseTime().parseTime(matchingEvent.startTime, today) && event.endTime == ParseTime().parseTime(matchingEvent.endTime, today)) {
+                    matchingStartAndEndTime
+                }
+            }
+        }
+        if (matchingStartAndEndTime == events.size) {
             passedQualityCheck = false
         }
         // Check that the events and old events have the same value when you subtract the start time from the end time
-        val today = events[0].startTime
-        var count = 0
+        var matchingEventDuration = 0
         for (event in optimizedSchedule.events) {
             val matchingEvent = events.find { it.name == event.name }
             if (matchingEvent != null) {
@@ -564,12 +573,12 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                     val oldDuration = ParseTime().parseTime(oldMatchingEvent.endTime, today).toLocalTime().toSecondOfDay() - ParseTime().parseTime(oldMatchingEvent.startTime, today).toLocalTime().toSecondOfDay()
                     val newDuration = ParseTime().parseTime(oldMatchingEvent.endTime, today).toLocalTime().toSecondOfDay() - ParseTime().parseTime(oldMatchingEvent.startTime, today).toLocalTime().toSecondOfDay()
                     if (oldDuration == newDuration) {
-                        count++
+                        matchingEventDuration++
                     }
                 }
             }
         }
-        if (count != optimizedSchedule.events.size) {
+        if (matchingEventDuration != optimizedSchedule.events.size) {
             passedQualityCheck = false
         }
 
@@ -616,6 +625,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         }
 
         // Check that the start time is before the end time
+        // This checks for events that go past midnight
         for (event in optimizedSchedule.events) {
             if (event.startTime >= event.endTime) {
                 passedQualityCheck = false
