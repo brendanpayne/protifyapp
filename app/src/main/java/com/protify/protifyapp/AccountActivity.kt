@@ -12,7 +12,9 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.protify.protifyapp.features.calendar.CalendarUiModel
 import com.protify.protifyapp.features.events.AddEvent
+import com.protify.protifyapp.features.events.EventDetails
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.features.login.LoginActivity
 import com.protify.protifyapp.features.login.RegisterActivity
@@ -105,16 +107,9 @@ class AccountActivity {
                 composable("privacyLocation") {
                     PrivacyActivity().PrivacyPage(navController)
                 }
-                /*
-                composable("eventDetails/{date}/{eventId}") { backStackEntry ->
-                    val date = backStackEntry.arguments?.getString("date")
-                    val eventId = backStackEntry.arguments?.getString("eventId")
-                    EventDetails().EventDetailsPage(
-                        date = date!!,
-                        eventId = eventId!!
-                    )
+                composable("eventDetails/") {
+                    EventDetails().EventDetailsPage()
                 }
-                 */
             }
 
 
