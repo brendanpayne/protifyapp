@@ -5,7 +5,15 @@ import android.widget.Toast
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -24,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.ui.theme.ProtifyTheme
+
 class EventBreakdown {
 
     data class TimeSlot(
@@ -41,15 +50,15 @@ class EventBreakdown {
         return listOf(
             Event().apply {
                 title = "Event 1"
-                startTime = "08:30"
-                endTime = "11:00"
+                startTime = "07:00"
+                endTime = "08:30"
                 description = "Description for Event 1"
                 location = "Location for Event 1"
                 attendees = listOf()
             },
             Event().apply {
                 title = "Event 2"
-                startTime = "08:30"
+                startTime = "07:00"
                 endTime = "10:00"
                 description = "Description for Event 2"
                 location = "Location for Event 2"
@@ -109,7 +118,9 @@ class EventBreakdown {
         val timeSlots = mutableListOf<TimeSlot>()
 
         for (event in events) {
-            val layer = calculateLayer(event, events)
+//            val layer = calculateLayer(event, events)
+//            val layer = events.indexOf(event)
+            val layer = 0
             val height = (convertTimeToFloat(event.endTime) - convertTimeToFloat(event.startTime))
             timeSlots.add(TimeSlot(event.startTime, event.title, Color.LightGray, height, event.endTime, layer))
         }
@@ -254,14 +265,14 @@ class EventBreakdown {
                         text = timeSlot.text,
                         modifier = Modifier
                             .padding(horizontal = 4.dp)
-                            .fillMaxWidth(0.6f),
+                            .fillMaxWidth(1f),
                         style = MaterialTheme.typography.headlineSmall
                     )
-                    Text(
-                        text = ("${timeSlot.startTime} - ${timeSlot.endTime}"),
-                        modifier = Modifier.padding(end = 4.dp),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+//                    Text(
+//                        text = ("${timeSlot.startTime} - ${timeSlot.endTime}"),
+//                        modifier = Modifier.padding(end = 4.dp),
+//                        style = MaterialTheme.typography.bodyMedium
+//                    )
                 }
             }
         }
@@ -299,6 +310,8 @@ class EventBreakdown {
                 val startTimeMinutes = (convertTimeToFloat(timeSlots[0].startTime)) * 60
                 Spacer(modifier = Modifier.height(((30 + startTimeMinutes) * scale).dp)) // top padding
                 val displayedEvents = mutableMapOf<String, Int>()
+                // sort time slots by start time
+                val timeSlots = timeSlots.sortedBy { convertTimeToFloat(it.startTime) }
                 for (i in timeSlots.indices) {
                     val timeSlot = timeSlots[i]
 
@@ -316,15 +329,16 @@ class EventBreakdown {
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Start
                         ) {
-                            for (event in overlappingEvents) {
-                                val count = displayedEvents.getOrDefault(event.id, 0)
+                            for (timeSlot in overlappingEvents) {
+                                val count = displayedEvents.getOrDefault(timeSlot.id, 0)
                                 if (count < overlappingEvents.size) {
-                                    EventBreakdownCard(event, scale, layerColor, context, uid, day, month, year, overlappingEvents.size)
-                                    displayedEvents[event.id] = count + 1
+                                    EventBreakdownCard(timeSlot, scale, layerColor, context, uid, day, month, year, overlappingEvents.size)
+                                    displayedEvents[timeSlot.id] = count + 1
                                 }
                             }
                         }
-                    } else if (!displayedEvents.containsKey(timeSlot.id) || displayedEvents[timeSlot.id]!! < 1) {
+                    } else //if (!displayedEvents.containsKey(timeSlot.id) || displayedEvents[timeSlot.id]!! < 1) {
+                    {
                         EventBreakdownCard(timeSlot, scale, layerColor, context, uid, day, month, year, 1)
                         displayedEvents[timeSlot.id] = 1
                     }
