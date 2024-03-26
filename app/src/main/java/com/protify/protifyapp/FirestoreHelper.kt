@@ -2,6 +2,7 @@ package com.protify.protifyapp
 
 import OptimizedSchedule
 import android.util.Log
+import com.google.android.gms.tasks.Task
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.ktx.firestore
@@ -10,6 +11,8 @@ import com.protify.protifyapp.features.events.Attendee
 import com.protify.protifyapp.utils.MapsDurationUtils
 import com.protify.protifyapp.utils.OpenAIHelper.ParseTime
 import java.time.LocalDateTime
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class FirestoreHelper() {
     private val db: FirebaseFirestore = Firebase.firestore
@@ -114,17 +117,12 @@ class FirestoreHelper() {
     }
 
     fun toggleOfflineOnline(isConnected: Boolean) {
-        // [START disable_network]
         if (!isConnected) {
             db.disableNetwork()
                 .addOnCompleteListener {
                     Log.d("GoogleFirestore", "Network disabled")
                 }
-        }
-        // [END disable_network]
-
-        // [START enable_network]
-        if (isConnected) {
+        } else {
             db.enableNetwork()
                 .addOnSuccessListener {
                     Log.d("GoogleFirestore", "Network enabled")
@@ -133,8 +131,6 @@ class FirestoreHelper() {
                     Log.w("GoogleFirestore", "Error enabling network", e)
                 }
         }
-
-        // [END enable_network]
     }
 
     private fun offlineListener(uid: String) {
@@ -161,6 +157,7 @@ class FirestoreHelper() {
         year: String,
         callback: (List<FirestoreEvent>) -> Unit
     ) {
+
         val upperMonth = month.uppercase()
         db.collection("users")
             .document(uid)
@@ -377,27 +374,23 @@ class FirestoreHelper() {
                             name = "",
                             startTime = LocalDateTime.now(),
                             endTime = LocalDateTime.now(),
-                            location = "",
-                            description = "",
-                            timeZone = "",
-                            importance = 0,
-                            attendees = null,
-                            rainCheck = false,
-                            isRaining = false,
-                            mapsCheck = false,
                             distance = 0,
-                            nameLower = "",
-                            isOutside = false,
-                            isOptimized = false,
-                            isAiSuggestion = false,
-                            isUserAccepted = false
+                            nameLower = ""
                         )
                     )
                 }
 
             }
             .addOnFailureListener { exception ->
-                //Don't callback if there is an error
+                callback(
+                    null, FirestoreEvent(
+                        name = "",
+                        startTime = LocalDateTime.now(),
+                        endTime = LocalDateTime.now(),
+                        distance = 0,
+                        nameLower = ""
+                    )
+                )
                 Log.w("GoogleFirestore", "Error getting documents.", exception)
             }
     }
@@ -469,7 +462,7 @@ class FirestoreHelper() {
             .whereEqualTo("nameLower", FirebaseEvent.nameLower)
             .get()
             .addOnSuccessListener { result ->
-                if (result.size() == 1) {
+                if (result.size() != -1) {
                     for (document in result) {
                         db.collection("users")
                             .document(uid)
@@ -491,6 +484,101 @@ class FirestoreHelper() {
                     Log.w("GoogleFirestore", "More than one document found")
                     callback(false)
                 }
+            }.addOnFailureListener {
+                Log.w("GoogleFirestore", "EXCEPTION: $it")
+                callback(false)
+            }
+
+    }
+    /** Delete an event by ID
+     * @param uid: The user's uid
+     * @param day: The day of the event
+     * @param month: The month of the event (MONTH NAME NOT INT CONVERTED TO STRING!!)
+     * @param year: The year of the event
+     * @param eventId: The id of the event
+     * @return A callback function that will return true if the event was deleted successfully, and false if it was not
+     */
+    fun deleteEventById(
+        uid: String,
+        month: String,
+        year: String,
+        eventId: String,
+        callback: (Boolean) -> Unit
+    ) {
+        // Get the uppercased month
+        val upperMonth = month.uppercase()
+        db.collection("users")
+            .document(uid)
+            .collection("events")
+            .document(year)
+            .collection(upperMonth)
+            .document(eventId)
+            .delete()
+            .addOnSuccessListener {
+                Log.d("GoogleFirestore", "DocumentSnapshot successfully deleted!")
+                callback(true)
+            }
+            .addOnFailureListener { e ->
+                Log.w("GoogleFirestore", "Error deleting document", e)
+                callback(false)
+            }
+    }
+
+    /** This function will delete all of the events for the day generated by the AI but not accepted by the user
+     * @param uid: The user's uid
+     * @param day: The day of the event
+     * @param month: The month of the event (MONTH NAME NOT INT CONVERTED TO STRING!!)
+     * @param year: The year of the event
+     * @return A callback function that will return true if and when all of the events were successfully deleted, and false if they were not
+     */
+    fun deleteAIGeneratedEvents(
+        uid: String,
+        day: String,
+        month: String,
+        year: String,
+        callback: (Boolean) -> Unit
+    ) {
+        // Get the uppercased month
+        val upperMonth = month.uppercase()
+        db.collection("users")
+            .document(uid)
+            .collection("events")
+            .document(year)
+            .collection(upperMonth)
+            .whereEqualTo("startTime.dayOfMonth", day.toInt())
+            .whereEqualTo("isAiSuggestion", true)
+            .whereEqualTo("isUserAccepted", false) // Delete only the ones that the user has not accepted
+            .get()
+            .addOnSuccessListener { result ->
+                if (result.size() != -1) { // if there are results
+                    var deletedDocuments = result.documents.size
+                    for (document in result) {
+                        db.collection("users")
+                            .document(uid)
+                            .collection("events")
+                            .document(year)
+                            .collection(upperMonth)
+                            .document(document.id)
+                            .delete()
+                            .addOnSuccessListener {
+                                Log.d("GoogleFirestore", "DocumentSnapshot successfully deleted!")
+                                deletedDocuments--
+                                if (deletedDocuments == 0) { // Callback After all documents are deleted
+                                    callback(true)
+                                }
+                            }
+                            .addOnFailureListener { e ->
+                                Log.w("GoogleFirestore", "Error deleting document", e)
+                                callback(false)
+                            }
+                    }
+                } else {
+                    Log.w("GoogleFirestore", "More than one document found")
+                    callback(false)
+                }
+            }.addOnFailureListener {
+                Log.w("GoogleFirestore", "EXCEPTION: $it")
+                callback(false)
             }
 
     }
@@ -692,19 +780,7 @@ class FirestoreHelper() {
                         startTime = event.endTime,
                         endTime = dayEnd,
                         location = "6190 Falla Dr, Canal Winchester, OH 43110",
-                        description = "",
-                        timeZone = "",
-                        importance = 0,
-                        attendees = null,
-                        rainCheck = false,
-                        isRaining = false,
-                        mapsCheck = false,
-                        distance = 0,
                         nameLower = "",
-                        isOutside = false,
-                        isOptimized = false,
-                        isAiSuggestion = false,
-                        isUserAccepted = false
                     )
                     MapsDurationUtils(event.startTime).isChainedEvent(
                         event,
@@ -772,99 +848,99 @@ class FirestoreHelper() {
         }
     }
 
+    fun deleteUser(uid: String, callback: (Boolean) -> Unit) {
+        val userDocRef = db.collection("users").document(uid)
+
+        // Delete all documents in the 'events' subcollection
+        userDocRef.collection("events").get()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Begin a new batch
+                    val batch = db.batch()
+
+                    // Iterate over each document and add it to the batch to be deleted
+                    for (documentSnapshot in task.result!!) {
+                        batch.delete(documentSnapshot.reference)
+                    }
+
+                    // Commit the batch
+                    batch.commit().addOnCompleteListener {
+                        // Now delete the user document
+                        userDocRef.delete()
+                            .addOnSuccessListener {
+                                Log.d("GoogleFirestore", "User document and all subdocuments deleted successfully")
+                                callback(true)
+                            }
+                            .addOnFailureListener { e ->
+                                Log.d("GoogleFirestore", "Error deleting user document and subdocuments", e)
+                                callback(false)
+                            }
+                    }
+                } else {
+                    Log.d("GoogleFirestore", "Error getting subdocuments", task.exception)
+                    callback(false)
+                }
+            }
+    }
+
     /** This function will import the events from the AI generated schedule into the Firestore database
      * @param optimizedSchedule: The AI generated schedule
      * @param today: The current date of the events being optimized
      * @param uid: The user's uid
      * @param callback: A callback function that will return true if the all events were imported successfully, and false if they were not
      */
-    fun importAIGeneratedEvent(
-        optimizedSchedule: OptimizedSchedule,
-        today: LocalDateTime,
-        uid: String,
-        callback: (Boolean) -> Unit
-    ) {
+   fun importAIGeneratedEvent(
+    optimizedSchedule: OptimizedSchedule,
+    today: LocalDateTime,
+    uid: String,
+    callback: (Boolean) -> Unit
+) {
+    // Make sure old events and new events are different
+    if (optimizedSchedule.events == optimizedSchedule.oldEvents) {
+        callback(false)
+        return
+    }
 
-        // Make sure old events and new events are different
-        if (optimizedSchedule.events != optimizedSchedule.oldEvents) {
+    var importedEvents = 0
 
-            // Recursive function to import events sequentially
-            fun importEvent(index: Int) {
-                // Count the number of events that can be queried from the database
-                var nonNullEvents: Int = 0
-                // Create a map of the FirestoreEvent and the respective optmizedEvent
-                val eventMap = mutableMapOf<FirestoreEvent, OptimizedSchedule.Event>()
-                if (index >= optimizedSchedule.events.size) {
-                    callback(true)
-                    return
-                }
-                // Get the event at the index
-                val optimizedEvent = optimizedSchedule.events[index]
-                // Make sure all of the events can be found in the database first
-                getEvent(
-                    uid,
-                    today.dayOfMonth.toString(),
-                    today.month.toString(),
-                    today.year.toString(),
-                    optimizedEvent.name
-                ) { eventId, firestoreEvent ->
-                    if (eventId != null) {
-                        // Map the OptmizedEvent to the FirestoreEvent
-                        eventMap[firestoreEvent] = optimizedEvent
-                        nonNullEvents++
-                    }
-                    if (nonNullEvents == optimizedSchedule.events.size) {
-                        // init int to count the number of events that were successfully imported
-                        var importedEvents = 0
-                        // If all events are found, import them
-                        for (event in optimizedSchedule.events) {
-                            // Get the FirestoreEvent from the map
-                            val firestoreEvent = eventMap.filterValues { it == event }.keys.first()
-                            // Make a new FirestoreEvent with the new start and end times
-                            val newFirestoreEvent = FirestoreEvent(
-                                name = firestoreEvent.name,
-                                startTime = ParseTime().parseTime(event.startTime, today),
-                                endTime = ParseTime().parseTime(event.endTime, today),
-                                location = firestoreEvent.location,
-                                description = firestoreEvent.description,
-                                timeZone = firestoreEvent.timeZone,
-                                importance = firestoreEvent.importance,
-                                attendees = firestoreEvent.attendees,
-                                rainCheck = firestoreEvent.rainCheck,
-                                isRaining = firestoreEvent.isRaining,
-                                mapsCheck = firestoreEvent.mapsCheck,
-                                distance = firestoreEvent.distance,
-                                nameLower = firestoreEvent.nameLower,
-                                isOutside = firestoreEvent.isOutside,
-                                isOptimized = false, // This is false because if the event was optimized, it means the user would have had to set this value to false
-                                isAiSuggestion = true,
-                                isUserAccepted = false
-                            )
-                            // Add the new FirestoreEvent to the database
-                            createEvent(uid, newFirestoreEvent) {
-                                // If the event is successfully imported, increment the importedEvents int
-                                if (it) {
-                                    importedEvents++
-                                    if (importedEvents == optimizedSchedule.events.size) {
-                                        callback(true)
-                                    }
+    for (optimizedEvent in optimizedSchedule.events) {
+        // Get the event from the db
+        getEvent(
+            uid,
+            today.dayOfMonth.toString(),
+            today.month.toString(),
+            today.year.toString(),
+            optimizedEvent.name,
+        ) { eventId, event ->
+            // If the event is found, modify it
+            if (eventId != null) {
+                event.startTime = ParseTime().parseTime(optimizedEvent.startTime, today)
+                event.endTime = ParseTime().parseTime(optimizedEvent.endTime, today)
+                event.isAiSuggestion = true
+                event.isUserAccepted = false
 
-                                } else {
-                                    // fail if any of the events fail to import
-                                    callback(false)
-                                }
-                            }
+                // Shove the event back into the database :D
+                createEvent(uid, event) { success ->
+                    if (success) {
+                        importedEvents++
+                        if (importedEvents == optimizedSchedule.events.size) {
+                            callback(true)
                         }
+                    } else {
+                        callback(false)
+                        return@createEvent
                     }
                 }
-                importEvent(index + 1)
+
             }
-            // Init importEvent
-            importEvent(0)
+            else { // Event ID was null either because there was more than one event with that name or other
+                callback(false)
+                return@getEvent
+            }
 
         }
-
     }
+}
 
     /** This function will get all of the AI generated events for a given day that the user has not accepted.
      * @param uid: The user's uid
@@ -889,21 +965,21 @@ class FirestoreHelper() {
     }
     /** This function will add the AI generated event to the database and set the isUserAccepted value to true, then delete the old event
      * @param uid: The user's uid
-     * @param Event: The event to be accepted
+     * @param event: The event to be accepted
      * @param callback: A callback function that will return true if the event was accepted successfully, and false if it was not
      */
     fun acceptAIGeneratedEvent(
         uid: String,
-        Event: FirestoreEvent,
+        event: FirestoreEvent,
         callback : (Boolean) -> Unit
     )
     {
         // Store the event in the database with the isUserAccepted value set to true
-        Event.isUserAccepted = true
-        createEvent(uid, Event) { createEvent ->
+        event.isUserAccepted = true
+        createEvent(uid, event) { createEvent ->
             if (createEvent) {
                // If the event is successfully imported, then delete the old event
-                deleteEvent(uid, Event.startTime.dayOfMonth.toString(), Event.startTime.month.toString(), Event.startTime.year.toString(), Event) {deleteEvent ->
+                deleteEvent(uid, event.startTime.dayOfMonth.toString(), event.startTime.month.toString(), event.startTime.year.toString(), event) { deleteEvent ->
                     // If the event is successfully deleted, return true
                     if (deleteEvent) {
                         callback(true)
@@ -990,10 +1066,42 @@ class FirestoreHelper() {
                                     }
                             }
                         }
+                    }.addOnFailureListener {
+                        Log.w("GoogleFirestore", "Nothing found")
                     }
             }
 
         }
 
+    }
+    /** This asynchronous function will get the user's home address from the database
+     * @param uid: The user's uid
+     * @return The user's home address. If the user does not have a home address, return "No home address found". If the user does not exist, return an empty string
+     */
+    suspend fun getUserHomeAddress(uid: String): String = suspendCoroutine { continuation ->
+        db.collection("users").document(uid).get()
+            .addOnSuccessListener { document ->
+                if (document != null) {
+                    if (document.data?.get("homeAddress") != null) {
+                        // simulate a delay of 15 seconds
+                        continuation.resume(document.data?.get("homeAddress").toString())
+                    } else {
+                        continuation.resume("No home address found")
+                    }
+                } else {
+                    continuation.resume("No home address found")
+                }
+            }
+            .addOnFailureListener {
+                continuation.resume("")
+            }
+    }
+    /** This function sets the user's home address in their root document in the database
+     * @param uid: The user's uid
+     * @param homeAddress: The user's home address
+     * @return A task that will return true if the home address was set successfully, and false if it was not
+     */
+    fun setUserHomeAddress(uid: String, homeAddress: String): Task<Void> {
+        return db.collection("users").document(uid).set(hashMapOf("homeAddress" to homeAddress))
     }
 }

@@ -419,4 +419,59 @@ class Essential {
         // If the countDownLatch is not 0, the test will fail
         assert(countDownLatch.count == 0L)
     }
+
+    @Test
+    fun removeOverlappingEventsTest() {
+
+        // Create a list of events that are overlapping
+
+        val event1 = FirestoreEvent(
+            startTime = LocalDateTime.of(2024, 2, 20, 8, 0),
+            endTime = LocalDateTime.of(2024, 2, 20, 9, 0),
+            name = "Gaming",
+            nameLower = ""
+        )
+        val event2 = FirestoreEvent(
+            startTime = LocalDateTime.of(2024, 2, 20, 8, 30),
+            endTime = LocalDateTime.of(2024, 2, 20, 10, 0),
+            name = "Work",
+            nameLower = ""
+        )
+
+        val event3 = FirestoreEvent(
+            startTime = LocalDateTime.of(2024, 2, 20, 12, 0),
+            endTime = LocalDateTime.of(2024, 2, 20, 14, 0),
+            name = "Gym",
+            nameLower = ""
+        )
+
+        // add the events to a list
+        val events = mutableListOf(event1, event2, event3)
+
+        // init countdown latch
+        val countDownLatch = CountDownLatch(1)
+
+
+        // Call the function to remove overlapping events, we're putting in a bunch of garbage because I wrote this class like garbage
+        OptimizeSchedule("", "", "", events, mutableListOf(), "762 Morning Dew Lane, Maineville OH, 45039", mutableListOf()).removeOverlappingEvents {
+
+            val overlapping = it.any { event1 ->
+                it.any { event2 ->
+                    event1 != event2 &&  // Ensure events are different
+                            (event1.startTime.isBefore(event2.endTime) && event1.endTime.isAfter(event2.startTime)) // Check for overlap
+                }
+            }
+
+            if (!overlapping) {
+                countDownLatch.countDown()
+            } else {
+                assert(false) { "Events are overlapping" }
+            }
+        }
+        // Wait 20 seconds for the asynchronous code to finish
+        countDownLatch.await(20, java.util.concurrent.TimeUnit.SECONDS)
+        // If the countDownLatch is not 0, the test will fail
+        assert(countDownLatch.count == 0L) { "Timed out"}
+
+    }
 }

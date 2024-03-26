@@ -81,19 +81,29 @@ class AccountActivity {
                         )
                     }
                 }
+
                 composable("home") {
-                    HomeActivity().HomePage {
+                    HomeActivity().HomePage(navController) {
                         HomeActivity().navigateToAddEvent(
                             navController = navController
                         )
                     }
                 }
+
+
                 composable("addEvent") {
                     AddEvent().AddEventPage {
                         AddEvent().navigateBack(
                             navController = navController
                         )
                     }
+                }
+                composable("profile") {
+                    ProfileActivity().ProfilePage(navController)
+                }
+
+                composable("privacyLocation") {
+                    PrivacyActivity().PrivacyPage(navController)
                 }
                 /*
                 composable("eventDetails/{date}/{eventId}") { backStackEntry ->
@@ -106,15 +116,11 @@ class AccountActivity {
                 }
                  */
             }
-            //Open AI Testing
-//            AvoidRain("Garbage").getResponse {
-//                println(it)
-//            }
+
+
             if (currentUser != null) {
-
-                }
-
                 navController.navigate("home")
             }
         }
+    }
 }
