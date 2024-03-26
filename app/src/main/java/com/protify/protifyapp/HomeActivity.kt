@@ -160,7 +160,7 @@ class HomeActivity {
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.h6
                         )
-                        CalendarView().Calendar(context, navigateToAddEvent)
+                        CalendarView().Calendar(navigateToAddEvent)
                     }
 
                     SettingsIconButton(onClick = { scope.launch { scaffoldState.drawerState.open() } })
