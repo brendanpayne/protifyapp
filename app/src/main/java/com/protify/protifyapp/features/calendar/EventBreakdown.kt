@@ -91,7 +91,8 @@ class EventBreakdown {
         uid: String = "",
         day: String = "",
         month: String = "",
-        year: String = ""
+        year: String = "",
+        showTimes: Boolean = true
     ) {
         val context: Context = LocalContext.current
         val timeSlots = if (eventList.isEmpty()) createListTimeSlot() else createListTimeSlot(eventList)
@@ -108,7 +109,7 @@ class EventBreakdown {
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
-            TimeGrid(scaledValue, scrollState)
+            TimeGrid(scaledValue, scrollState, showTimes)
             for (layer in layers) {
                 TimeSlotLayer(timeSlots, scaledValue, layer, context, uid, day, month, year, scrollState)
             }
@@ -174,19 +175,21 @@ class EventBreakdown {
     }
 
     @Composable
-    fun TimeGridSlot(time: String, scale: Int) {
+    fun TimeGridSlot(time: String, scale: Int, showTimes: Boolean) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height((60 * scale).dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = time,
-                modifier = Modifier.padding(start = 8.dp),
-                style = MaterialTheme.typography.bodySmall.copy(color = Color.Red),
-                color = MaterialTheme.colorScheme.primary
-            )
+            if (showTimes) {
+                Text(
+                    text = time,
+                    modifier = Modifier.padding(start = 8.dp),
+                    style = MaterialTheme.typography.bodySmall.copy(color = Color.Red),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             Divider(color = Color.Gray, thickness = 1.dp)
         }
     }
@@ -194,19 +197,20 @@ class EventBreakdown {
     @Composable
     fun TimeGrid(
         scale: Int,
-        scrollState: ScrollState = rememberScrollState()
+        scrollState: ScrollState = rememberScrollState(),
+        showTimes: Boolean
     ) {
         Column(modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(scrollState)
         ) {
-            TimeGridSlot("12:00 AM", scale)
+            TimeGridSlot("12:00 AM", scale, showTimes)
             for (i in 1..11) {
-                TimeGridSlot("$i:00 AM", scale)
+                TimeGridSlot("$i:00 AM", scale, showTimes)
             }
-            TimeGridSlot("12:00 PM", scale)
+            TimeGridSlot("12:00 PM", scale, showTimes)
             for (i in 1..11) {
-                TimeGridSlot("$i:00 PM", scale)
+                TimeGridSlot("$i:00 PM", scale, showTimes)
             }
         }
     }
@@ -340,9 +344,9 @@ class EventBreakdown {
                                 }
                             }
                         }
-                    } else //if (!displayedEvents.containsKey(timeSlot.id) || displayedEvents[timeSlot.id]!! < 1) {
+                    } else //if (!displayedEvents.containsKey(timeSlot.id) || displayedEvents[timeSlot.id]!! < 1)
                     {
-                        EventBreakdownCard(timeSlot, scale, layerColor, context, uid, day, month, year, 1)
+                        EventBreakdownCard(timeSlot, scale, layerColor, context, uid, day, month, year, 0)
                         displayedEvents[timeSlot.id] = 1
                     }
 
