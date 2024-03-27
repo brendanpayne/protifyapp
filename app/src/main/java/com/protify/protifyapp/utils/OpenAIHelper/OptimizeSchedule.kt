@@ -2,6 +2,7 @@ package com.protify.protifyapp.utils.OpenAIHelper
 
 import OpenAIResponse
 import OptimizedSchedule
+import android.util.Log
 import com.google.gson.GsonBuilder
 import com.protify.protifyapp.APIKeys
 import com.protify.protifyapp.FirestoreEvent
@@ -266,7 +267,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         // Init nonRainingTimes bool
         var hasRainingTimes = true
         // Check if the nonRainingTimes list is 0:00-00:00
-        if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0) {
+        if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0 && events.any { it.isOutside }) {
             hasRainingTimes = false
         }
 
@@ -286,6 +287,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         fun thirdCall(iterations: Int, hasRainingTime: Boolean) {
          if (iterations > maxRetries) {
              // If we get to here, we're down bad. Return nothing
+             Log.w("OptimizeSchedule", "Third call failed after 3 attempts.")
              callback(OptimizedSchedule(emptyList(), emptyList()))
              return
          }
@@ -318,7 +320,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
          */
         fun secondCall(iterations: Int, hasRainingTime: Boolean) {
             if (iterations > maxRetries) {
-                //callback(OptimizedSchedule(emptyList(), emptyList()))
+                Log.i("OptimizeSchedule", "Second call failed after 3 attempts.")
                 thirdCall(0, hasRainingTime)
                 return
             }
@@ -350,6 +352,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         fun mainCall(iterations: Int, hasRainingTime: Boolean) {
             if (iterations > maxRetries) {
                 secondCall(0, hasRainingTime)
+                Log.i("OptimizeSchedule", "Main call failed after 3 attempts.")
                 return
             }
             getResponse(use4, nonRainingTimes) {
@@ -539,14 +542,39 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         if (optimizedSchedule.events.size != events.size) {
             passedQualityCheck = false
         }
-        // Check that the events all have the same name
-        if (optimizedSchedule.events.map { it.name.lowercase() } != events.map { it.name.lowercase() }) {
+        // Check that the events in events has a respective optimized event in optimizedSchedule.events
+        if (events.any { event -> optimizedSchedule.events.none { it.name == event.name } }) {
             passedQualityCheck = false
         }
-        // Check that the old events and the new events don't all have the same start and end times
-        if (optimizedSchedule.events.map { it.startTime } == optimizedSchedule.oldEvents.map { it.startTime } && optimizedSchedule.events.map { it.endTime } == optimizedSchedule.oldEvents.map { it.endTime }) {
+        // Check that the old events start and end times don't match the new events start and end times
+        if (optimizedSchedule.oldEvents.all { event ->
+                optimizedSchedule.events.all { it.name == event.name &&
+                        (it.startTime == event.startTime && it.endTime == event.endTime) }
+            }) {
             passedQualityCheck = false
         }
+        // Check that the events and old events have the same value when you subtract the start time from the end time
+        val today = events[0].startTime
+        var count = 0
+        for (event in optimizedSchedule.events) {
+            val matchingEvent = events.find { it.name == event.name }
+            if (matchingEvent != null) {
+                val oldMatchingEvent = optimizedSchedule.oldEvents.find { it.name == event.name }
+                if (oldMatchingEvent != null) {
+                    val oldDuration = ParseTime().parseTime(oldMatchingEvent.endTime, today).toLocalTime().toSecondOfDay() - ParseTime().parseTime(oldMatchingEvent.startTime, today).toLocalTime().toSecondOfDay()
+                    val newDuration = ParseTime().parseTime(oldMatchingEvent.endTime, today).toLocalTime().toSecondOfDay() - ParseTime().parseTime(oldMatchingEvent.startTime, today).toLocalTime().toSecondOfDay()
+                    if (oldDuration == newDuration) {
+                        count++
+                    }
+                }
+            }
+        }
+        if (count != optimizedSchedule.events.size) {
+            passedQualityCheck = false
+        }
+
+
+
         // If there are nonRainingTimes, then check that the events that have isOutside are scheduled during the non-raining times
         if (nonRainingTimes != null) {
             for (event in events) {

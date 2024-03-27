@@ -323,6 +323,16 @@ class AddEvent {
         LaunchedEffect(networkManager) {
             networkManager.startListening()
         }
+        // This is junk
+//        LaunchedEffect(isConnected) {
+//            networkManager.setNetworkChangeListener {
+//                if(it) {
+//                    FirestoreHelper().toggleOfflineOnline(true)
+//                } else {
+//                    FirestoreHelper().toggleOfflineOnline(false)
+//                }
+//            }
+//        }
         LaunchedEffect(isConnected) {
             networkManager.setNetworkChangeListener {
                 if(it) {

@@ -42,7 +42,7 @@ class AIPrompts {
     fun prioritizeEventOrderPrompt(hasRainingTimes: Boolean, nonRainingTimesString: String, dontRescheduleEvents: List<FirestoreEvent>): String {
         return (if (hasRainingTimes) "For my events that are outdoors, try to move them between the following times. ${nonRainingTimesString}. "  else "") +
         "Attempt change the order of my events so I can minimize back and forth trips. " +
-        if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } +
+        if (dontRescheduleEvents.isNotEmpty()) { "You may not change the start or end time of the following events: ${dontRescheduleEvents.joinToString(", ") { it.name }} " } else { "" } + "You must return every event in the original schedule. " +
         "You will provide the optimized schedule in json format. One of the objects is to be named OptimizedEvents. " +
         "In OptimizedEvents, you will have a field called Name, StartTime, EndTime, and Location. " +
         "Another object should be called OldEvents, which will be identically formatted to Events, but will contain the original schedule. "
