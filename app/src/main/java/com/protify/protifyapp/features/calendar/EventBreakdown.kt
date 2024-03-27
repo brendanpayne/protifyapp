@@ -56,6 +56,7 @@ class EventBreakdown {
                 description = "Description for Event 1"
                 location = "Location for Event 1"
                 attendees = listOf()
+                id = "1"
             },
             Event().apply {
                 title = "Event 2"
@@ -64,6 +65,7 @@ class EventBreakdown {
                 description = "Description for Event 2"
                 location = "Location for Event 2"
                 attendees = listOf()
+                id = "2"
             },
             Event().apply {
                 title = "Event 3"
@@ -72,6 +74,7 @@ class EventBreakdown {
                 description = "Description for Event 3"
                 location = "Location for Event 3"
                 attendees = listOf()
+                id = "3"
             },
             Event().apply {
                 title = "Event 4"
@@ -80,6 +83,7 @@ class EventBreakdown {
                 description = "Description for Event 4"
                 location = "Location for Event 4"
                 attendees = listOf()
+                id = "4"
             }
         )
     }
