@@ -45,7 +45,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.protify.protifyapp.features.events.EventView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import java.time.LocalDate
 import java.time.LocalTime
@@ -340,28 +339,26 @@ class CalendarView {
         }
         var isLoadingEvents by remember { mutableStateOf(true) }
         val date = calendarUiModel.selectedDate
-        dataSource.getFirestoreEvents(
+        dataSource.getFirestoreEventsAndIds(
             FirebaseLoginHelper().getCurrentUser()!!.uid,
             FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
             date.date.month.toString(),
             date.date.dayOfMonth.toString(),
             date.date.year.toString()
         ) { fetchedEvents ->
-            if (fetchedEvents.isNotEmpty()) {
                 events = fetchedEvents
-            }
             isLoadingEvents = false
         }
 
-        dataSource.getFirestoreEvents("uid", 1234567890L, "January", "1", "2023") { events ->
-            if (events.isNotEmpty()) {
-                calendarUiModel.selectedDate.events = events
-                isLoadingEvents = false
-            } else {
-
-                println("No events found for the given date.")
-            }
-        }
+//        dataSource.getFirestoreEvents("uid", 1234567890L, "January", "1", "2023") { events ->
+//            if (events.isNotEmpty()) {
+//                calendarUiModel.selectedDate.events = events
+//                isLoadingEvents = false
+//            } else {
+//
+//                println("No events found for the given date.")
+//            }
+//        }
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -414,19 +411,19 @@ class CalendarView {
                             lastSelectedDate = date.date,
                             isMonthView = isMonthView
                         )
-                        isLoadingEvents = true
-                        dataSource.getFirestoreEventsAndIds(
-                            FirebaseLoginHelper().getCurrentUser()!!.uid,
-                            FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
-                            date.date.month.toString(),
-                            date.date.dayOfMonth.toString(),
-                            date.date.year.toString()
-                        ) { events ->
-                            if (events.isNotEmpty()) {
-                                calendarUiModel.selectedDate.events = events
-                            }
-                            isLoadingEvents = false
-                        }
+//                        isLoadingEvents = true
+//                        dataSource.getFirestoreEventsAndIds(
+//                            FirebaseLoginHelper().getCurrentUser()!!.uid,
+//                            FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
+//                            date.date.month.toString(),
+//                            date.date.dayOfMonth.toString(),
+//                            date.date.year.toString()
+//                        ) { events ->
+//                            if (events.isNotEmpty()) {
+//                                calendarUiModel.selectedDate.events = events
+//                            }
+//                            isLoadingEvents = false
+//                        }
 
 
                         val finalStartDate =
