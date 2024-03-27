@@ -124,7 +124,7 @@ class EventBreakdown {
 //            val layer = events.indexOf(event)
             val layer = 0
             val height = (convertTimeToFloat(event.endTime) - convertTimeToFloat(event.startTime))
-            timeSlots.add(TimeSlot(event.startTime, event.title, Color.LightGray, height, event.endTime, layer))
+            timeSlots.add(TimeSlot(event.startTime, event.title, Color.LightGray, height, event.endTime, layer, event.id))
         }
 
         return timeSlots
@@ -338,13 +338,13 @@ class EventBreakdown {
                         ) {
                             for (timeSlot in overlappingEvents) {
                                 val count = displayedEvents.getOrDefault(timeSlot.id, 0)
-                                if (count < overlappingEvents.size) {
+                                if (count < overlappingEvents.size && !displayedEvents.containsKey(timeSlot.id)) {
                                     EventBreakdownCard(timeSlot, scale, layerColor, context, uid, day, month, year, overlappingEvents.size)
                                     displayedEvents[timeSlot.id] = count + 1
                                 }
                             }
                         }
-                    } else //if (!displayedEvents.containsKey(timeSlot.id) || displayedEvents[timeSlot.id]!! < 1)
+                    } else if (!displayedEvents.containsKey(timeSlot.id) || displayedEvents[timeSlot.id]!! < 1)
                     {
                         EventBreakdownCard(timeSlot, scale, layerColor, context, uid, day, month, year, 0)
                         displayedEvents[timeSlot.id] = 1
