@@ -34,6 +34,8 @@ class ProfileActivity {
     val name = user?.displayName.takeIf { it?.isNotEmpty() == true } ?: "Unknown"
     val email = user?.email ?: "Unknown"
 
+
+
     @Composable
     fun BackButton(navController: NavController) {
         IconButton(onClick = { navController.popBackStack() }) {

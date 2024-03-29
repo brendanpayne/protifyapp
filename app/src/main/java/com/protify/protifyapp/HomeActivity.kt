@@ -97,6 +97,16 @@ class HomeActivity {
                             )
                         Spacer(modifier = Modifier.height(32.dp))
                             Divider()
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Text(
+                            "Recipe Generator",
+                            modifier = Modifier.padding(top = 10.dp).clickable { navController.navigate("recipeGenerator") },
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = MaterialTheme.colors.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Divider()
                     }
                     Column(
                         modifier = Modifier.fillMaxWidth(),
