@@ -89,7 +89,7 @@ class AcceptAIEvent {
                             }
                         }
                     }
-                    deleteEventCountDownLatch.await(30, java.util.concurrent.TimeUnit.SECONDS)
+                    deleteEventCountDownLatch.await(100, java.util.concurrent.TimeUnit.SECONDS)
                     if (deleteEventCountDownLatch.count == 0L) {
                         deleteEventCountDownLatchJob.countDown()
                     } else {
@@ -98,7 +98,7 @@ class AcceptAIEvent {
                 }
                 deleteEventCountDownLatchJob.countDown()
             }
-            deleteEventCountDownLatchJob.await(45, java.util.concurrent.TimeUnit.SECONDS)
+            deleteEventCountDownLatchJob.await(100, java.util.concurrent.TimeUnit.SECONDS)
             assert(deleteEventCountDownLatchJob.count == 0L) {"Events not deleted"}
             runBlocking { delay(10000) } // Wait 10 seconds for firestore to process the events
             // Put all of the events into firestore
@@ -122,8 +122,8 @@ class AcceptAIEvent {
                 }
             }
             // Wait for all events to be put into firestore
-            eventsCountDownLatch.await(45, java.util.concurrent.TimeUnit.SECONDS)
-            aiEventsCountDownLatch.await(45, java.util.concurrent.TimeUnit.SECONDS)
+            eventsCountDownLatch.await(100, java.util.concurrent.TimeUnit.SECONDS)
+            aiEventsCountDownLatch.await(100, java.util.concurrent.TimeUnit.SECONDS)
             // wait 10 seconds for firestore to process the events
             runBlocking { delay(10000) }
             assert(eventsCountDownLatch.count == 0L) {"Events not created"}

@@ -490,6 +490,7 @@ class FirestoreHelper() {
             }
 
     }
+    @Deprecated ("success and failure listeners are not working properly... Doesn't call back")
     /** Delete an event by ID
      * @param uid: The user's uid
      * @param day: The day of the event
@@ -514,7 +515,7 @@ class FirestoreHelper() {
             .collection(upperMonth)
             .document(eventId)
             .delete()
-            .addOnCompleteListener { _ ->
+            .addOnSuccessListener {
                 Log.d("GoogleFirestore", "DocumentSnapshot successfully deleted!")
                 callback(true)
             }
@@ -978,11 +979,20 @@ class FirestoreHelper() {
         event.isUserAccepted = true
         createEvent(uid, event) { createEvent ->
             if (createEvent) {
-               // If the event is successfully imported, then delete the old event
+               // If the event is successfully imported, then delete the old event AI generated event
                 event.isUserAccepted = false
                 deleteEvent(uid, event.startTime.dayOfMonth.toString(), event.startTime.month.toString(), event.startTime.year.toString(), event) { deleteEvent ->
                     // If the event is successfully deleted, return true
                     if (deleteEvent) {
+                        event.isAiSuggestion = false
+                        // Delete the old event
+                        deleteEvent(uid, event.startTime.dayOfMonth.toString(), event.startTime.month.toString(), event.startTime.year.toString(), event) { deleteUserEvent ->
+                            if (deleteUserEvent) {
+                                callback(true)
+                            } else {
+                                callback(false)
+                            }
+                        }
                         callback(true)
                     } else {
                         callback(false)
