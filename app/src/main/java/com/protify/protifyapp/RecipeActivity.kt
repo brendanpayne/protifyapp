@@ -4,8 +4,10 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
@@ -24,7 +26,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.google.gson.Gson
 import com.protify.protifyapp.utils.OpenAIHelper.Recipe
@@ -47,6 +52,8 @@ class RecipeActivity {
 
         val diets = Recipe.Diet.entries.map { it } // Diet enum
 
+        var showDialog by remember { mutableStateOf(false) }
+
         Box(modifier = Modifier.fillMaxSize()) {
             BackButton(navController)
             Column(
@@ -55,6 +62,13 @@ class RecipeActivity {
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Text(
+                    text = "Recipe Generator",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
                 OutlinedTextField(
                     value = selectedDiet,
                     onValueChange = { selectedDiet = it },
@@ -66,11 +80,14 @@ class RecipeActivity {
                     },
                     isError = selectedDiet == "Select Diet",
 
-                )
+                    )
                 DropdownMenu(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .width(200.dp) // Set the width to 200.dp
+                        .height(300.dp) // Set the height to 300.dp
+                        .align(Alignment.CenterHorizontally)
                 ) {
                     diets.forEach { diet ->
                         DropdownMenuItem(onClick = {
@@ -107,8 +124,12 @@ class RecipeActivity {
                         // Check if all fields are filled
                         if (selectedDiet == "Select Diet" || ingredients.split(",").size < minIngredients || (time.toIntOrNull()
                                 ?: 0) < minTime
-                        ){
-                            Toast.makeText(context, "Please fill all required fields", Toast.LENGTH_SHORT).show()
+                        ) {
+                            Toast.makeText(
+                                context,
+                                "Please fill all required fields",
+                                Toast.LENGTH_SHORT
+                            ).show()
                             return@Button
                         }
                         Recipe().getRecipe(
@@ -118,7 +139,11 @@ class RecipeActivity {
                             excludeIngredients.split(",")
                         ) { response ->
                             try {
-                               recipeResponse = Gson().fromJson(response, RecipeResponse::class.java) // Parse response
+                                recipeResponse = Gson().fromJson(
+                                    response,
+                                    RecipeResponse::class.java
+                                ) // Parse response
+                                showDialog = true
                             } catch (e: Exception) {
                                 // Handle error
                             }
@@ -127,16 +152,28 @@ class RecipeActivity {
                 ) {
                     Text("Generate Recipe")
                 }
-                if (!recipeResponse.recipeName.isEmpty()) {
-                    // Display recipe
-                    Text(recipeResponse.recipeName)
-                    Text(recipeResponse.requiredTime.toString())
-                    recipeResponse.ingredients.forEach { (ingredient, measurement) ->
-                        Text("$ingredient: $measurement")
-                    }
-                    recipeResponse.instructions.forEachIndexed { index, instruction ->
-                        Text("${index + 1}. $instruction")
-                    }
+
+                if (showDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showDialog = false },
+                        title = { Text(text = recipeResponse.recipeName) },
+                        text = {
+                            Column {
+                                Text("Time required: ${recipeResponse.requiredTime} minutes")
+                                recipeResponse.ingredients.forEach { (ingredient, measurement) ->
+                                    Text("$ingredient: $measurement")
+                                }
+                                recipeResponse.instructions.forEachIndexed { index, instruction ->
+                                    Text("${index + 1}. $instruction")
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            Button(onClick = { showDialog = false }) {
+                                Text("OK")
+                            }
+                        }
+                    )
                 }
             }
         }
