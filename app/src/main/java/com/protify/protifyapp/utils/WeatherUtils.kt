@@ -129,50 +129,56 @@ class WeatherUtils(val longitude: Double, val latitude: Double) {
         }
     }
 
-fun getNonRainingTimes(time: LocalDateTime, onComplete: (List<Pair<LocalDateTime, LocalDateTime>>) -> Unit) {
-    val today = time.withHour(0).withMinute(0).withSecond(0).withNano(0)
-    getRainForecast { rainForecast ->
-        if (rainForecast == null) {
-            onComplete(listOf())
-            return@getRainForecast
-        }
-
-        val dayForecast = rainForecast.filter { it.time.dayOfMonth == today.dayOfMonth }
-
-        val nonRainingTimes = mutableListOf<Pair<LocalDateTime, LocalDateTime>>()
-        var currentFreeTimeStart = today.withHour(0).withMinute(0).withSecond(0).withNano(0) // Start at midnight
-
-        for (index in dayForecast.indices) {
-            val forecast = rainForecast[index]
-            val nextForecast = rainForecast.getOrNull(index + 1)
-
-            if (!forecast.isRaining) {
-                if (currentFreeTimeStart > forecast.time) {
-                    currentFreeTimeStart = forecast.time // Adjust start time if non-raining period began earlier
-                }
-
-                if (nextForecast == null || nextForecast.isRaining) {
-                    // End of non-raining period
-                    nonRainingTimes.add(Pair(
-                        if (currentFreeTimeStart.minute == 1) {
-                            currentFreeTimeStart.minusMinutes(1)
-                        } else {
-                            currentFreeTimeStart
-                        }, forecast.time))
-                    currentFreeTimeStart = forecast.time.plusMinutes(1) // Start one minute after the non-raining period
-                }
-            } else {
-                currentFreeTimeStart = forecast.time.plusMinutes(1) // Start one minute after the rainy forecast
+    /** This function only gets the non raining times on a day by dy basis, as implied by the time parameter
+     * @return Returns empty list if there is no rain forecast and if it's not raining for the day, it will return 1 pair of midnight to midnight
+     */
+    fun getNonRainingTimes(time: LocalDateTime, onComplete: (List<Pair<LocalDateTime, LocalDateTime>>) -> Unit) {
+        val today = time.withHour(0).withMinute(0).withSecond(0).withNano(0)
+        getRainForecast { rainForecast ->
+            if (rainForecast == null) {
+                onComplete(listOf())
+                return@getRainForecast
             }
-        }
 
-        // Handle last non-raining period if it extends to midnight
-        if (currentFreeTimeStart < today.plusDays(1).withHour(0)) {
-            nonRainingTimes.add(Pair(currentFreeTimeStart, today.plusDays(1).withHour(0)))
-        }
+            val dayForecast = rainForecast.filter { it.time.dayOfMonth == today.dayOfMonth }
 
-        onComplete(nonRainingTimes)
+            val nonRainingTimes = mutableListOf<Pair<LocalDateTime, LocalDateTime>>()
+            var currentFreeTimeStart = today.withHour(0).withMinute(0).withSecond(0).withNano(0) // Start at midnight
+
+            for (index in dayForecast.indices) {
+                val forecast = dayForecast[index]
+                val nextForecast = dayForecast.getOrNull(index + 1)
+
+                if (!forecast.isRaining) {
+                    if (currentFreeTimeStart > forecast.time) {
+                        currentFreeTimeStart = forecast.time // Adjust start time if non-raining period began earlier
+                    }
+
+                    if (nextForecast == null || nextForecast.isRaining) {
+                        // End of non-raining period
+                        nonRainingTimes.add(Pair(
+                            if (currentFreeTimeStart.minute == 1) {
+                                currentFreeTimeStart.minusMinutes(1)
+                            } else {
+                                currentFreeTimeStart
+                            }, forecast.time))
+                        currentFreeTimeStart = forecast.time.plusMinutes(1) // Start one minute after the non-raining period
+                    }
+                } else {
+                    currentFreeTimeStart = forecast.time.plusMinutes(1) // Start one minute after the rainy forecast
+                }
+            }
+
+            // Handle last non-raining period if it extends to midnight
+            val lastForecast = dayForecast.lastOrNull()
+            if (lastForecast != null && !lastForecast.isRaining && currentFreeTimeStart < today.plusDays(1).withHour(0)) {
+                //nonRainingTimes.add(Pair(currentFreeTimeStart, today.plusDays(1).withHour(0)))
+                // Modify the existing pair to end at midnight
+                nonRainingTimes[nonRainingTimes.size - 1] = Pair(nonRainingTimes.last().first, today.plusDays(1).withHour(0))
+            }
+
+            onComplete(nonRainingTimes)
+        }
     }
-}
 
 }

@@ -6,6 +6,7 @@ import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.utils.OpenAIHelper.GetAISchedule
+import kotlinx.coroutines.runBlocking
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
@@ -38,7 +39,7 @@ class GetAIScheduleTest {
 
             // Get user's home address
             if (user != null) {
-                homeAddress = firestoreHelper.getUserHomeAddress(user!!.uid)
+                runBlocking { homeAddress = firestoreHelper.getUserHomeAddress(user!!.uid) }
             }
 
             // Mock events
