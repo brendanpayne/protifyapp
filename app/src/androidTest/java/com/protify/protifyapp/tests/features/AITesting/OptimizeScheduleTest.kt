@@ -237,4 +237,132 @@ class OptimizeScheduleTest {
         // If the countDownLatch is not 0, the test will fail
         assert(countDownLatch.count == 0L) {"No response"}
     }
+    @Test
+    fun testMakeCallParallel() {
+        // init latch
+        val countDownLatch = CountDownLatch(1)
+        // init gson
+        val gson = Gson()
+        //Get the json files
+        val eventsFile = File(StrictRain.context.filesDir, "events.json")
+        val drivingTimesFile = File(StrictRain.context.filesDir, "drivingTimes.json")
+        val optimalOrderFile = File(StrictRain.context.filesDir, "optimalOrder.json")
+
+        // Convert the json files to objects
+        val eventsString: List<FirestoreEventString> =
+            gson.fromJson(eventsFile.readText(), Array<FirestoreEventString>::class.java).toList()
+        val drivingTimes: MutableList<DrivingTime?> =
+            gson.fromJson(drivingTimesFile.readText(), Array<DrivingTime>::class.java)
+                .toMutableList()
+        val optimalOrder: List<FirestoreEvent> =
+            gson.fromJson(optimalOrderFile.readText(), Array<FirestoreEvent>::class.java).toList()
+
+        // Convert List<FirestoreEventString> to List<FirestoreEvent>
+        val events = eventsString.map {
+            FirestoreEvent(
+                it.name,
+                it.nameLower,
+                LocalDateTime.parse(it.startTime),
+                LocalDateTime.parse(it.endTime),
+                it.location,
+                it.description,
+                it.timeZone,
+                it.importance,
+                it.attendees,
+                it.rainCheck,
+                it.isRaining,
+                it.mapsCheck,
+                it.distance,
+                it.isOutside,
+                it.isOptimized,
+                isUserAccepted = false,
+                isAiSuggestion = false
+            )
+        }
+
+        // Make the call
+        OptimizeSchedule(
+            homeAddress = homeAddress,
+            year = "2024",
+            month = "February",
+            day = "24",
+            travelTime = drivingTimes,
+            optimalEventOrder = optimalOrder,
+            events = events
+        ).makeCallParallel(false, nonRainingTimes) { optimizedEvents -> // Use 3.5 for this test
+            // If the events were not able to be stored, then the optimization failed
+            if (optimizedEvents.events.isEmpty() || optimizedEvents.oldEvents.isEmpty()) {
+                assert(false) { "The optimization failed" }
+            }
+            // Signal that the optimization was successful
+            countDownLatch.countDown()
+        }
+        countDownLatch.await(120, java.util.concurrent.TimeUnit.SECONDS)
+        // If the countDownLatch is not successful, the test will fail
+        assert(countDownLatch.count == 0L) {"Not fast enough"}
+    }
+    @Test
+    fun testMakeCallParallelFour() {
+        // init latch
+        val countDownLatch = CountDownLatch(1)
+        // init gson
+        val gson = Gson()
+        //Get the json files
+        val eventsFile = File(StrictRain.context.filesDir, "events.json")
+        val drivingTimesFile = File(StrictRain.context.filesDir, "drivingTimes.json")
+        val optimalOrderFile = File(StrictRain.context.filesDir, "optimalOrder.json")
+
+        // Convert the json files to objects
+        val eventsString: List<FirestoreEventString> =
+            gson.fromJson(eventsFile.readText(), Array<FirestoreEventString>::class.java).toList()
+        val drivingTimes: MutableList<DrivingTime?> =
+            gson.fromJson(drivingTimesFile.readText(), Array<DrivingTime>::class.java)
+                .toMutableList()
+        val optimalOrder: List<FirestoreEvent> =
+            gson.fromJson(optimalOrderFile.readText(), Array<FirestoreEvent>::class.java).toList()
+
+        // Convert List<FirestoreEventString> to List<FirestoreEvent>
+        val events = eventsString.map {
+            FirestoreEvent(
+                it.name,
+                it.nameLower,
+                LocalDateTime.parse(it.startTime),
+                LocalDateTime.parse(it.endTime),
+                it.location,
+                it.description,
+                it.timeZone,
+                it.importance,
+                it.attendees,
+                it.rainCheck,
+                it.isRaining,
+                it.mapsCheck,
+                it.distance,
+                it.isOutside,
+                it.isOptimized,
+                isUserAccepted = false,
+                isAiSuggestion = false
+            )
+        }
+
+        // Make the call
+        OptimizeSchedule(
+            homeAddress = homeAddress,
+            year = "2024",
+            month = "February",
+            day = "24",
+            travelTime = drivingTimes,
+            optimalEventOrder = optimalOrder,
+            events = events
+        ).makeCallParallel(true, nonRainingTimes) { optimizedEvents -> // Use 4.0 for this test
+            // If the events were not able to be stored, then the optimization failed
+            if (optimizedEvents.events.isEmpty() || optimizedEvents.oldEvents.isEmpty()) {
+                assert(false) { "The optimization failed" }
+            }
+            // Signal that the optimization was successful
+            countDownLatch.countDown()
+        }
+        countDownLatch.await(120, java.util.concurrent.TimeUnit.SECONDS)
+        // If the countDownLatch is not successful, the test will fail
+        assert(countDownLatch.count == 0L) {"Not fast enough"}
+    }
 }
