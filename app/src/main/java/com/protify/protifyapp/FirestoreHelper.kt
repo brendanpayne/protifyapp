@@ -514,7 +514,7 @@ class FirestoreHelper() {
             .collection(upperMonth)
             .document(eventId)
             .delete()
-            .addOnSuccessListener {
+            .addOnCompleteListener { _ ->
                 Log.d("GoogleFirestore", "DocumentSnapshot successfully deleted!")
                 callback(true)
             }
@@ -979,6 +979,7 @@ class FirestoreHelper() {
         createEvent(uid, event) { createEvent ->
             if (createEvent) {
                // If the event is successfully imported, then delete the old event
+                event.isUserAccepted = false
                 deleteEvent(uid, event.startTime.dayOfMonth.toString(), event.startTime.month.toString(), event.startTime.year.toString(), event) { deleteEvent ->
                     // If the event is successfully deleted, return true
                     if (deleteEvent) {
