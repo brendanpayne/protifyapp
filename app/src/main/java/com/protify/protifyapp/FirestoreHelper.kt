@@ -965,7 +965,7 @@ class FirestoreHelper() {
     }
     /** This function will add the AI generated event to the database and set the isUserAccepted value to true, then delete the old event
      * @param uid: The user's uid
-     * @param event: The event to be accepted
+     * @param event: The event to be accepted THIS MUST BE THE AI GENERATED EVENT, NOT THE USER GENERATED EVENT
      * @param callback: A callback function that will return true if the event was accepted successfully, and false if it was not
      */
     fun acceptAIGeneratedEvent(
