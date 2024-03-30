@@ -587,7 +587,14 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                 }
                 //If the response is not an error, then parse the response
                 else {
-                    val optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+                    var optimizedSchedule: OptimizedSchedule = OptimizedSchedule(emptyList(), emptyList())
+                    try {
+                        optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+                    } catch(e: Exception) {
+                        retry(retries + 1)
+                        return@getResponseBlockedEvents
+                    }
+
                     //If the schedule is not null, then call the callback, else retry
                     if (optimizedSchedule.nullCheck()) {
                         callback(optimizedSchedule)
