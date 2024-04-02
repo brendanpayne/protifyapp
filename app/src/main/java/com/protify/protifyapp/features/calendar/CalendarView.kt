@@ -1,4 +1,6 @@
 package com.protify.protifyapp.features.calendar
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -45,7 +47,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.protify.protifyapp.HomeActivity
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -90,7 +96,10 @@ class CalendarView {
                         onClick = {
                             onPreviousClickListener(data.startDate.date.minusWeeks(1)) // Go to the previous week
                         },
-                        modifier = Modifier.size(48.dp).padding(8.dp).align(Alignment.CenterVertically)
+                        modifier = Modifier
+                            .size(48.dp)
+                            .padding(8.dp)
+                            .align(Alignment.CenterVertically)
                     ) {
                         Surface(
                             shape = CircleShape,
@@ -107,7 +116,10 @@ class CalendarView {
                         onClick = {
                             onNextClickListener(data.startDate.date.plusWeeks(0)) // Go to the next week
                         },
-                        modifier = Modifier.size(48.dp).padding(8.dp).align(Alignment.CenterVertically)
+                        modifier = Modifier
+                            .size(48.dp)
+                            .padding(8.dp)
+                            .align(Alignment.CenterVertically)
                     ) {
                         Surface(
                             shape = CircleShape,
@@ -324,8 +336,9 @@ class CalendarView {
         return allDates.map { CalendarUiModel.Date(it, false, it.isEqual(dataSource.today), false) }
     }
     @Composable
-    fun Calendar(navigateToAddEvent: () -> Unit) {
+    fun Calendar(context: Context, navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
+        val user = FirebaseLoginHelper().getCurrentUser()
         //val selectedTabIndex by remember { mutableStateOf(0) }
         var events by remember { mutableStateOf(listOf<Event>()) }
         var isMonthView by remember { mutableStateOf(false) }
@@ -338,6 +351,7 @@ class CalendarView {
             )
         }
         var isLoadingEvents by remember { mutableStateOf(true) }
+        var isAiCompleted by remember { mutableStateOf(false) }
         val date = calendarUiModel.selectedDate
         dataSource.getFirestoreEventsAndIds(
             FirebaseLoginHelper().getCurrentUser()!!.uid,
@@ -424,8 +438,6 @@ class CalendarView {
 //                            }
 //                            isLoadingEvents = false
 //                        }
-
-
                         val finalStartDate =
                             if (isMonthView) date.date else calendarUiModel.startDate.date
                         calendarUiModel = dataSource.getData(
@@ -435,6 +447,30 @@ class CalendarView {
                         )
                     }, isMonthView = isMonthView)
                 }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .height(100.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface,
+                    )
+            ) {
+                startAiButton {
+                    CoroutineScope(Dispatchers.Main).launch  {
+                        Toast.makeText(context, "Optimizing Schedule", Toast.LENGTH_SHORT).show()
+                        isAiCompleted = HomeActivity().optimizeScheduleForToday(user!!.uid, date.date.atStartOfDay())
+                        if (isAiCompleted) {
+                            Toast.makeText(context, "AI Optimization Completed", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "AI Optimization Failed", Toast.LENGTH_SHORT).show()
+                        }
+
+
+                    }
+                }
+
             }
             Box(
                 modifier = Modifier
@@ -459,6 +495,21 @@ class CalendarView {
         }
         //fun navigateToEventDetails(navController: NavHostController, calendarUiModel: CalendarUiModel) {
         //    navController.navigate("eventDetails/${calendarUiModel.selectedDate.date}/${calendarUiModel.selectedDate.events[0].id}")
+    }
+    @Composable
+    fun startAiButton(onAddEventClickListener: () -> Unit) {
+    // Add AI Button
+        Button(
+            onClick = onAddEventClickListener,
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+        ) {
+            Text("Add AI Event")
+
+        }
+
+
     }
 }
 
