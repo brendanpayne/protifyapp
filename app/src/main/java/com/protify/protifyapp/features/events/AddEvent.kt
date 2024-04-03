@@ -1,28 +1,49 @@
 package com.protify.protifyapp.features.events
 
+import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.ContentUris
+import android.content.Context
+import android.content.Intent
 import android.icu.util.TimeZone
+import android.net.Uri
 import android.provider.ContactsContract
 import android.widget.ScrollView
 import android.widget.Toast
+import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
@@ -32,14 +53,19 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -47,15 +73,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
+import com.google.firebase.FirebaseApp
+import com.google.firebase.firestore.auth.User
 import com.protify.protifyapp.APIKeys
 import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
@@ -63,6 +98,7 @@ import com.protify.protifyapp.NetworkManager
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.utils.MapsDurationUtils
 import com.protify.protifyapp.utils.WeatherUtils
+import com.protify.protifyapp.R
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -80,26 +116,33 @@ class AddEvent {
     private var formattedStartTime: String by mutableStateOf("")
     private var formattedEndTime: String by mutableStateOf("")
     private var dateError: Boolean by mutableStateOf(false)
+    private var timeError: Boolean by mutableStateOf(false)
     private var contactList: List<Attendee> by mutableStateOf(listOf())
     private var contactNames: List<String> by mutableStateOf(listOf())
     private var rainingTimesMessage: String by mutableStateOf("")
     private var isRainingTimeConfirmed: Boolean by mutableStateOf(true) // True by default... innocent until guilty
     private var showRainingTimesDialog: Boolean by mutableStateOf(false)
     private var rainCheck: Boolean = false
+    private var isOptimized: Boolean by mutableStateOf(true)
+    private var isOutside: Boolean by mutableStateOf(false)
 
     private fun updateName(newName: String) {
         name = newName
     }
-    private fun updateStartTime(month: Int, dayOfMonth: Int, year: Int, hour: Int, minute: Int ) {
-        var newStartTime = LocalDateTime.of(year, month, dayOfMonth, hour, minute)
+
+    private fun updateStartTime(hour: Int, minute: Int) {
+        val currentDateTime = LocalDateTime.now() // Get the current date and time, just a placeholder
+        val newStartTime = LocalDateTime.of(currentDateTime.year, currentDateTime.month, currentDateTime.dayOfMonth, hour, minute)
         startTime = newStartTime
         formattedStartTime(newStartTime)
     }
-    private fun updateEndTime(month: Int, dayOfMonth: Int, year: Int, hour: Int, minute: Int ) {
-        var newEndTime = LocalDateTime.of(year, month, dayOfMonth, hour, minute)
-        endTime = newEndTime
-        formattedEndTime(newEndTime)
+    private fun updateEndTime(hour: Int, minute: Int) {
+        val currentDateTime = LocalDateTime.now() // Get the current date and time, just a placeholder
+        val newStartTime = LocalDateTime.of(currentDateTime.year, currentDateTime.month, currentDateTime.dayOfMonth, hour, minute)
+        startTime = newStartTime
+        formattedStartTime(newStartTime)
     }
+
     private fun formattedStartTime(startTime: LocalDateTime) {
         val year = startTime.year
         val month = startTime.monthValue
@@ -190,8 +233,7 @@ class AddEvent {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun AddEventPage(navigateBack: () -> Unit) {
-
+    fun AddEventUI(navigateBack: () -> Unit) {
         val context = LocalContext.current
         val user = FirebaseLoginHelper().getCurrentUser()?.uid
         var requiredEmpty by remember { mutableStateOf(false) }
@@ -224,24 +266,7 @@ class AddEvent {
         )
         //Time Zone
         val timeZoneNames = TimeZone.getAvailableIDs()
-        val americanTimeZoneNames = listOf(
-            "America/New_York",
-            "America/Chicago",
-            "America/Denver",
-            "America/Los_Angeles",
-            "America/Anchorage",
-            "America/Adak",
-            "Pacific/Honolulu"
-        ).sorted()
-        var expandedTimeZone by remember { mutableStateOf(false) }
         //Importance
-        val importanceNames = listOf(
-            "1",
-            "2",
-            "3",
-            "4",
-            "5"
-        )
         var expandedImportance by remember { mutableStateOf(false) }
         //Contacts Launcher
         var contactName by remember {
@@ -315,24 +340,14 @@ class AddEvent {
             }
         )
         //isOutside boolean
-        var isOutside by remember { mutableStateOf(false) }
+        //var isOutside by remember { mutableStateOf(false) }
         //isOptimized boolean
-        var isOptimized by remember { mutableStateOf(true)}
+        //var isOptimized by remember { mutableStateOf(true)}
         //Get network state so we can toggle Firestore offline/online
         val isConnected by remember { mutableStateOf(false) }
         LaunchedEffect(networkManager) {
             networkManager.startListening()
         }
-        // This is junk
-//        LaunchedEffect(isConnected) {
-//            networkManager.setNetworkChangeListener {
-//                if(it) {
-//                    FirestoreHelper().toggleOfflineOnline(true)
-//                } else {
-//                    FirestoreHelper().toggleOfflineOnline(false)
-//                }
-//            }
-//        }
         LaunchedEffect(isConnected) {
             networkManager.setNetworkChangeListener {
                 if(it) {
@@ -373,7 +388,7 @@ class AddEvent {
 
         val listState = rememberLazyListState()
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxWidth(1f).fillMaxHeight(0.9f),
             color = MaterialTheme.colorScheme.background
         ) {
             ScrollView(LocalContext.current)
@@ -382,516 +397,686 @@ class AddEvent {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 item {
                     Text(
-                        text = "Add Event",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(16.dp)
+                        text = "Event Information",
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
                     )
                 }
                 item {
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = {
-                                name -> updateName(name)
-                                        },
-                        label = { Text("Event Name") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = if (name.length > 50 || (name.isEmpty() && requiredEmpty)) {
-                                MaterialTheme.colorScheme.error
-                            }
-
-                            else {
-                                MaterialTheme.colorScheme.outline
-                            },
-                            focusedBorderColor = if (name.length > 50) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                MaterialTheme.colorScheme.outline
-                            },
-                        ),
-                        supportingText = {
-                            if (name.length > 50) {
-                                Text(
-                                    text = "${name.length}/50",
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                            }
-                            if(name.isEmpty()) {
-                                Text(
-                                    text = "Required",
-                                    color = MaterialTheme.colorScheme.outline,
-                                )
-                            }
-                        }
+                    EventNameItem(
+                        name = name,
+                        updateName = { updateName(it) },
+                        requiredEmpty = requiredEmpty
                     )
                 }
                 item {
-                    Row {
-                        Button(
-                            modifier = Modifier
-                                .weight(5f)
-                                .padding(vertical = 16.dp, horizontal = 8.dp),
-
-                            onClick = {
-                                datePickerDialog.show()
-                                datePickerDialog.setOnDateSetListener { view, year, month, dayOfMonth ->
-                                    selectedDate.value = "$month/$dayOfMonth/$year"
-                                    selectedMonth = month + 1
-                                    selectedDayOfMonth = dayOfMonth
-                                    selectedYear = year
-                                    timePickerDialog.show()
-                                    timePickerDialog.setOnDismissListener { view ->
-                                        //If the user has selected a date and time, update the start time
-                                        if (selectedTime.value != "" && selectedDate.value != "") {
-                                            updateStartTime(selectedMonth, selectedDayOfMonth, selectedYear, selectedHour, selectedMinute)
-                                        }
-                                    }
-                                }
-                            }
-                        ) {
-                            Text("Select Start Time")
-                        }
-                        OutlinedTextField(
-                            value = formattedStartTime,
-                            //This displays the formatted version of the start time
-                            onValueChange = { formattedStartTime(startTime) },
-                            label = { Text("Start Time") },
-                            modifier = Modifier
-                                .weight(5f)
-                                .padding(vertical = 16.dp, horizontal = 8.dp),
-                            enabled = false,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                disabledBorderColor = if ((formattedStartTime == "" && requiredEmpty) || dateError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
-                            ),
-                            supportingText = {
-                                if (dateError) {
-                                    Text(
-                                        modifier = Modifier.fillMaxSize(),
-                                        text = "Start time cannot be after end time",
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                                if (formattedStartTime == "" && !dateError) {
-                                    Text(
-                                        text = "Required",
-                                        color = MaterialTheme.colorScheme.outline,
-                                    )
-                                }
-                            }
-                        )
-                    }
-
-                }
-
-                item {
-                    Row {
-                        Button(
-                            modifier = Modifier
-                                .weight(5f)
-                                .padding(vertical = 16.dp, horizontal = 8.dp),
-
-                            onClick = {
-                                datePickerDialog.show()
-                                datePickerDialog.setOnDateSetListener { _, year, month, dayOfMonth ->
-                                    selectedDate.value = "$month/$dayOfMonth/$year"
-                                    selectedMonth = month + 1
-                                    selectedDayOfMonth = dayOfMonth
-                                    selectedYear = year
-                                    timePickerDialog.show()
-                                    timePickerDialog.setOnDismissListener {
-                                        //If the user has selected a date and time, update the end time
-                                        if (selectedTime.value != "" && selectedDate.value != "") {
-                                            updateEndTime(selectedMonth, selectedDayOfMonth, selectedYear, selectedHour, selectedMinute)
-                                        }
-                                    }
-                                }
-                            }
-                        ) {
-                            Text("Select End Time")
-                        }
-                        OutlinedTextField(
-                            value = formattedEndTime,
-                            //This displays the formatted version of the end time
-                            onValueChange = { formattedEndTime(endTime) },
-                            label = { Text("End Time") },
-                            modifier = Modifier
-                                .weight(5f)
-                                .padding(vertical = 16.dp, horizontal = 8.dp),
-                            enabled = false,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                disabledBorderColor = if ((formattedEndTime == "" && requiredEmpty) || dateError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
-                            ),
-                            supportingText = {
-                                if (dateError) {
-                                    Text(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        text = "Start time cannot be after end time",
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                                if (formattedEndTime == "" && !dateError) {
-                                    Text(
-                                        text = "Required",
-                                        color = MaterialTheme.colorScheme.outline,
-                                    )
-                                }
-                            }
-                        )
-                    }
-
+                    EventDateItem(
+                        datePickerDialog = datePickerDialog,
+                        dateError = dateError,
+                    )
                 }
                 item {
-                    var isFocused by remember { mutableStateOf(false) }
+                    EventTimeItem(
+                        formattedStartTime = formattedStartTime,
+                        formattedEndTime = formattedEndTime,
+                        timePickerDialog = timePickerDialog,
+                        timeError = timeError,
+                        requiredEmpty = requiredEmpty,
+                        selectedTime = selectedTime,
+                    )
+                }
+                item {
+                    EventDropdownsItem()
+                }
+                item {
+                    EventLocationItem(
+                        autocompleteLauncher = autocompleteLauncher,
+                        context = context,
+                    )
+                }
+                item {
+                    EventDescriptionItem()
+                }
+                item {
+                    EventOutdoorsItem(
+                        isOutside = isOutside,
+                        onCheckedChange = { isChecked -> isOutside = isChecked }
+                    )
+                }
+                item {
+                    EventAIItem(
+                        isOptimized = isOptimized,
+                        onCheckedChange = { isChecked -> isOptimized = isChecked }
+                    )
+                }
+                item{
+                    Text(
+                        text = "Attendees",
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
+                }
+                item {
+                    EventAttendeesItem(
+                        initialContactList = contactList,
+                        initialExpandedContact = expandedContact,
+                        contactsGranted = contactsGranted,
+                        requestPermissionsLauncher = requestPermissionsLauncher,
+                        contactsLauncher = contactsLauncher
+                    )
+                }
+            }
+        }
+    }
 
+    @Composable
+    fun EventNameItem(name: String, updateName: (String) -> Unit, requiredEmpty: Boolean) {
+        OutlinedTextField(
+            modifier = Modifier
+                .fillMaxWidth(1f)
+                .padding(horizontal = 8.dp),
+            value = name,
+            placeholder = { Text("Event Name") },
+            onValueChange = { name -> updateName(name) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = if (name.length > 50) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                unfocusedBorderColor = if (name.length > 50 || (name.isEmpty() && requiredEmpty)) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            ),
+            supportingText = {
+                when {
+                    name.length > 50 -> Text("${name.length}/50", color = MaterialTheme.colorScheme.error)
+                    name.isEmpty() && requiredEmpty -> Text("Required", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        )
+    }
+
+    @Composable
+    private fun EventDateItem(datePickerDialog: DatePickerDialog, dateError: Boolean) {
+        var selectedDate by remember { mutableStateOf("") }
+        var selectedMonth by remember { mutableIntStateOf(0) }
+        var selectedDayOfMonth by remember { mutableIntStateOf(0) }
+        var selectedYear by remember { mutableIntStateOf(0) }
+        OutlinedTextField(
+            value = selectedDate,
+            onValueChange = { selectedDate = it },
+            placeholder = { Text("Date") },
+            modifier = Modifier
+                .fillMaxWidth(1f)
+                .padding(horizontal = 8.dp)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = {
+                        datePickerDialog.show()
+                        datePickerDialog.setOnDateSetListener { _, year, month, dayOfMonth ->
+                            selectedDate = "$month/$dayOfMonth/$year"
+                            selectedMonth = month + 1
+                            selectedDayOfMonth = dayOfMonth
+                            selectedYear = year
+                        }
+                    }
+                ),
+            enabled = false,
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = "Date Picker",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledBorderColor = if (selectedDate == "" && dateError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+            ),
+            supportingText = {
+                if (selectedDate == "" && !dateError) {
+                    Text(
+                        text = "Required",
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+            }
+        )
+    }
+
+    @Composable
+    fun EventTimeItem(formattedStartTime: String, formattedEndTime: String, timePickerDialog: TimePickerDialog, timeError: Boolean, requiredEmpty: Boolean, selectedTime: MutableState<String>) {
+        var selectedHour by remember { mutableIntStateOf(0) }
+        var selectedMinute by remember { mutableIntStateOf(0) }
+
+        Row(
+            horizontalArrangement = Arrangement.Start,
+            modifier = Modifier.fillMaxWidth(1f)
+        ) {
+            OutlinedTextField(
+                value = formattedStartTime,
+                onValueChange = { this@AddEvent.formattedStartTime = it },
+                placeholder = { Text("Start Time") },
+                modifier = Modifier
+                    .fillMaxWidth(0.5f)
+                    .padding(horizontal = 8.dp)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = {
+                            timePickerDialog.show()
+                            timePickerDialog.setOnDismissListener {
+                                if (selectedTime.value != "") {
+                                    updateStartTime(selectedHour, selectedMinute) // TODO fix this
+                                }
+                            }
+                        }
+                    ),
+                enabled = false,
+                trailingIcon = {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.schedule),
+                        contentDescription = "Time Picker",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledBorderColor = if ((formattedStartTime == "" && requiredEmpty) || timeError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                ),
+                supportingText = {
+                    if (timeError) {
+                        Text(
+                            modifier = Modifier.fillMaxSize(),
+                            text = "Start time cannot be after end time",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    if (formattedStartTime == "" && !timeError) {
+                        Text(
+                            text = "Required",
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                    }
+                }
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            OutlinedTextField(
+                value = formattedEndTime,
+                onValueChange = { this@AddEvent.formattedEndTime = it },
+                placeholder = { Text("End Time") },
+                modifier = Modifier
+                    .fillMaxWidth(1f)
+                    .padding(horizontal = 8.dp)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = {
+                            timePickerDialog.show()
+                            timePickerDialog.setOnDismissListener {
+                                if (selectedTime.value != "") {
+                                    updateEndTime(selectedHour, selectedMinute)
+                                }
+                            }
+                        }
+                    ),
+                enabled = false,
+                trailingIcon = {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.schedule),
+                        contentDescription = "Time Picker",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledBorderColor = if ((formattedEndTime == "" && requiredEmpty) || timeError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                ),
+                supportingText = {
+                    if (timeError) {
+                        Text(
+                            modifier = Modifier.fillMaxSize(),
+                            text = "End time cannot be before start time",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    if (formattedEndTime == "" && !timeError) {
+                        Text(
+                            text = "Required",
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun EventDropdownsItem() {
+        var expandedTimeZone by remember { mutableStateOf(false) }
+        var expandedImportance by remember { mutableStateOf(false) }
+        val americanTimeZoneNames = listOf(
+            "America/New_York",
+            "America/Chicago",
+            "America/Denver",
+            "America/Los_Angeles",
+            "America/Anchorage",
+            "America/Adak",
+            "Pacific/Honolulu"
+        ).sorted()
+        Row(
+            horizontalArrangement = Arrangement.Start,
+            modifier = Modifier.fillMaxWidth(1f)
+        ) {
+            ExposedDropdownMenuBox(
+                expanded = expandedTimeZone,
+                onExpandedChange = { expandedTimeZone = !expandedTimeZone},
+                modifier = Modifier
+                    .fillMaxWidth(0.5f)
+                    .padding(horizontal = 8.dp),
+                content = {
                     OutlinedTextField(
-                        value = location ?: "",
-                        onValueChange = { location = it },
-                        label = { Text("Location") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        trailingIcon = {
-                            IconButton(onClick = { location = "" }) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete",
-                                    tint = MaterialTheme.colorScheme.outline,
-                                )
-                            }
-                        },
-                        modifier = Modifier.onFocusChanged { focusState ->
-                            if (focusState.isFocused && !isFocused) {
-                                isFocused = true
-                                autocompleteLauncher.launch(
-                                    Autocomplete.IntentBuilder(
-                                        AutocompleteActivityMode.OVERLAY,
-                                        listOf(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS)
-                                    ).build(context)
-                                )
-                            } else if (!focusState.isFocused) {
-                                isFocused = false
-                            }
-                        },
+                        value = timeZone?.displayName ?: "",
+                        onValueChange = {},
+                        placeholder = { Text("Time Zone") },
+                        readOnly = true,
+                        modifier = Modifier.menuAnchor(),
+                        trailingIcon =  {ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedTimeZone)},
                         supportingText = {
                             Text(
                                 text = "Optional",
                                 color = MaterialTheme.colorScheme.outline,
                             )
-                        },
-                        readOnly = true
-                    )
-                }
-                item {
-                    //Make a tick box to check if the event is outdoors
-                    Row {
-                        Text(
-                            text = "Is this event outdoors?",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                        Checkbox(
-                            checked =isOutside,
-                            onCheckedChange = { isChecked -> isOutside = isChecked },
-                            modifier = Modifier.padding(16.dp),
-                        )
-
-
-                    }
-                }
-                item {
-                    OutlinedTextField(
-                        value = description ?: "",
-                        onValueChange = { description -> updateDescription(description) },
-                        label = { Text("Description") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                            .height(200.dp),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = if (description?.length!! > 250) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
-                            unfocusedBorderColor = if (description?.length!! > 250) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
-                        ),
-                        supportingText = {
-                            if (description?.length!! > 250) {
-                                Text(
-                                    text = "${description!!.length}/250",
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                            } else {
-                                Text(
-                                    text = "Optional",
-                                    color = MaterialTheme.colorScheme.outline,
-                                )
-                            }
                         }
                     )
-                }
-                item {
-                    ExposedDropdownMenuBox(
+                    ExposedDropdownMenu(
                         expanded = expandedTimeZone,
-                        onExpandedChange = { expandedTimeZone = !expandedTimeZone },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        content = {
-                            TextField(
-                                value = timeZone?.displayName ?: "",
-                                onValueChange = {},
-                                label = { Text("Time Zone") },
-                                readOnly = true,
-                                modifier = Modifier.menuAnchor(),
-                                trailingIcon =  {ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedTimeZone)},
-                                supportingText = {
-                                    Text(
-                                        text = "Optional",
-                                        color = MaterialTheme.colorScheme.outline,
-                                    )
+                        onDismissRequest = { expandedTimeZone = false}
+                    ) {
+                        americanTimeZoneNames.forEach { item ->
+                            DropdownMenuItem(
+                                text = { Text(TimeZone.getTimeZone(item).displayName) },
+                                onClick = {
+                                    updateTimeZone(TimeZone.getTimeZone(item))
+                                    expandedTimeZone = false
                                 }
-
                             )
-                            ExposedDropdownMenu(
-                                expanded = expandedTimeZone,
-                                onDismissRequest = { expandedTimeZone = false }
-                            ) {
-                                americanTimeZoneNames.forEach { item ->
-                                    DropdownMenuItem(
-                                        text = { Text(item) },
-                                        onClick = {
-                                            updateTimeZone(TimeZone.getTimeZone(item))
-                                            expandedTimeZone = false
-                                                  }
-                                    )
-                                }
-                            }
-
+                        }
+                    }
+                }
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            val importanceNames = listOf(
+                "1",
+                "2",
+                "3",
+                "4",
+                "5"
+            )
+            ExposedDropdownMenuBox(
+                expanded = expandedImportance,
+                onExpandedChange = { expandedImportance = !expandedImportance },
+                modifier = Modifier
+                    .fillMaxWidth(1f)
+                    .padding(horizontal = 8.dp),
+                content = {
+                    OutlinedTextField(
+                        value = importance.toString(),
+                        onValueChange = {},
+                        placeholder = { Text("Importance") },
+                        readOnly = true,
+                        modifier = Modifier.menuAnchor(),
+                        trailingIcon =  {ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedImportance)},
+                        supportingText = {
+                            Text(
+                                text = "Optional",
+                                color = MaterialTheme.colorScheme.outline,
+                            )
                         }
                     )
-                }
-                item {
-                    ExposedDropdownMenuBox(
+                    ExposedDropdownMenu(
                         expanded = expandedImportance,
-                        onExpandedChange = { expandedImportance = !expandedImportance },
+                        onDismissRequest = { expandedImportance = false }
                     ) {
-                        TextField(
-                            value = importance.toString(),
-                            onValueChange = {},
-                            label = { Text("Importance") },
-                            readOnly = true,
-                            modifier = Modifier.menuAnchor(),
-                            trailingIcon =  {ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedImportance)},
-                            supportingText = {
-                                Text(
-                                    text = "Optional",
-                                    color = MaterialTheme.colorScheme.outline,
-                                )
-                            }
-
-
-                        )
-                        ExposedDropdownMenu(
-                            expanded = expandedImportance,
-                            onDismissRequest = { expandedImportance = false }
-                        ) {
-                            importanceNames.forEach { item ->
-                                DropdownMenuItem(
-                                    text = { Text(item) },
-                                    onClick = {
-                                        updateImportance(item.toInt())
-                                        expandedImportance = false
-                                    }
-                                )
-                            }
-                        }
-
-                    }
-                }
-                item {
-                    Button(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        onClick = {
-                            if (contactsGranted) {
-                                contactsLauncher.launch(null)
-                            } else {
-                                requestPermissionsLauncher.launch(permission)
-                                if (contactsGranted) {
-                                    contactsLauncher.launch(null)
+                        importanceNames.forEach { item ->
+                            DropdownMenuItem(
+                                text = { Text(item) },
+                                onClick = {
+                                    updateImportance(item.toInt())
+                                    expandedImportance = false
                                 }
-                            }
+                            )
                         }
-                    ) {
-                        Text("Add Attendees")
                     }
                 }
-                item {
-                    ElevatedCard(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                        colors = CardDefaults.elevatedCardColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
+            )
+        }
+    }
+
+    @Composable
+    fun EventLocationItem(autocompleteLauncher: ManagedActivityResultLauncher<Intent, ActivityResult>, context: Context) {
+        var isFocused by remember { mutableStateOf(false) }
+
+        OutlinedTextField(
+            value = location ?: "",
+            onValueChange = { location = it },
+            placeholder = { Text("Location") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = "Location Picker",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+            },
+            modifier = Modifier
+                .fillMaxSize(1f)
+                .padding(horizontal = 8.dp)
+                .onFocusChanged { focusState ->
+                    if (focusState.isFocused && !isFocused) {
+                        isFocused = true
+                        autocompleteLauncher.launch(
+                            Autocomplete
+                                .IntentBuilder(
+                                    AutocompleteActivityMode.OVERLAY,
+                                    listOf(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS)
+                                )
+                                .build(context)
+                        )
+                    } else if (!focusState.isFocused) {
+                        isFocused = false
+                    }
+                },
+            supportingText = {
+                Text(
+                    text = "Optional",
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
+        )
+    }
+
+    @Composable
+    fun EventDescriptionItem() {
+        OutlinedTextField(
+            value = description ?: "",
+            onValueChange = { description -> updateDescription(description) },
+            placeholder = { Text("Type event description here...") },
+            modifier = Modifier
+                .fillMaxWidth(1f)
+                .padding(horizontal = 8.dp)
+                .height(150.dp),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = if (description?.length!! > 250) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                unfocusedBorderColor = if (description?.length!! > 250) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+            ),
+            supportingText = {
+                if (description?.length!! > 250) {
+                    Text(
+                        text = "${description!!.length}/250",
+                        color = MaterialTheme.colorScheme.error,
                     )
-                    ){
-                        Text(
-                            text = if (contactList.isEmpty()) "No Attendees" else "Attendees",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp)
-                        ) {
-                            contactList.forEach() { attendee ->
-                                Button(
-                                    onClick = {expandedContact = attendee.name }
-                                ) {
-                                    Column {
-                                        Row {
-                                            Text(attendee.name)
-                                            if (expandedContact != attendee.name) {
-                                                Icon(
-                                                    imageVector = Icons.Default.ArrowDropDown,
-                                                    contentDescription = "More Info",
-                                                    tint = MaterialTheme.colorScheme.surface,
-                                                )
-                                            }
-                                        }
+                } else {
+                    Text(
+                        text = "Optional",
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                }
+            }
+        )
+    }
 
+    @Composable
+    fun EventOutdoorsItem(isOutside: Boolean, onCheckedChange: (Boolean) -> Unit) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth(1f)
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Is this event outdoors?",
+                style = if (!isOutside) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp)
 
-                                        if (expandedContact == attendee.name) {
-                                            if (attendee.phoneNumber != "") {
-                                                Text(text = "Phone Number " + attendee.phoneNumber)
-                                            }
-                                            if (attendee.email != "") {
-                                                Text(text = "Email " + attendee.email)
-                                            }
+            )
+            Switch(
+                checked = isOutside,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.surface,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.primary,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surface,
+                )
+            )
+        }
+    }
+
+    @Composable
+    fun EventAIItem(isOptimized: Boolean, onCheckedChange: (Boolean) -> Unit) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth(1f)
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Allow AI to optimize this event?",
+                style = if (!isOptimized) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp)
+
+            )
+            Switch(
+                checked = isOptimized,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.surface,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.primary,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surface,
+                )
+            )
+        }
+    }
+
+    @Composable
+    fun EventAttendeesItem(
+        initialContactList: List<Attendee>,
+        initialExpandedContact: String,
+        contactsGranted: Boolean,
+        requestPermissionsLauncher: ActivityResultLauncher<String>,
+        contactsLauncher: ManagedActivityResultLauncher<Void?, Uri?>
+    ) {
+        var contactList by remember { mutableStateOf(initialContactList) }
+        var expandedContact by remember { mutableStateOf(initialExpandedContact) }
+        val permission = android.Manifest.permission.READ_CONTACTS
+        ElevatedCard(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            shape = RoundedCornerShape(8.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            )
+        ){
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                        content = {
+                            Text(
+                                text = if (contactList.isEmpty()) "No Attendees" else "Attendees",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(start = 16.dp)
+                            )
+                            IconButton(
+                                onClick = {
+                                    if (contactsGranted) {
+                                        contactsLauncher.launch(null)
+                                    } else {
+                                        requestPermissionsLauncher.launch(permission)
+                                        if (contactsGranted) {
+                                            contactsLauncher.launch(null)
                                         }
                                     }
-
-
-                                }
-                                Button(
-                                    onClick = { contactList = contactList - attendee },
+                                },
+                                modifier = Modifier.padding(8.dp),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.primary)
                                 ) {
-                                    Icon (
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete",
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Add Attendee",
                                         tint = MaterialTheme.colorScheme.surface,
+                                        modifier = Modifier.align(Alignment.Center)
                                     )
                                 }
                             }
                         }
-                    }
-
-                }
-                item {
-                    Row {
-                        //Button to allows the AI to make optimizations to this event or not
-                        Text (
-                            text = "Do you want to allow the AI to optimize this event?",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                        Checkbox(
-                            checked = isOptimized,
-                            onCheckedChange = { isChecked -> isOptimized = isChecked },
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
-                }
-                item {
-                    Button(
+                    )
+                    Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp),
-                        onClick = {
-                            if (isRainingTimeConfirmed) {
-                                var firestoreEvent:FirestoreEvent = FirestoreEvent(
-                                    attendees = contactList,
-                                    description = description,
-                                    endTime = endTime,
-                                    startTime = startTime,
-                                    timeZone = timeZone?.displayName,
-                                    name = name,
-                                    //Additional field to store the name in lowercase for searching
-                                    nameLower = name.trim().lowercase(),
-                                    importance = importance,
-                                    location = location,
-                                    rainCheck = rainCheck, // Setting to true now since we're constantly checking for rain
-                                    isRaining = (rainingTimesMessage != ""), // If the message is not empty, then it's raining during the event
-                                    mapsCheck = false,
-                                    distance = 0,
-                                    //This will be used in the AI model to determine whether this event can be scheduled if it's raining outside
-                                    isOutside = isOutside,
-                                    //This will be used to determine whether or not an event is allowed to be optimized by the AI
-                                    //My naming scheme is so bad that I have to reverse the boolean to make it make sense
-                                    isOptimized = !isOptimized,
-                                    isAiSuggestion = false,
-                                    isUserAccepted = false
-                                )
-                                val errors = firestoreEvent.validateEvent(firestoreEvent)
-                                if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {
-                                    FirestoreHelper().createEvent(user, firestoreEvent) {
-                                        if (it) {
-                                            Toast.makeText(context, "Event added successfully", Toast.LENGTH_LONG).show()
-                                            navigateBack()
-                                        } else {
-                                            Toast.makeText(context, "Event could not be added. Please check your network connection", Toast.LENGTH_LONG).show()
-
+                            .padding(16.dp)
+                    ) {
+                        contactList.forEach() { attendee ->
+                            Button(
+                                onClick = { expandedContact = attendee.name }
+                            ) {
+                                Column {
+                                    Row {
+                                        Text(attendee.name)
+                                        if (expandedContact != attendee.name) {
+                                            Icon(
+                                                imageVector = Icons.Default.ArrowDropDown,
+                                                contentDescription = "More Info",
+                                                tint = MaterialTheme.colorScheme.surface,
+                                            )
+                                        }
+                                    }
+                                    if (expandedContact == attendee.name) {
+                                        if (attendee.phoneNumber != "") {
+                                            Text(text = "Phone Number " + attendee.phoneNumber)
+                                        }
+                                        if (attendee.email != "") {
+                                            Text(text = "Email " + attendee.email)
                                         }
                                     }
                                 }
-                                if (user == null) {
-                                    Toast.makeText(context, "You are logged out. Please log in and try again", Toast.LENGTH_LONG).show()
-                                    //Add redirection to login screen
-                                }
-                                if (!isTimeSelected()) {
-                                    Toast.makeText(context, "Please select a valid start and end time", Toast.LENGTH_LONG).show()
-                                }
-                                if (dateError) {
-                                    Toast.makeText(context, "Start time cannot be after end time", Toast.LENGTH_LONG).show()
-                                }
-                                else {
-                                    requiredEmpty = true
-                                    errors.forEach { error ->
-                                        Toast.makeText(context, error.localizedMessage, Toast.LENGTH_LONG).show()
-                                    }
-                                }
-
-                            } else {
-                                showRainingTimesDialog = true
-                                Toast.makeText(context, "You need to confirm your event time", Toast.LENGTH_LONG).show()
                             }
-
-                        }) {
-                        Text("Add Event")
-                    }
-                    if (showRainingTimesDialog) {
-                        eventDuringRainingTimesConfirmDialog(isRainingTimeConfirmed, rainingTimesMessage)
-                    }
-                }
-                item {
-                    Button(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        onClick = {
-                            navigateBack()
+                            Button(
+                                onClick = { contactList = contactList - attendee },
+                            ) {
+                                Icon (
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = MaterialTheme.colorScheme.surface,
+                                )
+                            }
                         }
-                    ) {
-                        Text("Back")
                     }
                 }
             }
+        }
+    }
+
+    @Composable
+    fun EventCreateItem(
+        isOutside: Boolean,
+        isOptimized: Boolean,
+        user: String?,
+        navigateBack: () -> Unit,
+        context: Context
+    ) {
+        Button(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start= 16.dp, end = 16.dp, bottom = 16.dp),
+            onClick = {
+                if (isRainingTimeConfirmed) {
+                    val firestoreEvent = FirestoreEvent(
+                        attendees = contactList,
+                        description = description,
+                        endTime = endTime,
+                        startTime = startTime,
+                        timeZone = timeZone?.displayName,
+                        name = name,
+                        nameLower = name.trim().lowercase(),
+                        importance = importance,
+                        location = location,
+                        rainCheck = rainCheck,
+                        isRaining = (rainingTimesMessage != ""),
+                        mapsCheck = false,
+                        distance = 0,
+                        isOutside = isOutside,
+                        isOptimized = !isOptimized,
+                        isAiSuggestion = false,
+                        isUserAccepted = false
+                    )
+                    val errors = firestoreEvent.validateEvent(firestoreEvent)
+                    if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {
+                        FirestoreHelper().createEvent(user, firestoreEvent) {
+                            if (it) {
+                                Toast.makeText(context, "Event added successfully", Toast.LENGTH_LONG).show()
+                                navigateBack()
+                            } else {
+                                Toast.makeText(context, "Event could not be added. Please check your network connection", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    } else {
+                        handleErrors(errors, user, dateError, isTimeSelected(), context)
+                    }
+                } else {
+                    showRainingTimesDialog = true
+                    Toast.makeText(context, "You need to confirm your event time", Toast.LENGTH_LONG).show()
+                }
+            },
+            colors = ButtonDefaults.elevatedButtonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
+            shape = RoundedCornerShape(8.dp)
+            ) {
+            Text("Create Event")
+        }
+        if (showRainingTimesDialog) {
+            eventDuringRainingTimesConfirmDialog(isRainingTimeConfirmed, rainingTimesMessage)
         }
     }
 
@@ -955,6 +1140,103 @@ class AddEvent {
                 }
             )
 
+        }
+    }
+
+    @Composable
+    fun AddEventHeader(onBackClick: () -> Unit) {
+        Surface(
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { onBackClick() }) {
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                }
+                Text(
+                    text = "Add New Event",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSecondary,
+                )
+                // This is a placeholder to push the title to the center
+                Spacer(modifier = Modifier.size(48.dp))
+            }
+        }
+    }
+
+    @Composable
+    fun AddEventPage(navigateBack: () -> Unit) {
+        val context = LocalContext.current
+        val user = FirebaseLoginHelper().getCurrentUser()?.uid
+        FirebaseApp.initializeApp(context)
+        Column {
+            AddEventHeader(onBackClick = navigateBack)
+            AddEventUI(navigateBack)
+            EventCreateItem(isOutside, isOptimized, user, navigateBack, context)
+        }
+    }
+
+    private fun handleErrors(errors: List<Error>, user: String?, dateError: Boolean, isTimeSelected: Boolean, context: Context) {
+        if (user == null) {
+            Toast.makeText(context, "You are logged out. Please log in and try again", Toast.LENGTH_LONG).show()
+        }
+        if (!isTimeSelected) {
+            Toast.makeText(context, "Please select a valid start and end time", Toast.LENGTH_LONG).show()
+        }
+        if (dateError) {
+            Toast.makeText(context, "Start time cannot be after end time", Toast.LENGTH_LONG).show()
+        }
+        if (errors.isNotEmpty()) {
+            errors.forEach { error ->
+                Toast.makeText(context, error.localizedMessage, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    @Preview
+    @Composable
+    fun AddEventHeaderPreview() {
+        Box {
+            AddEventHeader(onBackClick = {})
+        }
+    }
+
+    @Preview
+    @Composable
+    fun EventNamePreview() {
+        Box(Modifier.background(MaterialTheme.colorScheme.background)) {
+            EventNameItem(
+                name = "Event Name",
+                updateName = {},
+                requiredEmpty = false
+            )
+        }
+    }
+
+    @Preview
+    @Composable
+    fun EventAtendeesPreview() {
+        Box(Modifier
+            .background(MaterialTheme.colorScheme.background)
+            .height(300.dp)
+        ) {
+            EventAttendeesItem(
+                initialContactList = listOf(),
+                initialExpandedContact = "",
+                contactsGranted = false,
+                requestPermissionsLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission(),
+                    onResult = {}
+                ),
+                contactsLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.PickContact(),
+                    onResult = {}
+                )
+            )
         }
     }
 
