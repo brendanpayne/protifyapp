@@ -98,18 +98,20 @@ class EventBreakdown {
         year: String = "",
         showTimes: Boolean = true
     ) {
+        // Sort events by start time
         val context: Context = LocalContext.current
-        val timeSlots = if (eventList.isEmpty()) createListTimeSlot() else createListTimeSlot(eventList)
+        val timeSlots = createListTimeSlot(eventList)
         val scaledValue = scale.toInt()
         timeSlots.maxOfOrNull { it.height } ?: 0f
         val scrollState = rememberScrollState()
         val layers = timeSlots.map { it.layer }.distinct()
+        val sortedEventList = eventList.sortedBy { convertTimeToFloat(it.startTime) } // Sort events by start time to start on the right scroll position
 
         val startTime = if (eventList.isNotEmpty())
-            convertTimeToFloat(eventList[0].startTime) else 9f // default 0900
+            convertTimeToFloat(sortedEventList[0].startTime) else 9f // default 0900
         val startPosition = startTime * 60 * scaledValue
-        LaunchedEffect(key1 = true) {
-            scrollState.scrollTo(startPosition.toInt())
+        LaunchedEffect(key1 = day, key2 = month, key3 = year) {// scroll to start position when the user changes the day
+            scrollState.scrollTo(startPosition.toInt() * 2) // This scrolls the screen far enough to see the first event
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
@@ -332,9 +334,6 @@ class EventBreakdown {
 
                 for (i in timeSlots.indices) {
                     val timeSlot = timeSlots[i]
-                    if (timeSlots[i].color == Color.Red) {
-                        layerColor = Color.Green
-                    }
 
                     val nextEventStartTime = if (i < timeSlots.size - 1) convertTimeToFloat(timeSlots[i + 1].startTime) else 24f
                     val currentEventEndTime = convertTimeToFloat(timeSlot.endTime)
