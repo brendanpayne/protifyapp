@@ -200,7 +200,6 @@ class ProfileActivity {
                                 }
                             }
                             CoroutineScope(Dispatchers.IO).launch {
-                                delay(10000)
                                 // If both the home address and the use4 value have changed, update both in Firestore
                                 if (newHomeAddress != homeAddress && newUse4 != use4) {
                                     FirestoreHelper().setUserProfileInfo(

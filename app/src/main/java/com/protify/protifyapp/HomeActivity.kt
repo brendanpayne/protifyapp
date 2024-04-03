@@ -239,14 +239,14 @@ class HomeActivity {
     suspend fun optimizeScheduleForToday(uid: String, today: LocalDateTime): Boolean {
         val result = CompletableDeferred<Boolean>()
         CoroutineScope(Dispatchers.IO).launch {
-            // Get user's home address
-            val homeAddress = FirestoreHelper().getUserHomeAddress(uid)
-            if (homeAddress == "" || homeAddress == "No home address found") {
+            // Get user's home address and AI preferences
+            val profileInfo = FirestoreHelper().getUserProfileInfo(uid)
+            if (profileInfo.first == "") {
                 result.complete(false)
                 return@launch
             }
             // Optimize schedule for today
-            GetAISchedule(uid, homeAddress).getOptimizedSchedule(false, today) { success -> // For now, do one day in advance
+            GetAISchedule(uid, profileInfo.first).getOptimizedSchedule(profileInfo.second, today) { success -> // If the user hasn't set their use4 preferences, it will use 3.5
                 result.complete(success)
             }
         }
