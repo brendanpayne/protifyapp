@@ -325,11 +325,11 @@ class EventBreakdown {
                 modifier = Modifier.fillMaxWidth(0.8f),
                 horizontalAlignment = Alignment.End
             ) {
+                val timeSlots = timeSlots.sortedBy { convertTimeToFloat(it.startTime) }
                 val startTimeMinutes = (convertTimeToFloat(timeSlots[0].startTime)) * 60
                 Spacer(modifier = Modifier.height(((30 + startTimeMinutes) * scale).dp)) // top padding
                 val displayedEvents = mutableMapOf<String, Int>()
-                // sort time slots by start time
-                val timeSlots = timeSlots.sortedBy { convertTimeToFloat(it.startTime) }
+
                 for (i in timeSlots.indices) {
                     val timeSlot = timeSlots[i]
                     if (timeSlots[i].color == Color.Red) {

@@ -318,8 +318,10 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         // Init nonRainingTimes bool
         var hasRainingTimes = true
         // Check if the nonRainingTimes list is 0:00-00:00
-        if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0 && events.any { it.isOutside }) {
-            hasRainingTimes = false
+        if (nonRainingTimes.isNotEmpty()) { // Out of bounds check
+            if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0 && events.any { it.isOutside }) {
+                hasRainingTimes = false
+            }
         }
 
         // init parser
