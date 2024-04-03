@@ -102,29 +102,28 @@ import com.protify.protifyapp.R
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-class AddEvent {
+open class AddEvent {
 
-    private var name: String by mutableStateOf("")
-    private var startTime: LocalDateTime by mutableStateOf(LocalDateTime.now())
-    private var endTime: LocalDateTime by mutableStateOf(LocalDateTime.MAX)
-    private var location: String? by mutableStateOf("")
-    private var description: String? by mutableStateOf("")
-    //private var timeZone: TimeZone? by mutableStateOf(TimeZone.getTimeZone("America/New_York"))
-    private var timeZone: TimeZone? by mutableStateOf(TimeZone.getDefault())
-    private var importance: Int by mutableIntStateOf(3)
-    private var attendees: List<Attendee> by mutableStateOf(listOf())
-    private var formattedStartTime: String by mutableStateOf("")
-    private var formattedEndTime: String by mutableStateOf("")
-    private var dateError: Boolean by mutableStateOf(false)
-    private var timeError: Boolean by mutableStateOf(false)
-    private var contactList: List<Attendee> by mutableStateOf(listOf())
-    private var contactNames: List<String> by mutableStateOf(listOf())
-    private var rainingTimesMessage: String by mutableStateOf("")
-    private var isRainingTimeConfirmed: Boolean by mutableStateOf(true) // True by default... innocent until guilty
-    private var showRainingTimesDialog: Boolean by mutableStateOf(false)
-    private var rainCheck: Boolean = false
-    private var isOptimized: Boolean by mutableStateOf(true)
-    private var isOutside: Boolean by mutableStateOf(false)
+    var name: String by mutableStateOf("")
+    var startTime: LocalDateTime by mutableStateOf(LocalDateTime.now())
+    var endTime: LocalDateTime by mutableStateOf(LocalDateTime.MAX)
+    var location: String? by mutableStateOf("")
+    var description: String? by mutableStateOf("")
+    var timeZone: String? by mutableStateOf(TimeZone.getDefault().displayName)
+    var importance: Int by mutableIntStateOf(3)
+    var attendees: List<Attendee> by mutableStateOf(listOf())
+    var formattedStartTime: String by mutableStateOf("")
+    var formattedEndTime: String by mutableStateOf("")
+    var dateError: Boolean by mutableStateOf(false)
+    var timeError: Boolean by mutableStateOf(false)
+    var contactList: List<Attendee> by mutableStateOf(listOf())
+    var contactNames: List<String> by mutableStateOf(listOf())
+    var rainingTimesMessage: String by mutableStateOf("")
+    var isRainingTimeConfirmed: Boolean by mutableStateOf(true) // True by default... innocent until guilty
+    var showRainingTimesDialog: Boolean by mutableStateOf(false)
+    var rainCheck: Boolean = false
+    var isOptimized: Boolean by mutableStateOf(true)
+    var isOutside: Boolean by mutableStateOf(false)
 
     private fun updateName(newName: String) {
         name = newName
@@ -204,31 +203,39 @@ class AddEvent {
         }
 
     }
-    private fun updateLocation(newLocation: String) {
+    fun updateLocation(newLocation: String) {
         location = newLocation
     }
-    private fun updateDescription(newDescription: String) {
+    fun updateDescription(newDescription: String) {
         description = newDescription
     }
-    private fun updateTimeZone(newTimeZone: TimeZone) {
+    fun updateTimeZone(newTimeZone: String) {
         timeZone = newTimeZone
     }
-    private fun updateImportance(newImportance: Int) {
+    fun updateImportance(newImportance: Int) {
         importance = newImportance
     }
-    private fun updateAttendees(newAttendees: List<Attendee>) {
+    fun updateAttendees(newAttendees: List<Attendee>) {
         attendees = newAttendees
     }
-    private fun isTimeSelected(): Boolean {
+    fun isTimeSelected(): Boolean {
         return formattedStartTime != "" && formattedEndTime != ""
     }
-    private fun updateAttendeeList(name: String, number: String, email: String) {
+    fun updateAttendeeList(name: String, number: String, email: String) {
         Attendee(name, email, number).let { attendee ->
             contactList = contactList + attendee
         }
     }
-    private fun updateContactNames(name: String) {
+    fun updateContactNames(name: String) {
         contactNames = contactNames + name
+    }
+
+    fun updateIsOutside(isOutside: Boolean) {
+        this.isOutside = isOutside
+    }
+
+    fun updateIsOptimized(isOptimized: Boolean) {
+        this.isOptimized = isOptimized
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -447,13 +454,13 @@ class AddEvent {
                 item {
                     EventOutdoorsItem(
                         isOutside = isOutside,
-                        onCheckedChange = { isChecked -> isOutside = isChecked }
+                        onCheckedChange = { isChecked -> updateIsOutside(isChecked) }
                     )
                 }
                 item {
                     EventAIItem(
                         isOptimized = isOptimized,
-                        onCheckedChange = { isChecked -> isOptimized = isChecked }
+                        onCheckedChange = { isChecked -> updateIsOptimized(isChecked) }
                     )
                 }
                 item{
@@ -512,7 +519,7 @@ class AddEvent {
     }
 
     @Composable
-    private fun EventDateItem(datePickerDialog: DatePickerDialog, dateError: Boolean) {
+    fun EventDateItem(datePickerDialog: DatePickerDialog, dateError: Boolean) {
         var selectedDate by remember { mutableStateOf("") }
         var selectedMonth by remember { mutableIntStateOf(0) }
         var selectedDayOfMonth by remember { mutableIntStateOf(0) }
@@ -693,7 +700,7 @@ class AddEvent {
                     .padding(horizontal = 8.dp),
                 content = {
                     OutlinedTextField(
-                        value = timeZone?.displayName ?: "",
+                        value = timeZone?: "",
                         onValueChange = {},
                         placeholder = { Text("Time Zone") },
                         readOnly = true,
@@ -714,7 +721,7 @@ class AddEvent {
                             DropdownMenuItem(
                                 text = { Text(TimeZone.getTimeZone(item).displayName) },
                                 onClick = {
-                                    updateTimeZone(TimeZone.getTimeZone(item))
+                                    updateTimeZone(TimeZone.getTimeZone(item).displayName)
                                     expandedTimeZone = false
                                 }
                             )
@@ -1017,7 +1024,8 @@ class AddEvent {
     }
 
     @Composable
-    fun EventCreateItem(
+    open fun EventCreateItem(
+        buttonText: String = "Create Event",
         isOutside: Boolean,
         isOptimized: Boolean,
         user: String?,
@@ -1029,43 +1037,7 @@ class AddEvent {
                 .fillMaxSize()
                 .padding(start= 16.dp, end = 16.dp, bottom = 16.dp),
             onClick = {
-                if (isRainingTimeConfirmed) {
-                    val firestoreEvent = FirestoreEvent(
-                        attendees = contactList,
-                        description = description,
-                        endTime = endTime,
-                        startTime = startTime,
-                        timeZone = timeZone?.displayName,
-                        name = name,
-                        nameLower = name.trim().lowercase(),
-                        importance = importance,
-                        location = location,
-                        rainCheck = rainCheck,
-                        isRaining = (rainingTimesMessage != ""),
-                        mapsCheck = false,
-                        distance = 0,
-                        isOutside = isOutside,
-                        isOptimized = !isOptimized,
-                        isAiSuggestion = false,
-                        isUserAccepted = false
-                    )
-                    val errors = firestoreEvent.validateEvent(firestoreEvent)
-                    if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {
-                        FirestoreHelper().createEvent(user, firestoreEvent) {
-                            if (it) {
-                                Toast.makeText(context, "Event added successfully", Toast.LENGTH_LONG).show()
-                                navigateBack()
-                            } else {
-                                Toast.makeText(context, "Event could not be added. Please check your network connection", Toast.LENGTH_LONG).show()
-                            }
-                        }
-                    } else {
-                        handleErrors(errors, user, dateError, isTimeSelected(), context)
-                    }
-                } else {
-                    showRainingTimesDialog = true
-                    Toast.makeText(context, "You need to confirm your event time", Toast.LENGTH_LONG).show()
-                }
+                saveEvent(isOutside, isOptimized, user, navigateBack, context)
             },
             colors = ButtonDefaults.elevatedButtonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -1073,10 +1045,56 @@ class AddEvent {
             ),
             shape = RoundedCornerShape(8.dp)
             ) {
-            Text("Create Event")
+            Text(buttonText)
         }
         if (showRainingTimesDialog) {
             eventDuringRainingTimesConfirmDialog(isRainingTimeConfirmed, rainingTimesMessage)
+        }
+    }
+
+    open fun saveEvent(
+        isOutside: Boolean,
+        isOptimized: Boolean,
+        user: String?,
+        navigateBack: () -> Unit,
+        context: Context
+    ) {
+        if (isRainingTimeConfirmed) {
+            val firestoreEvent = FirestoreEvent(
+                attendees = contactList,
+                description = description,
+                endTime = endTime,
+                startTime = startTime,
+                timeZone = timeZone,
+                name = name,
+                nameLower = name.trim().lowercase(),
+                importance = importance,
+                location = location,
+                rainCheck = rainCheck,
+                isRaining = (rainingTimesMessage != ""),
+                mapsCheck = false,
+                distance = 0,
+                isOutside = isOutside,
+                isOptimized = !isOptimized,
+                isAiSuggestion = false,
+                isUserAccepted = false
+            )
+            val errors = firestoreEvent.validateEvent(firestoreEvent)
+            if (errors.isEmpty() && user != null && !dateError && isTimeSelected())  {
+                FirestoreHelper().createEvent(user, firestoreEvent) {
+                    if (it) {
+                        Toast.makeText(context, "Event added successfully", Toast.LENGTH_LONG).show()
+                        navigateBack()
+                    } else {
+                        Toast.makeText(context, "Event could not be added. Please check your network connection", Toast.LENGTH_LONG).show()
+                    }
+                }
+            } else {
+                handleErrors(errors, user, dateError, isTimeSelected(), context)
+            }
+        } else {
+            showRainingTimesDialog = true
+            Toast.makeText(context, "You need to confirm your event time", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -1144,7 +1162,7 @@ class AddEvent {
     }
 
     @Composable
-    fun AddEventHeader(onBackClick: () -> Unit) {
+    open fun AddEventHeader(title: String, onBackClick: () -> Unit) {
         Surface(
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.fillMaxWidth()
@@ -1158,7 +1176,7 @@ class AddEvent {
                     Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                 }
                 Text(
-                    text = "Add New Event",
+                    text = title,
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSecondary,
                 )
@@ -1169,18 +1187,18 @@ class AddEvent {
     }
 
     @Composable
-    fun AddEventPage(navigateBack: () -> Unit) {
+    open fun AddEventPage(navigateBack: () -> Unit) {
         val context = LocalContext.current
         val user = FirebaseLoginHelper().getCurrentUser()?.uid
         FirebaseApp.initializeApp(context)
         Column {
-            AddEventHeader(onBackClick = navigateBack)
+            AddEventHeader(title = "Add New Event", onBackClick = navigateBack)
             AddEventUI(navigateBack)
-            EventCreateItem(isOutside, isOptimized, user, navigateBack, context)
+            EventCreateItem("Create Event", isOutside, isOptimized, user, navigateBack, context)
         }
     }
 
-    private fun handleErrors(errors: List<Error>, user: String?, dateError: Boolean, isTimeSelected: Boolean, context: Context) {
+    fun handleErrors(errors: List<Error>, user: String?, dateError: Boolean, isTimeSelected: Boolean, context: Context) {
         if (user == null) {
             Toast.makeText(context, "You are logged out. Please log in and try again", Toast.LENGTH_LONG).show()
         }
@@ -1201,7 +1219,7 @@ class AddEvent {
     @Composable
     fun AddEventHeaderPreview() {
         Box {
-            AddEventHeader(onBackClick = {})
+            AddEventHeader(title = "Add new Event", onBackClick = {})
         }
     }
 

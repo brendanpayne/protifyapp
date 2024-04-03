@@ -62,7 +62,7 @@ class EventDetails {
             }
             FloatingActionButton(
                 onClick = {
-                    navController.navigate("eventDetails/${date}/${eventId}")
+                    navController.navigate("editEvent/${date}/${eventId}")
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
