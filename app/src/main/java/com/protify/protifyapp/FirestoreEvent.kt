@@ -21,7 +21,9 @@ class FirestoreEvent(
     val isOptimized: Boolean = false,
     var isAiSuggestion: Boolean = false,
     var isUserAccepted: Boolean = false,
+    var id: String = "",
 ) {
+
     fun validateEvent(event: FirestoreEvent): List<Error> {
         val errors = mutableListOf<Error>()
         validateName(event.name)?.let { errors.add(it) }

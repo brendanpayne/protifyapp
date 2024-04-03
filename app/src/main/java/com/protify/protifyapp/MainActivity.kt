@@ -6,11 +6,13 @@ import androidx.activity.compose.setContent
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.google.firebase.FirebaseApp
 import com.protify.protifyapp.ui.theme.ProtifyTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        FirebaseApp.initializeApp(this)
         setContent {
             ProtifyTheme {
                 AccountActivity().AccountPage()

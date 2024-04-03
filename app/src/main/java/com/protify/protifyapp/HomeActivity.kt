@@ -18,6 +18,7 @@ import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
+import androidx.compose.material.ScaffoldState
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.auth.FirebaseUser
 import com.protify.protifyapp.features.calendar.CalendarView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.ui.theme.ProtifyTheme
@@ -63,10 +65,7 @@ class HomeActivity {
     @Composable
     fun HomePage(navController: NavHostController, navigateToAddEvent: () -> Unit) {
         val scaffoldState = rememberScaffoldState()
-        val scope = rememberCoroutineScope()
-        val firestoreHelper = FirestoreHelper()
         val user = FirebaseLoginHelper().getCurrentUser()
-        val context = LocalContext.current
 
         // Calculate the time of day
         val timeOfDay = when (java.time.LocalTime.now().hour) {
@@ -78,135 +77,115 @@ class HomeActivity {
 
         Scaffold(
             scaffoldState = scaffoldState,
-            drawerContent = {
+            drawerContent = { DrawerContent(navController) },
+            content = { HomeContent(timeOfDay, user, navController, navigateToAddEvent, scaffoldState) }
+        )
+    }
+
+    @Composable
+    private fun DrawerContent(navController: NavHostController) {
+        Text(
+            "Settings",
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.h6,
+            color = MaterialTheme.colors.onSurface,
+            textAlign = TextAlign.Start
+        )
+        Divider()
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.Top,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(32.dp))
                 Text(
-                    "Settings",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.h6,
-                    color = MaterialTheme.colors.onSurface,
-                    textAlign = TextAlign.Start
+                    "Profile",
+                    modifier = Modifier.padding(top = 10.dp).clickable { navController.navigate("profile") },
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = MaterialTheme.colors.onSurface
                 )
+                Spacer(modifier = Modifier.height(32.dp))
                 Divider()
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Spacer(modifier = Modifier.height(32.dp))
+                Text(
+                    "Privacy & Location",
+                    modifier = Modifier.padding(top = 10.dp).clickable { navController.navigate("privacyLocation") },
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = MaterialTheme.colors.onSurface
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+                Divider()
+            }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.Bottom,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Button(
+                    onClick = { navController.navigate("login") },
+                    modifier = Modifier
+                        .padding(bottom = 48.dp)
+                        .width(200.dp)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.Top,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Spacer(modifier = Modifier.height(32.dp))
-                            Text(
-                                "Profile",
-                                modifier = Modifier
-                                    .padding(top = 10.dp)
-                                    .clickable { navController.navigate("profile") },
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                color = MaterialTheme.colors.onSurface
-                            )
-                        Spacer(modifier = Modifier.height(32.dp))
-                            Divider()
-                        Spacer(modifier = Modifier.height(32.dp))
-                            Text(
-                                "Privacy & Location",
-                                modifier = Modifier
-                                    .padding(top = 10.dp)
-                                    .clickable { navController.navigate("privacyLocation") },
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                color = MaterialTheme.colors.onSurface
-                            )
-                        Spacer(modifier = Modifier.height(32.dp))
-                            Divider()
-                    }
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.Bottom,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Button(
-                            onClick = { navController.navigate("login") },
-                            modifier = Modifier
-                                .padding(bottom = 48.dp)
-                                .width(200.dp)
-                                .height(50.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(
-                                "Logout",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                color = Color.White
-                            )
-                        }
-                        Divider()
-                    }
+                    Text(
+                        "Logout",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = Color.White
+                    )
                 }
+                Divider()
+            }
+        }
+    }
 
-            },
-            content = {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
+    @Composable
+    private fun HomeContent(timeOfDay: TimeOfDay, user: FirebaseUser?, navController: NavHostController, navigateToAddEvent: () -> Unit, scaffoldState: ScaffoldState) {
+        val scope = rememberCoroutineScope()
+        val firestoreHelper = FirestoreHelper()
+        val context = LocalContext.current
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
 
-                    Column {
-                        var greeting by remember { mutableStateOf(timeOfDay.displayName) }
-                        if (user?.displayName != null || user?.displayName != "") {
-                            greeting = "${timeOfDay.displayName}, ${user?.displayName}!"
-                        }
-                        Text(
-                            text = greeting,
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.h6
-                        )
-                        CalendarView().Calendar(context, navigateToAddEvent)
-                    }
-
-                    SettingsIconButton(onClick = { scope.launch { scaffoldState.drawerState.open() } })
-
-                    val networkManager = NetworkManager(context)
-
-                    val isConnected by remember { mutableStateOf(false) }
-                    LaunchedEffect(networkManager) {
-                        networkManager.startListening()
-                    }
-//                    LaunchedEffect(isConnected) {
-//                        networkManager.setNetworkChangeListener {
-//                            if (it) {
-//                                firestoreHelper.toggleOfflineOnline(true)
-//                            } else {
-//                                firestoreHelper.toggleOfflineOnline(false)
-//                            }
-//                        }
-//                    }
-
-                    // Optimize schedule for today in a new coroutine
-//                    var isOptimizing by rememberSaveable { // Only allow optimization once (if a user navigates away, this will remember)
-//                        mutableStateOf(false)
-//                    }
-//                    LaunchedEffect(user) {
-//                        user?.let {
-//                            if (isOptimizing) {
-//                                Toast.makeText(context, "Optimizing schedule for today...", Toast.LENGTH_SHORT).show() // Runs when a user navigates away and back
-//                                return@LaunchedEffect
-//                            }
-//                                isOptimizing = true
-//                                scaffoldState.snackbarHostState.showSnackbar("Optimizing schedule for today...")
-//                                val result = optimizeScheduleForToday(it.uid, context)
-//                                isOptimizing = false
-//                                if (result) {
-//                                    scaffoldState.snackbarHostState.showSnackbar("Optimized schedule for today!")
-//                                } else {
-//                                    scaffoldState.snackbarHostState.showSnackbar("No optimization needed for today.")
-//
-//                                }
-//                        }
-//                    }
+            Column {
+                var greeting by remember { mutableStateOf(timeOfDay.displayName) }
+                if (user?.displayName != null || user?.displayName != "") {
+                    greeting = "${timeOfDay.displayName}, ${user?.displayName}!"
                 }
+                Text(
+                    text = greeting,
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.h6
+                )
+                CalendarView(navController).Calendar(context, navigateToAddEvent)
             }
 
-        )
+            SettingsIconButton(onClick = { scope.launch { scaffoldState.drawerState.open() } })
+
+            val networkManager = NetworkManager(context)
+
+            val isConnected by remember { mutableStateOf(false) }
+            LaunchedEffect(networkManager) {
+                networkManager.startListening()
+            }
+            LaunchedEffect(isConnected) {
+                networkManager.setNetworkChangeListener {
+                    if (it) {
+                        firestoreHelper.toggleOfflineOnline(true)
+                    } else {
+                        firestoreHelper.toggleOfflineOnline(false)
+                    }
+                }
+            }
+        }
     }
 
 

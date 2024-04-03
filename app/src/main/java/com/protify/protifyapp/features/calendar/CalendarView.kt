@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.protify.protifyapp.features.events.EventView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import java.time.LocalDate
@@ -54,7 +55,7 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-class CalendarView {
+class CalendarView(private val navController: NavController) {
 
     // private val dateUtils = DateUtils()
     // private var currentDate: String = dateUtils.formatDate(dateUtils.getCurrentDate())
@@ -427,7 +428,7 @@ class CalendarView {
                     )
             ) {
                 if (!isMonthView) { // Only shows the EventCard in week view
-                    EventView().EventCard(calendarUiModel, navigateToAddEvent, isLoadingEvents, context)
+                    EventView(navController = navController).EventCard(calendarUiModel, navigateToAddEvent, isLoadingEvents)
                 }
             }
         }

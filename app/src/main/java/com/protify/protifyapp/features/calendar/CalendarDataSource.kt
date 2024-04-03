@@ -108,6 +108,7 @@ class CalendarDataSource {
     }
     private fun convertFirestoreEvent (firestoreEvent: FirestoreEvent, id: String? = null): Event {
         val convertedEvent = Event()
+        convertedEvent.id = firestoreEvent.id!!
         convertedEvent.attendees = firestoreEvent.attendees!!
         convertedEvent.description = firestoreEvent.description!!
         convertedEvent.endTime = firestoreEvent.endTime.format(DateTimeFormatter.ofPattern("h:mm a"))

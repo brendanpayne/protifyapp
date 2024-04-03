@@ -1,7 +1,11 @@
 package com.protify.protifyapp.utils
 
+import com.protify.protifyapp.features.events.Attendee
 import java.util.Calendar
 import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 // Utility class for events. Event sorting, filtering, etc.
 class EventUtils {
@@ -10,5 +14,30 @@ class EventUtils {
         val time = Calendar.getInstance().time
         val formatter = SimpleDateFormat("EEEE, MMMM d, yyyy", java.util.Locale.getDefault())
         return formatter.format(time)
+    }
+
+    fun convertToReadableValue(field: String, value: Any): String {
+        return when (field) {
+            "attendees" -> {
+                val attendees = value as List<Attendee>
+                if (attendees.isNotEmpty()) attendees.joinToString { it.name } else ""
+            }
+            "distance" -> {
+                val distance = value as Int
+                if (distance == 0) "" else "$distance miles"
+            }
+            "startTime", "endTime" -> {
+                val time = value as LocalDateTime
+                time.format(DateTimeFormatter.ofPattern("h:mm a"))
+            }
+            "isAiSuggestion", "isUserAccepted", "isRaining", "isOutside", "isOptimized", "rainCheck", "mapsCheck" -> {
+                val bool = value as Boolean
+                if (bool) "Yes" else ""
+            }
+            "name", "nameLower", "id", "timeZone","\$stable" -> {
+                "" // never show these fields
+            }
+            else -> value.toString()
+        }
     }
 }

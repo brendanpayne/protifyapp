@@ -26,7 +26,7 @@ class GetAIScheduleTest {
         var homeAddress: String = ""
         @JvmStatic
         @BeforeClass
-        fun setUp() {
+        suspend fun setUp() {
             var loginLatch = CountDownLatch(1)
 
             // Login

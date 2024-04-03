@@ -107,8 +107,15 @@ class AccountActivity {
                 composable("privacyLocation") {
                     PrivacyActivity().PrivacyPage(navController)
                 }
-                composable("eventDetails/") {
-                    EventDetails().EventDetailsPage()
+                composable("eventDetails/{date}/{eventId}") { backStackEntry ->
+                    val date = backStackEntry.arguments?.getString("date")
+                    val eventId = backStackEntry.arguments?.getString("eventId")
+                    EventDetails().EventDetailsPage(eventId = eventId!!, date = date!!, navController = navController)
+                }
+                composable("editEvent/{date}/{eventId}") { backStackEntry ->
+                    val date = backStackEntry.arguments?.getString("date")
+                    val eventId = backStackEntry.arguments?.getString("eventId")
+                    // TODO: Implement EditEventPage
                 }
             }
 
