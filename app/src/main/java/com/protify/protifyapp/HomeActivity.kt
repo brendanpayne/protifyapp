@@ -2,10 +2,12 @@ package com.protify.protifyapp
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,18 +16,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Button
-import androidx.compose.material.Divider
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Scaffold
+import androidx.compose.material.ModalDrawer
 import androidx.compose.material.ScaffoldState
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.rememberScaffoldState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -105,129 +103,118 @@ class HomeActivity {
             else -> TimeOfDay.NIGHT
         }
 
-        Scaffold(
-            scaffoldState = scaffoldState,
-            drawerContent = {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
+        Surface {
+            ModalDrawer(
+                drawerState = scaffoldState.drawerState,
+                drawerContent = { DrawerContent(navController) },
+                content = { HomeContent(timeOfDay, user, navController, navigateToAddEvent, scaffoldState) }
+            )
+        }
+    }
+
+    @Composable
+    private fun DrawerContent(navController: NavHostController) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.Top,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colors.primary),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
+                    Text(
+                        "Settings",
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.h6,
+                        color = Color.White,
+                        textAlign = TextAlign.Start
+                    )
+                }
+                Divider()
+                // Group related items
+                GroupItem(navController, "Profile", Icons.Filled.PlayArrow, "profile")
+                GroupItem(navController, "Privacy & Location", Icons.Filled.PlayArrow, "privacyLocation")
+                GroupItem(navController, "Recipe Generator",Icons.Filled.PlayArrow, "recipeGenerator")
+            }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.Bottom,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Button(
+                    onClick = { navController.navigate("main") },
+                    modifier = Modifier
+                        .padding(bottom = 48.dp)
+                        .width(200.dp)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        "Logout",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = Color.White
+                    )
+                }
+                Divider()
+            }
+        }
+
+    }
+
+    @Composable
+    private fun HomeContent(timeOfDay: TimeOfDay, user: FirebaseUser?, navController: NavHostController, navigateToAddEvent: () -> Unit, scaffoldState: ScaffoldState) {
+        val scope = rememberCoroutineScope()
+        val firestoreHelper = FirestoreHelper()
+        val context = LocalContext.current
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
+            Column {
+                var greeting by remember { mutableStateOf(timeOfDay.displayName) }
+                if (user?.displayName != null || user?.displayName != "") {
+                    greeting = "${timeOfDay.displayName}, ${user?.displayName}!"
+                }
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                ) {
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.Top,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colors.primary),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "Settings",
-                                modifier = Modifier.padding(16.dp),
-                                style = MaterialTheme.typography.h6,
-                                color = Color.White,
-                                textAlign = TextAlign.Start
-                            )
-                        }
-                        Divider()
-                        // Group related items
-                        GroupItem(navController, "Profile", Icons.Filled.PlayArrow, "profile")
-                        GroupItem(navController, "Privacy & Location", Icons.Filled.PlayArrow, "privacyLocation")
-                        GroupItem(navController, "Recipe Generator",Icons.Filled.PlayArrow, "recipeGenerator")
-                    }
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.Bottom,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Button(
-                            onClick = { navController.navigate("main") },
-                            modifier = Modifier
-                                .padding(bottom = 48.dp)
-                                .width(200.dp)
-                                .height(50.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(
-                                "Logout",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                color = Color.White
-                            )
-                        }
-                        Divider()
+                        Text(
+                            text = greeting,
+                            style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.padding(start = 16.dp)
+                        )
+                        SettingsIconButton(onClick = { scope.launch { scaffoldState.drawerState.open() } }, alignment = Alignment.TopStart)
                     }
                 }
-            },
-            content = {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column {
-                        var greeting by remember { mutableStateOf(timeOfDay.displayName) }
-                        val defaultName = "Guest"
-                        if (user != null) {
-                            if (user.displayName == null || user.displayName == "") {
-                                greeting = "${timeOfDay.displayName}, $defaultName!"
-                            } else {
-                                greeting = "${timeOfDay.displayName}, ${user.displayName}!"
-                            }
-                        } else {
-                            greeting = "${timeOfDay.displayName}, $defaultName!"
-                        }
-
-                        Box(modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp), contentAlignment = Alignment.CenterEnd) {
-                            Text(
-                                text = greeting,
-                                style = MaterialTheme.typography.h6
-                            )
-                        }
-                        CalendarView(navController).Calendar(context, navigateToAddEvent)
-                    }
-
-            SettingsIconButton(onClick = { scope.launch { scaffoldState.drawerState.open() } }, alignment = Alignment.TopStart)
+                CalendarView(navController).Calendar(context, navigateToAddEvent)
+            }
 
             val networkManager = NetworkManager(context)
 
-//                    val isConnected by remember { mutableStateOf(false) }
-//                    LaunchedEffect(networkManager) {
-//                        networkManager.startListening()
-//                    }
-//                    LaunchedEffect(isConnected) {
-//                        networkManager.setNetworkChangeListener {
-//                            if (it) {
-//                                firestoreHelper.toggleOfflineOnline(true)
-//                            } else {
-//                                firestoreHelper.toggleOfflineOnline(false)
-//                            }
-//                        }
-//                    }
-
-                    // Optimize schedule for today in a new coroutine
-//                    var isOptimizing by rememberSaveable { // Only allow optimization once (if a user navigates away, this will remember)
-//                        mutableStateOf(false)
-//                    }
-//                    LaunchedEffect(user) {
-//                        user?.let {
-//                            if (isOptimizing) {
-//                                Toast.makeText(context, "Optimizing schedule for today...", Toast.LENGTH_SHORT).show() // Runs when a user navigates away and back
-//                                return@LaunchedEffect
-//                            }
-//                                isOptimizing = true
-//                                scaffoldState.snackbarHostState.showSnackbar("Optimizing schedule for today...")
-//                                val result = optimizeScheduleForToday(it.uid, context)
-//                                isOptimizing = false
-//                                if (result) {
-//                                    scaffoldState.snackbarHostState.showSnackbar("Optimized schedule for today!")
-//                                } else {
-//                                    scaffoldState.snackbarHostState.showSnackbar("No optimization needed for today.")
-//
-//                                }
-//                        }
-//                    }
+            val isConnected by remember { mutableStateOf(false) }
+            LaunchedEffect(networkManager) {
+                networkManager.startListening()
+            }
+            LaunchedEffect(isConnected) {
+                networkManager.setNetworkChangeListener {
+                    if (it) {
+                        firestoreHelper.toggleOfflineOnline(true)
+                    } else {
+                        firestoreHelper.toggleOfflineOnline(false)
+                    }
                 }
             }
         }
@@ -257,7 +244,6 @@ class HomeActivity {
     }
     /** This function runs asynchronously to optimize the schedule for today
      * @param uid The user's unique identifier
-     * @param context The context for showing toasts
      * @return True if the schedule was optimized successfully, false otherwise
      */
     suspend fun optimizeScheduleForToday(uid: String, today: LocalDateTime): Boolean {
