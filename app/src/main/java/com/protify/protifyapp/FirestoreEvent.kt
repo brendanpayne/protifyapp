@@ -19,7 +19,7 @@ class FirestoreEvent(
     val distance: Int = 0,
     val isOutside: Boolean = false,
     val isOptimized: Boolean = false,
-    val isAiSuggestion: Boolean = false,
+    var isAiSuggestion: Boolean = false,
     var isUserAccepted: Boolean = false,
 ) {
     fun validateEvent(event: FirestoreEvent): List<Error> {

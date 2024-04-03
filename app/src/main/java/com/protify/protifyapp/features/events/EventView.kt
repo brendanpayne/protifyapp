@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.protify.protifyapp.features.calendar.CalendarUiModel
 import com.protify.protifyapp.features.calendar.Event
+import com.protify.protifyapp.features.calendar.EventBreakdown
 
 
 class EventView {
@@ -117,27 +118,6 @@ class EventView {
                 modifier = Modifier.fillMaxHeight(),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                EventHeader()
-                EventList(data, isLoadingEvents)
-                /*  Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .weight(1f, false)
-                ){
-                    Button(
-                        onClick = {
-                            navigateToAddEvent()
-                        },
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth()
-                    ) {
-                        Text("Add Event")
-                    }
-                }
-            }
-            */
 
             }
         }
