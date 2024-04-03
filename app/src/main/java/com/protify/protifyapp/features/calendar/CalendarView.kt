@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -352,6 +353,7 @@ class CalendarView {
         }
         var isLoadingEvents by remember { mutableStateOf(true) }
         var isAiCompleted by remember { mutableStateOf(false) }
+        var showAiEvents by remember { mutableStateOf(false) } // THis is for the AI event toggle button
         val date = calendarUiModel.selectedDate
         dataSource.getFirestoreEventsAndIds(
             FirebaseLoginHelper().getCurrentUser()!!.uid,
@@ -457,6 +459,14 @@ class CalendarView {
                         color = MaterialTheme.colorScheme.surface,
                     )
             ) {
+                // Toggle button for AI events
+                Checkbox(
+                    checked = showAiEvents,
+                    onCheckedChange = {
+                        showAiEvents = it
+                    },
+                    modifier = Modifier.align(Alignment.CenterStart)
+                )
                 startAiButton {
                     CoroutineScope(Dispatchers.Main).launch  {
                         Toast.makeText(context, "Optimizing Schedule", Toast.LENGTH_SHORT).show()
@@ -481,15 +491,29 @@ class CalendarView {
                     )
             ) {
                 val sortedEvents = events.sortedBy { it.startTime }
+                val aiEvents = sortedEvents.filter { it.isAiSuggestion }
+                val userEvents = sortedEvents.filter { !it.isAiSuggestion }
                 if (!isMonthView) { // Only shows the EventCard in week view
-                    EventBreakdown().DailySchedule(
-                        scale = 1.0,
-                        eventList = sortedEvents,
-                        uid = FirebaseLoginHelper().getCurrentUser()?.uid ?: "",
-                        day = date.date.dayOfMonth.toString(),
-                        month = date.date.month.toString(),
-                        year = date.date.year.toString()
-                    )
+                    if (showAiEvents) {
+                        EventBreakdown().DailySchedule(
+                            scale = 1.0,
+                            eventList = aiEvents,
+                            uid = FirebaseLoginHelper().getCurrentUser()?.uid ?: "",
+                            day = date.date.dayOfMonth.toString(),
+                            month = date.date.month.toString(),
+                            year = date.date.year.toString()
+                        )
+
+                    } else {
+                        EventBreakdown().DailySchedule(
+                            scale = 1.0,
+                            eventList = userEvents,
+                            uid = FirebaseLoginHelper().getCurrentUser()?.uid ?: "",
+                            day = date.date.dayOfMonth.toString(),
+                            month = date.date.month.toString(),
+                            year = date.date.year.toString()
+                        )
+                    }
                 }
             }
         }
@@ -505,7 +529,7 @@ class CalendarView {
                 .padding(16.dp)
                 .fillMaxWidth()
         ) {
-            Text("Add AI Event")
+            Text("Optimize Schedule")
 
         }
 
