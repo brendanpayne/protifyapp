@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -103,6 +104,7 @@ class HomeActivity {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Spacer(modifier = Modifier.height(32.dp))
+                        Row {
                             Text(
                                 "Profile",
                                 modifier = Modifier
@@ -112,37 +114,44 @@ class HomeActivity {
                                 fontSize = 20.sp,
                                 color = MaterialTheme.colors.onSurface
                             )
-                        Icon(Icons.Filled.AccountCircle, contentDescription = "Profile Icon")
+                            Icon(Icons.Filled.AccountCircle, contentDescription = "Profile Icon")
+                        }
                         Spacer(modifier = Modifier.height(32.dp))
                             Divider()
                         Spacer(modifier = Modifier.height(32.dp))
-                            Text(
-                                "Privacy & Location",
-                                modifier = Modifier
-                                    .padding(top = 10.dp)
-                                    .clickable { navController.navigate("privacyLocation") },
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                color = MaterialTheme.colors.onSurface
-                            )
-                        Icon(Icons.Filled.LocationOn, contentDescription = "Location Icon")
+                          Row {
+                              Text(
+                                  "Privacy & Location",
+                                  modifier = Modifier
+                                      .padding(top = 10.dp)
+                                      .clickable { navController.navigate("privacyLocation") },
+                                  fontWeight = FontWeight.Bold,
+                                  fontSize = 20.sp,
+                                  color = MaterialTheme.colors.onSurface
+                              )
+                              Icon(Icons.Filled.LocationOn, contentDescription = "Location Icon")
+                          }
                         Spacer(modifier = Modifier.height(32.dp))
                             Divider()
                         Spacer(modifier = Modifier.height(32.dp))
-                        Text(
-                            "Recipe Generator",
-                            modifier = Modifier.padding(top = 10.dp).clickable { navController.navigate("recipeGenerator") },
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            color = MaterialTheme.colors.onSurface
-                        )
-                        Image(
-                            painter = painterResource(id = R.drawable.book),
-                            contentDescription = "Recipe Book",
-                            modifier = Modifier
-                                .size(60.dp)
-                                .padding(16.dp)
-                        )
+                     Row {
+                         Text(
+                             "Recipe Generator",
+                             modifier = Modifier
+                                 .padding(top = 10.dp)
+                                 .clickable { navController.navigate("recipeGenerator") },
+                             fontWeight = FontWeight.Bold,
+                             fontSize = 20.sp,
+                             color = MaterialTheme.colors.onSurface
+                         )
+                         Image(
+                             painter = painterResource(id = R.drawable.book),
+                             contentDescription = "Recipe Book",
+                             modifier = Modifier
+                                 .size(55.dp)
+                                 .padding(16.dp)
+                         )
+                     }
                         Spacer(modifier = Modifier.height(32.dp))
                         Divider()
                     }

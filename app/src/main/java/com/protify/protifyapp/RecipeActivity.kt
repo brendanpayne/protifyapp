@@ -85,8 +85,8 @@ class RecipeActivity {
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
                     modifier = Modifier
-                        .width(200.dp) // Set the width to 200.dp
-                        .height(300.dp) // Set the height to 300.dp
+                        .width(200.dp)
+                        .height(300.dp)
                         .align(Alignment.CenterHorizontally)
                 ) {
                     diets.forEach { diet ->
