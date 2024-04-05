@@ -128,6 +128,6 @@ class CalendarDataSource {
         isSelected = isSelectedDate,
         isToday = date.isEqual(today),
         date = date,
-        hasEvents = true,
+        hasEvents = false,
     )
 }

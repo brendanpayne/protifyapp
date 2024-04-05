@@ -1,8 +1,10 @@
 package com.protify.protifyapp.features.calendar
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,9 +40,13 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,12 +67,11 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import javax.sql.DataSource
+import kotlin.math.min
 
 class CalendarView(private val navController: NavController) {
-
-    // private val dateUtils = DateUtils()
-    // private var currentDate: String = dateUtils.formatDate(dateUtils.getCurrentDate())
-
+    private var eventsForAllDates = mutableStateMapOf<LocalDate, List<Event>>()
 
     @Composable
     fun CalendarHeader(
@@ -162,14 +168,27 @@ class CalendarView(private val navController: NavController) {
         val dataSource = CalendarDataSource()
         val currentUser = FirebaseLoginHelper().getCurrentUser()
         var showDialog by remember { mutableStateOf(false) }
+        val eventCount = eventsForAllDates[date.date]?.size ?: 0
         val backgroundColor by animateColorAsState(
             targetValue = when {
                 date.isSelected -> MaterialTheme.colorScheme.primary
-                date.isToday -> MaterialTheme.colorScheme.primary // Change this to the color you want for today
-                else -> MaterialTheme.colorScheme.secondary
+                date.isToday -> MaterialTheme.colorScheme.secondary
+                else -> MaterialTheme.colorScheme.surface
             },
             label = ""
         )
+
+        Log.d("CalendarItem", "eventsForAllDates: $eventsForAllDates")
+        Log.d("CalendarItem", "eventCount for date ${date.date}: $eventCount")
+        Log.d("CalendarItem", "hasEvents for date ${date.date}: ${date.hasEvents}")
+
+        LaunchedEffect(key1 = date.date) {
+            dataSource.getFirestoreEvents(currentUser!!.uid, currentUser.metadata!!.creationTimestamp, date.date.month.toString(), date.date.dayOfMonth.toString(), date.date.year.toString()) { events ->
+                if (events.isNotEmpty()) {
+                    date.events = events
+                }
+            }
+        }
 
         Column {
             Text(
@@ -187,8 +206,8 @@ class CalendarView(private val navController: NavController) {
                         showDialog = true
                     }
                 },
-                modifier = Modifier.padding(vertical = 4.dp, horizontal = 4.dp),
-                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.padding(horizontal = 4.dp),
+                shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.elevatedCardColors(
                     containerColor = backgroundColor,
                 )
@@ -203,11 +222,7 @@ class CalendarView(private val navController: NavController) {
                         text = date.date.dayOfMonth.toString(),
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = if (date.isSelected) {
-                                FontWeight.Bold
-                            } else {
-                                FontWeight.Normal
-                            }
+                            fontWeight = FontWeight.ExtraBold,
                         ),
                         textAlign = TextAlign.Center,
                     )
@@ -277,6 +292,24 @@ class CalendarView(private val navController: NavController) {
                             }
                         )
                     }
+                }
+            }
+            Row(modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                for (i in 0 until if (eventCount > 3) 3 else eventCount) {
+                    Box (
+                        modifier = Modifier
+                            .size(8.dp)
+                            .padding(1.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape
+                            )
+                    )
                 }
             }
         }
@@ -368,6 +401,14 @@ class CalendarView(private val navController: NavController) {
             isLoadingEvents = false
         }
 
+        fetchEventsForDates(
+            scope = rememberCoroutineScope(),
+            calendarUiModel = calendarUiModel,
+            dataSource = dataSource,
+            eventsForAllDates = eventsForAllDates,
+            isLoadingEvents = remember { mutableStateOf(isLoadingEvents) }
+        )
+
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -428,9 +469,7 @@ class CalendarView(private val navController: NavController) {
                             date.date.dayOfMonth.toString(),
                             date.date.year.toString()
                         ) { events ->
-                            if (events.isNotEmpty()) {
-                                calendarUiModel.selectedDate.events = events
-                            }
+                            calendarUiModel.selectedDate.hasEvents = events.isNotEmpty()
                             isLoadingEvents = false
                         }
 
@@ -457,6 +496,40 @@ class CalendarView(private val navController: NavController) {
                     EventView(navController = navController).EventCard(calendarUiModel, navigateToAddEvent, isLoadingEvents)
                 }
             }
+        }
+    }
+    private fun fetchEventsForDates(
+        scope: CoroutineScope,
+        calendarUiModel: CalendarUiModel,
+        dataSource: CalendarDataSource,
+        eventsForAllDates: MutableMap<LocalDate, List<Event>>,
+        isLoadingEvents: MutableState<Boolean>
+    ) {
+        isLoadingEvents.value = true
+        scope.launch {
+            val allDates = calendarUiModel.visibleDates
+            coroutineScope {
+                allDates.forEach { date ->
+                    launch {
+                        dataSource.getFirestoreEventsAndIds(
+                            FirebaseLoginHelper().getCurrentUser()!!.uid,
+                            FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
+                            date.date.month.toString(),
+                            date.date.dayOfMonth.toString(),
+                            date.date.year.toString()
+                        ) { events ->
+                            if (events.isNotEmpty()) {
+                                calendarUiModel.selectedDate.events = events
+                                eventsForAllDates[date.date] = events
+                                calendarUiModel.selectedDate.hasEvents = true
+                            } else {
+                                calendarUiModel.selectedDate.hasEvents = false
+                            }
+                        }
+                    }
+                }
+            }
+            isLoadingEvents.value = false
         }
         //fun navigateToEventDetails(navController: NavHostController, calendarUiModel: CalendarUiModel) {
         //    navController.navigate("eventDetails/${calendarUiModel.selectedDate.date}/${calendarUiModel.selectedDate.events[0].id}")
