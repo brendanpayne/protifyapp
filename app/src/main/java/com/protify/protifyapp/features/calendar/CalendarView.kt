@@ -42,7 +42,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,8 +66,6 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import javax.sql.DataSource
-import kotlin.math.min
 
 class CalendarView(private val navController: NavController) {
     private var eventsForAllDates = mutableStateMapOf<LocalDate, List<Event>>()
@@ -177,10 +174,6 @@ class CalendarView(private val navController: NavController) {
             },
             label = ""
         )
-
-        Log.d("CalendarItem", "eventsForAllDates: $eventsForAllDates")
-        Log.d("CalendarItem", "eventCount for date ${date.date}: $eventCount")
-        Log.d("CalendarItem", "hasEvents for date ${date.date}: ${date.hasEvents}")
 
         LaunchedEffect(key1 = date.date) {
             dataSource.getFirestoreEvents(currentUser!!.uid, currentUser.metadata!!.creationTimestamp, date.date.month.toString(), date.date.dayOfMonth.toString(), date.date.year.toString()) { events ->
@@ -410,12 +403,14 @@ class CalendarView(private val navController: NavController) {
         )
 
         Column(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(if (isMonthView) 0.85f else 0.5f)
+                    .weight(if (isMonthView) 0.85f else 0.35f)
                     .background(
                         color = MaterialTheme.colorScheme.surface,
                     )
