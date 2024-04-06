@@ -119,7 +119,7 @@ class HomeActivity {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(MaterialTheme.colors.primary), // Use the same color as the Logout button
+                                .background(MaterialTheme.colors.primary),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
