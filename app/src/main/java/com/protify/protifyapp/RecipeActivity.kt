@@ -70,32 +70,33 @@ class RecipeActivity {
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(bottom = 32.dp)
                 )
-                OutlinedTextField(
-                    value = selectedDiet,
-                    onValueChange = { selectedDiet = it },
-                    readOnly = true,
-                    trailingIcon = {
-                        IconButton(onClick = { expanded = true }) {
-                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Open dropdown")
-                        }
-                    },
-                    isError = selectedDiet == "Select Diet",
-
+                Box {// Wrap text field and dropdown in a box to allow for dropdown to be displayed over text field
+                    OutlinedTextField(
+                        value = selectedDiet,
+                        onValueChange = { selectedDiet = it },
+                        readOnly = true,
+                        trailingIcon = {
+                            IconButton(onClick = { expanded = true }) {
+                                Icon(Icons.Filled.ArrowDropDown, contentDescription = "Open dropdown")
+                            }
+                        },
+                        isError = selectedDiet == "Select Diet"
                     )
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    modifier = Modifier
-                        .width(200.dp)
-                        .height(300.dp)
-                        .align(Alignment.CenterHorizontally)
-                ) {
-                    diets.forEach { diet ->
-                        DropdownMenuItem(onClick = {
-                            selectedDiet = diet.toString()
-                            expanded = false
-                        }) {
-                            Text(text = diet.toString())
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier
+                            .width(200.dp)
+                            .height(300.dp)
+                            .align(Alignment.BottomStart)
+                    ) {
+                        diets.forEach { diet ->
+                            DropdownMenuItem(onClick = {
+                                selectedDiet = diet.toString()
+                                expanded = false
+                            }) {
+                                Text(text = diet.toString())
+                            }
                         }
                     }
                 }
