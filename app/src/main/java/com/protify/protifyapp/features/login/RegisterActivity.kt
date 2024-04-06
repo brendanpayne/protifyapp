@@ -94,7 +94,14 @@ class RegisterActivity: ViewModel() {
                     onClick = {
                         firebaseLoginHelper.createAccountCallback(email, password) { success, failure ->
                             if(success) {
-                                navigateToHomePage()
+                                Thread.sleep(2000) // Hang the application for 2 seconds while the user is created
+                                firebaseLoginHelper.signIn(email, password)// Sign in the user after their account has been succesfully created.
+                                    .addOnSuccessListener {
+                                        navigateToHomePage()
+                                    }
+                                    .addOnFailureListener {
+                                        Toast.makeText(context, it.localizedMessage, Toast.LENGTH_SHORT).show()
+                                    }
                             }
                             else {
                                 if (failure != null) {
