@@ -1,7 +1,7 @@
 package com.protify.protifyapp
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
@@ -23,9 +22,8 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,13 +35,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.protify.protifyapp.features.calendar.CalendarView
@@ -57,6 +56,28 @@ import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
 
+@Composable
+fun GroupItem(navController: NavController, text: String, icon: ImageVector, route: String) {
+    Spacer(modifier = Modifier.height(32.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = "$text Icon")
+        Text(
+            text,
+            modifier = Modifier
+                .weight(1f)
+                .align(Alignment.CenterVertically)
+                .clickable { navController.navigate(route) },
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            color = MaterialTheme.colors.onSurface
+        )
+    }
+    Spacer(modifier = Modifier.height(32.dp))
+    Divider()
+}
 class HomeActivity {
     enum class TimeOfDay(val displayName: String) {
         MORNING("Good Morning"),
@@ -85,14 +106,6 @@ class HomeActivity {
         Scaffold(
             scaffoldState = scaffoldState,
             drawerContent = {
-                Text(
-                    "Settings",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.h6,
-                    color = MaterialTheme.colors.onSurface,
-                    textAlign = TextAlign.Start
-                )
-                Divider()
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.SpaceBetween,
@@ -103,57 +116,25 @@ class HomeActivity {
                         verticalArrangement = Arrangement.Top,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Spacer(modifier = Modifier.height(32.dp))
-                        Row {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colors.primary), // Use the same color as the Logout button
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                "Profile",
-                                modifier = Modifier
-                                    .padding(top = 10.dp)
-                                    .clickable { navController.navigate("profile") },
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                color = MaterialTheme.colors.onSurface
+                                "Settings",
+                                modifier = Modifier.padding(16.dp),
+                                style = MaterialTheme.typography.h6,
+                                color = Color.White,
+                                textAlign = TextAlign.Start
                             )
-                            Icon(Icons.Filled.AccountCircle, contentDescription = "Profile Icon")
                         }
-                        Spacer(modifier = Modifier.height(32.dp))
-                            Divider()
-                        Spacer(modifier = Modifier.height(32.dp))
-                          Row {
-                              Text(
-                                  "Privacy & Location",
-                                  modifier = Modifier
-                                      .padding(top = 10.dp)
-                                      .clickable { navController.navigate("privacyLocation") },
-                                  fontWeight = FontWeight.Bold,
-                                  fontSize = 20.sp,
-                                  color = MaterialTheme.colors.onSurface
-                              )
-                              Icon(Icons.Filled.LocationOn, contentDescription = "Location Icon")
-                          }
-                        Spacer(modifier = Modifier.height(32.dp))
-                            Divider()
-                        Spacer(modifier = Modifier.height(32.dp))
-                     Row {
-                         Text(
-                             "Recipe Generator",
-                             modifier = Modifier
-                                 .padding(top = 10.dp)
-                                 .clickable { navController.navigate("recipeGenerator") },
-                             fontWeight = FontWeight.Bold,
-                             fontSize = 20.sp,
-                             color = MaterialTheme.colors.onSurface
-                         )
-                         Image(
-                             painter = painterResource(id = R.drawable.book),
-                             contentDescription = "Recipe Book",
-                             modifier = Modifier
-                                 .size(55.dp)
-                                 .padding(16.dp)
-                         )
-                     }
-                        Spacer(modifier = Modifier.height(32.dp))
                         Divider()
+                        // Group related items
+                        GroupItem(navController, "Profile", Icons.Filled.PlayArrow, "profile")
+                        GroupItem(navController, "Privacy & Location", Icons.Filled.PlayArrow, "privacyLocation")
+                        GroupItem(navController, "Recipe Generator",Icons.Filled.PlayArrow, "recipeGenerator")
                     }
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -161,7 +142,7 @@ class HomeActivity {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Button(
-                            onClick = { navController.navigate("login") },
+                            onClick = { navController.navigate("main") },
                             modifier = Modifier
                                 .padding(bottom = 48.dp)
                                 .width(200.dp)
@@ -178,25 +159,24 @@ class HomeActivity {
                         Divider()
                     }
                 }
-
             },
             content = {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
-
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column {
                         var greeting by remember { mutableStateOf(timeOfDay.displayName) }
                         if (user?.displayName != null || user?.displayName != "") {
                             greeting = "${timeOfDay.displayName}, ${user?.displayName}!"
                         }
-                        Text(
-                            text = greeting,
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.h6
-                        )
+                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.CenterEnd) {
+                            Text(
+                                text = greeting,
+                                style = MaterialTheme.typography.h6
+                            )
+                        }
                         CalendarView().Calendar(navigateToAddEvent)
                     }
 
-                    SettingsIconButton(onClick = { scope.launch { scaffoldState.drawerState.open() } })
+                    SettingsIconButton(onClick = { scope.launch { scaffoldState.drawerState.open() } }, alignment = Alignment.TopStart)
 
                     val networkManager = NetworkManager(context)
 
@@ -244,8 +224,8 @@ class HomeActivity {
 
 
     @Composable
-    fun SettingsIconButton(onClick: () -> Unit) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
+    fun SettingsIconButton(onClick: () -> Unit, alignment: Alignment) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = alignment) {
             IconButton(onClick = onClick) {
                 Icon(Icons.Filled.Menu, contentDescription = "Settings")
             }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Icon
@@ -53,21 +54,21 @@ class RecipeActivity {
         val diets = Recipe.Diet.entries.map { it } // Diet enum
 
         var showDialog by remember { mutableStateOf(false) }
-
+        var isLoading by remember { mutableStateOf(false) }
         Box(modifier = Modifier.fillMaxSize()) {
             BackButton(navController)
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Recipe Generator",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp,
+                    fontSize = 32.sp,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 32.dp)
                 )
                 OutlinedTextField(
                     value = selectedDiet,
@@ -132,12 +133,15 @@ class RecipeActivity {
                             ).show()
                             return@Button
                         }
+                        isLoading = true
+
                         Recipe().getRecipe(
                             Recipe.Diet.valueOf(selectedDiet),
                             time.toInt(),
                             ingredients.split(","),
                             excludeIngredients.split(",")
                         ) { response ->
+                            isLoading = false
                             try {
                                 recipeResponse = Gson().fromJson(
                                     response,
@@ -148,9 +152,13 @@ class RecipeActivity {
                                 // Handle error
                             }
                         }
-                    }
+                    },
+                    modifier = Modifier.padding(top = 32.dp)
                 ) {
                     Text("Generate Recipe")
+                }
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.padding(top = 32.dp))
                 }
 
                 if (showDialog) {
