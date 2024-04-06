@@ -164,6 +164,9 @@ class HomeActivity {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column {
                         var greeting by remember { mutableStateOf(timeOfDay.displayName) }
+                        val defaultName = "Guest"
+                        val displayName = user?.displayName ?: defaultName
+                        greeting = "${timeOfDay.displayName}, $displayName!"
                         if (user?.displayName != null || user?.displayName != "") {
                             greeting = "${timeOfDay.displayName}, ${user?.displayName}!"
                         }
