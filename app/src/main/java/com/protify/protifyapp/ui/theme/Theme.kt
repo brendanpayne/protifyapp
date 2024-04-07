@@ -29,6 +29,7 @@ private val LightColorScheme = lightColorScheme(
     error = Error,
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProtifyTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val colors = if (darkTheme) {

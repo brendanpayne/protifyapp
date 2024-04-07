@@ -25,6 +25,7 @@ import androidx.compose.material.rememberScaffoldState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,24 +58,28 @@ import java.time.LocalDateTime
 
 @Composable
 fun GroupItem(navController: NavController, text: String, icon: ImageVector, route: String) {
-    Spacer(modifier = Modifier.height(32.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+    Column (modifier = Modifier
+        .clickable(onClick = { navController.navigate(route) })
+        .height(84.dp),
+        verticalArrangement = Arrangement.Center
     ) {
-        Icon(icon, contentDescription = "$text Icon")
-        Text(
-            text,
-            modifier = Modifier
-                .weight(1f)
-                .align(Alignment.CenterVertically)
-                .clickable { navController.navigate(route) },
-            fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
-            color = MaterialTheme.colors.onSurface
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(icon, contentDescription = "$text Icon")
+            Text(
+                text,
+                modifier = Modifier
+                    .weight(1f)
+                    .align(Alignment.CenterVertically),
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
-    Spacer(modifier = Modifier.height(32.dp))
     Divider()
 }
 class HomeActivity {
@@ -127,13 +132,13 @@ class HomeActivity {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colors.primary),
+                        .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         "Settings",
                         modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.h6,
+                        style = MaterialTheme.typography.titleLarge,
                         color = Color.White,
                         textAlign = TextAlign.Start
                     )
@@ -175,28 +180,35 @@ class HomeActivity {
         val scope = rememberCoroutineScope()
         val firestoreHelper = FirestoreHelper()
         val context = LocalContext.current
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopEnd) {
             Column {
                 var greeting by remember { mutableStateOf(timeOfDay.displayName) }
-                if (user?.displayName != null || user?.displayName != "") {
-                    greeting = "${timeOfDay.displayName}, ${user?.displayName}!"
+                val defaultName = "Guest"
+                greeting = if (user != null) {
+                    if (user.displayName == null || user.displayName == "") {
+                        "${timeOfDay.displayName}, $defaultName!"
+                    } else {
+                        "${timeOfDay.displayName}, ${user.displayName}!"
+                    }
+                } else {
+                    "${timeOfDay.displayName}, $defaultName!"
                 }
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.Start
                     ) {
+                        SettingsIconButton(onClick = { scope.launch { scaffoldState.drawerState.open() } }, alignment = Alignment.TopStart)
                         Text(
                             text = greeting,
-                            style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-                            color = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.padding(start = 16.dp)
                         )
-                        SettingsIconButton(onClick = { scope.launch { scaffoldState.drawerState.open() } }, alignment = Alignment.TopStart)
                     }
                 }
                 CalendarView(navController).Calendar(context, navigateToAddEvent)
@@ -223,7 +235,7 @@ class HomeActivity {
 
     @Composable
     fun SettingsIconButton(onClick: () -> Unit, alignment: Alignment) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = alignment) {
+        Box(contentAlignment = alignment) {
             IconButton(onClick = onClick) {
                 Icon(Icons.Filled.Menu, contentDescription = "Settings")
             }

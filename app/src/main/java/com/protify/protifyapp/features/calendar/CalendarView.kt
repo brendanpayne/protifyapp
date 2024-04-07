@@ -1,7 +1,5 @@
 package com.protify.protifyapp.features.calendar
 import android.content.Context
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -27,9 +25,8 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -49,10 +46,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.protify.protifyapp.features.events.EventView
-import com.protify.protifyapp.HomeActivity
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -330,8 +326,6 @@ class CalendarView(private val navController: NavController) {
     @Composable
     fun Calendar(context: Context, navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
-        val user = FirebaseLoginHelper().getCurrentUser()
-        //val selectedTabIndex by remember { mutableStateOf(0) }
         var events by remember { mutableStateOf(listOf<Event>()) }
         var isMonthView by remember { mutableStateOf(false) }
         var calendarUiModel by remember {
@@ -414,42 +408,46 @@ class CalendarView(private val navController: NavController) {
                         },
                         isMonthView = isMonthView
                     )
+
+                    CalendarContent(
+                        data = calendarUiModel,
+                        onDateClickListener = { date ->
+                            calendarUiModel = dataSource.getData(
+                                startDate = calendarUiModel.startDate.date,
+                                lastSelectedDate = date.date,
+                                isMonthView = isMonthView
+                            )
+                            isLoadingEvents = true
+                            dataSource.getFirestoreEventsAndIds(
+                                FirebaseLoginHelper().getCurrentUser()!!.uid,
+                                FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
+                                date.date.month.toString(),
+                                date.date.dayOfMonth.toString(),
+                                date.date.year.toString()
+                            ) { events ->
+                                calendarUiModel.selectedDate.hasEvents = events.isNotEmpty()
+                                isLoadingEvents = false
+                            }
+
+
+                            val finalStartDate =
+                                if (isMonthView) date.date else calendarUiModel.startDate.date
+                            calendarUiModel = dataSource.getData(
+                                startDate = finalStartDate,
+                                lastSelectedDate = date.date,
+                                isMonthView = isMonthView
+                            )
+                        },
+                        onToggleViewClickListener = {
+                            isMonthView = !isMonthView
+                            calendarUiModel = dataSource.getData(
                                 startDate = dataSource.today,
                                 lastSelectedDate = dataSource.today,
                                 isMonthView = isMonthView
                             )
                         },
-                        onAddEventClickListener = navigateToAddEvent,
                         isMonthView = isMonthView
                     )
-
-                    CalendarContent(data = calendarUiModel, onDateClickListener = { date ->
-                        calendarUiModel = dataSource.getData(
-                            startDate = calendarUiModel.startDate.date,
-                            lastSelectedDate = date.date,
-                            isMonthView = isMonthView
-                        )
-                        isLoadingEvents = true
-                        dataSource.getFirestoreEventsAndIds(
-                            FirebaseLoginHelper().getCurrentUser()!!.uid,
-                            FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
-                            date.date.month.toString(),
-                            date.date.dayOfMonth.toString(),
-                            date.date.year.toString()
-                        ) { events ->
-                            calendarUiModel.selectedDate.hasEvents = events.isNotEmpty()
-                            isLoadingEvents = false
-                        }
-
-
-                        val finalStartDate =
-                            if (isMonthView) date.date else calendarUiModel.startDate.date
-                        calendarUiModel = dataSource.getData(
-                            startDate = finalStartDate,
-                            lastSelectedDate = date.date,
-                            isMonthView = isMonthView
-                        )
-                    }, isMonthView = isMonthView)
                 }
             }
             Box(
@@ -501,12 +499,9 @@ class CalendarView(private val navController: NavController) {
             }
             isLoadingEvents.value = false
         }
-        //fun navigateToEventDetails(navController: NavHostController, calendarUiModel: CalendarUiModel) {
-        //    navController.navigate("eventDetails/${calendarUiModel.selectedDate.date}/${calendarUiModel.selectedDate.events[0].id}")
     }
     @Composable
-    fun startAiButton(onAddEventClickListener: () -> Unit) {
-    // Add AI Button
+    fun StartAiButton(onAddEventClickListener: () -> Unit) {
         Button(
             onClick = onAddEventClickListener,
             modifier = Modifier
@@ -516,8 +511,6 @@ class CalendarView(private val navController: NavController) {
             Text("Optimize Schedule")
 
         }
-
-
     }
 }
 

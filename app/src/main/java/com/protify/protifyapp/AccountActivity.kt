@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.*
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
@@ -88,14 +89,14 @@ class AccountActivity {
                     }
                 }
                 composable("register") {
-                    RegisterActivity().LandingPage() {
+                    RegisterActivity().LandingPage(navController) {
                         LoginActivity().navigateToHomePage(
                             navController = navController
                         )
                     }
                 }
                 composable("login") {
-                    LoginActivity().LoginPage {
+                    LoginActivity().LoginPage(navController) {
                         LoginActivity().navigateToHomePage(
                             navController = navController
                         )
