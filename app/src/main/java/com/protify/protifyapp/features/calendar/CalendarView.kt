@@ -58,18 +58,20 @@ import java.time.temporal.ChronoUnit
 
 class CalendarView(private val navController: NavController) {
     private var eventsForAllDates = mutableStateMapOf<LocalDate, List<Event>>()
+    private var selectedDate: CalendarUiModel.Date? by mutableStateOf(null)
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun CalendarItem(
         date: CalendarUiModel.Date,
         onClickListener: (CalendarUiModel.Date) -> Unit,
-        isMonthView: Boolean
+        isMonthView: Boolean,
     ) {
+        val isSelected = selectedDate == date // Is selected if the selectedDate matches the current date
         val eventCount = eventsForAllDates[date.date]?.size ?: 0
         val backgroundColor by animateColorAsState(
             targetValue = when {
-                date.isSelected -> MaterialTheme.colorScheme.primary
+                isSelected -> MaterialTheme.colorScheme.primary // Track isSelected
                 date.isToday -> MaterialTheme.colorScheme.outline
                 else -> MaterialTheme.colorScheme.surface
             },
@@ -85,6 +87,8 @@ class CalendarView(private val navController: NavController) {
             ElevatedCard(
                 onClick = {
                     onClickListener(date)
+                    selectedDate = date // Update remember variable
+
                 },
                 modifier = Modifier.padding(horizontal = 4.dp),
                 shape = RoundedCornerShape(8.dp),
