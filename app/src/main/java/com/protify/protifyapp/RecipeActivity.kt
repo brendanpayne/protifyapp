@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.CircularProgressIndicator
@@ -41,8 +43,8 @@ class RecipeActivity {
     fun RecipePage(navController: NavController) {
         var expanded by remember { mutableStateOf(false) }
         var selectedDiet by remember { mutableStateOf("Select Diet") }
-        var ingredients by remember { mutableStateOf("") }
-        var excludeIngredients by remember { mutableStateOf("") }
+        var ingredients = remember { mutableStateOf(listOf<String>()) }
+        var excludeIngredients = remember { mutableStateOf(listOf<String>()) }
         var time by remember { mutableStateOf("") }
         var recipeResponse by remember { mutableStateOf(RecipeResponse("", 0, mapOf(), listOf())) }
         val context = LocalContext.current
@@ -60,7 +62,8 @@ class RecipeActivity {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(32.dp),
+                    .padding(32.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
@@ -100,19 +103,57 @@ class RecipeActivity {
                         }
                     }
                 }
-                OutlinedTextField(
-                    value = ingredients,
-                    onValueChange = { ingredients = it },
-                    label = { Text("Ingredients") },
-                    modifier = Modifier.padding(top = 16.dp),
-                    isError = ingredients.split(",").size < minIngredients
-                )
-                OutlinedTextField(
-                    value = excludeIngredients,
-                    onValueChange = { excludeIngredients = it },
-                    label = { Text("Exclude Ingredients") },
-                    modifier = Modifier.padding(top = 16.dp)
-                )
+                if (ingredients.value.isEmpty()) { // Add the first ingredient
+                    ingredients.value = listOf("")
+                }
+                ingredients.value.forEachIndexed { index, ingredient ->
+                    OutlinedTextField(
+                        value = ingredient,
+                        onValueChange = { newValue ->
+                            ingredients.value = ingredients.value.toMutableList().apply {
+                                if (newValue.isEmpty() && this.size > 1) {
+                                    removeAt(index)
+                                } else {
+                                    this[index] = newValue
+                                }
+                            }
+                        },
+                        label = { Text("Ingredients") },
+                        modifier = Modifier.padding(top = 16.dp),
+                        isError = ingredient.isEmpty() && ingredients.value.size == 1
+                    )
+                    // Add a new ingredient field if the last field is filled
+                    if (index == ingredients.value.size - 1 && ingredient.isNotEmpty()) {
+                        ingredients.value = ingredients.value.toMutableList().apply {
+                            add("")
+                        }
+                    }
+                }
+                if (excludeIngredients.value.isEmpty()) { // Add the first exclude ingredient
+                    excludeIngredients.value = listOf("")
+                }
+                excludeIngredients.value.forEachIndexed { index, excludeIngredient ->
+                    OutlinedTextField(
+                        value = excludeIngredient,
+                        onValueChange = { newValue ->
+                            excludeIngredients.value = excludeIngredients.value.toMutableList().apply {
+                                if (newValue.isEmpty() && this.size > 1) {
+                                    removeAt(index)
+                                } else {
+                                    this[index] = newValue
+                                }
+                            }
+                        },
+                        label = { Text("Exclude Ingredients") },
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                    // Add a new exclude ingredient field if the last field is filled
+                    if (index == excludeIngredients.value.size - 1 && excludeIngredient.isNotEmpty()) {
+                        excludeIngredients.value = excludeIngredients.value.toMutableList().apply {
+                            add("")
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = time,
                     onValueChange = { time = it },
@@ -124,7 +165,7 @@ class RecipeActivity {
                 Button(
                     onClick = {
                         // Check if all fields are filled
-                        if (selectedDiet == "Select Diet" || ingredients.split(",").size < minIngredients || (time.toIntOrNull()
+                        if (selectedDiet == "Select Diet" || ingredients.value.size < minIngredients || (time.toIntOrNull()
                                 ?: 0) < minTime
                         ) {
                             Toast.makeText(
@@ -139,8 +180,8 @@ class RecipeActivity {
                         Recipe().getRecipe(
                             Recipe.Diet.valueOf(selectedDiet),
                             time.toInt(),
-                            ingredients.split(","),
-                            excludeIngredients.split(",")
+                            ingredients.value,
+                            excludeIngredients.value
                         ) { response ->
                             isLoading = false
                             try {
