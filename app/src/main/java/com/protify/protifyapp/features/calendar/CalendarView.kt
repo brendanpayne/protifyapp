@@ -1,8 +1,12 @@
 package com.protify.protifyapp.features.calendar
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.gestures.snapping.SnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,9 +49,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.protify.protifyapp.HomeActivity
 import com.protify.protifyapp.features.events.EventView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -58,7 +64,14 @@ import java.time.temporal.ChronoUnit
 
 class CalendarView(private val navController: NavController) {
     private var eventsForAllDates = mutableStateMapOf<LocalDate, List<Event>>()
-    private var selectedDate: CalendarUiModel.Date? by mutableStateOf(null)
+    private var selectedDate: CalendarUiModel.Date? by mutableStateOf(LocalDate.now().let {
+        CalendarUiModel.Date(
+            date = it,
+            isSelected = true,
+            isToday = true,
+            hasEvents = false
+        )
+    })
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -67,12 +80,11 @@ class CalendarView(private val navController: NavController) {
         onClickListener: (CalendarUiModel.Date) -> Unit,
         isMonthView: Boolean,
     ) {
-        val isSelected = selectedDate == date // Is selected if the selectedDate matches the current date
+        val isSelected = selectedDate == date
         val eventCount = eventsForAllDates[date.date]?.size ?: 0
         val backgroundColor by animateColorAsState(
             targetValue = when {
-                isSelected -> MaterialTheme.colorScheme.primary // Track isSelected
-                date.isToday -> MaterialTheme.colorScheme.outline
+                isSelected -> MaterialTheme.colorScheme.primary
                 else -> MaterialTheme.colorScheme.surface
             },
             label = ""
@@ -96,20 +108,29 @@ class CalendarView(private val navController: NavController) {
                     containerColor = backgroundColor,
                 )
             ) {
-                Column(
+                Box(
                     modifier = Modifier
-                        .width(40.dp)
-                        .height(40.dp)
-                        .padding(10.dp)
+                        .border(
+                            width = 2.dp,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                            shape = RoundedCornerShape(8.dp)
+                        )
                 ) {
-                    Text(
-                        text = date.date.dayOfMonth.toString(),
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                        ),
-                        textAlign = TextAlign.Center,
-                    )
+                    Column(
+                        modifier = Modifier
+                            .width(40.dp)
+                            .height(40.dp)
+                            .padding(10.dp)
+                    ) {
+                        Text(
+                            text = date.date.dayOfMonth.toString(),
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                            ),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
             Row(modifier = Modifier
@@ -162,7 +183,8 @@ class CalendarView(private val navController: NavController) {
         if (isMonthView) {
             HorizontalPager(
                 state = monthState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxWidth(),
+                beyondBoundsPageCount = 1
             ) { pageIndex ->
                 val monthToShow = startMonth.plusMonths(pageIndex.toLong())
                 val visibleDates = dataSource.getDatesBetween(
@@ -174,7 +196,7 @@ class CalendarView(private val navController: NavController) {
 
                 if (monthData.visibleDates.isNotEmpty()) {
                     LazyColumn (
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.Top
                     ) {
                         item {
@@ -207,26 +229,7 @@ class CalendarView(private val navController: NavController) {
                             }
                         }
                         item{
-                            Row(
-                                modifier = Modifier
-                                    .padding(start = 14.dp, end = 14.dp)
-                                    .fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                DayOfWeek.entries.forEach { dayOfWeek ->
-                                    Text(
-                                        text = dayOfWeek.name.substring(0, 3),
-                                        modifier = Modifier
-                                            .padding(start = 8.dp, end = 8.dp)
-                                            .weight(1f),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        textAlign = TextAlign.Center,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
+                            DayOfWeekLabels()
                         }
                         items(monthData.visibleDates.chunked(7)) { week ->
                             Row(
@@ -276,7 +279,8 @@ class CalendarView(private val navController: NavController) {
                 }
                 HorizontalPager(
                     state = weekState,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxWidth(),
+                    beyondBoundsPageCount = 1
                 ) { pageIndex ->
                     val weekToShow = startWeek.plusWeeks(pageIndex.toLong())
                     val visibleDates = dataSource.getDatesBetween(
@@ -286,29 +290,10 @@ class CalendarView(private val navController: NavController) {
                     )
                     val weekData = dataSource.toUiModel(visibleDates, dataSource.today)
                     Column(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.Top
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .padding(start = 14.dp, end = 14.dp)
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            DayOfWeek.entries.forEach { dayOfWeek ->
-                                Text(
-                                    text = dayOfWeek.name.substring(0, 3),
-                                    modifier = Modifier
-                                        .padding(start = 8.dp, end = 8.dp)
-                                        .weight(1f),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    textAlign = TextAlign.Center,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
+                        DayOfWeekLabels()
                         if (weekData.visibleDates.isNotEmpty()) {
                             LazyRow(
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -324,6 +309,31 @@ class CalendarView(private val navController: NavController) {
                         }
                     }
                 }
+            }
+        }
+    }
+    @Composable
+    fun DayOfWeekLabels() {
+        Row(
+            modifier = Modifier
+                .padding(start = 14.dp, end = 14.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val dow = DayOfWeek.entries
+            val daysOfWeek = dow.slice(6..6) + dow.slice(0..5)
+            daysOfWeek.forEach { dayOfWeek ->
+                Text(
+                    text = dayOfWeek.name.substring(0, 3),
+                    modifier = Modifier
+                        .padding(start = 8.dp, end = 8.dp)
+                        .weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
@@ -344,9 +354,10 @@ class CalendarView(private val navController: NavController) {
         var isAiCompleted by remember { mutableStateOf(false) }
         var showAiEvents by remember { mutableStateOf(false) } // THis is for the AI event toggle button
         val date = calendarUiModel.selectedDate
+        val user = FirebaseLoginHelper().getCurrentUser()
         dataSource.getFirestoreEventsAndIds(
-            FirebaseLoginHelper().getCurrentUser()!!.uid,
-            FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
+            user!!.uid,
+            user.metadata!!.creationTimestamp,
             date.date.month.toString(),
             date.date.dayOfMonth.toString(),
             date.date.year.toString()
@@ -371,7 +382,7 @@ class CalendarView(private val navController: NavController) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(if (isMonthView) 1.2f else 0.3f)
+                    //.weight(if (isMonthView) 1.2f else 0.3f)
                     .background(
                         color = MaterialTheme.colorScheme.surface,
                     )
@@ -390,8 +401,8 @@ class CalendarView(private val navController: NavController) {
 
                             isLoadingEvents = true
                             dataSource.getFirestoreEventsAndIds(
-                                FirebaseLoginHelper().getCurrentUser()!!.uid,
-                                FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
+                                user.uid,
+                                user.metadata!!.creationTimestamp,
                                 date.date.month.toString(),
                                 date.date.dayOfMonth.toString(),
                                 date.date.year.toString()
@@ -412,60 +423,28 @@ class CalendarView(private val navController: NavController) {
                         },
                         isMonthView = isMonthView
                     )
-
-                    CalendarContent(
-                        data = calendarUiModel,
-                        onDateClickListener = { date ->
-                            calendarUiModel = dataSource.getData(
-                                startDate = calendarUiModel.startDate.date,
-                                lastSelectedDate = date.date,
-                                isMonthView = isMonthView
-                            )
-                            isLoadingEvents = true
-                            dataSource.getFirestoreEventsAndIds(
-                                FirebaseLoginHelper().getCurrentUser()!!.uid,
-                                FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
-                                date.date.month.toString(),
-                                date.date.dayOfMonth.toString(),
-                                date.date.year.toString()
-                            ) { events ->
-                                calendarUiModel.selectedDate.hasEvents = events.isNotEmpty()
-                                isLoadingEvents = false
-                            }
-
-
-                            val finalStartDate =
-                                if (isMonthView) date.date else calendarUiModel.startDate.date
-                            calendarUiModel = dataSource.getData(
-                                startDate = finalStartDate,
-                                lastSelectedDate = date.date,
-                                isMonthView = isMonthView
-                            )
-                        },
-                        onToggleViewClickListener = {
-                            isMonthView = !isMonthView
-                            calendarUiModel = dataSource.getData(
-                                startDate = dataSource.today,
-                                lastSelectedDate = dataSource.today,
-                                isMonthView = isMonthView
-                            )
-                        },
-                        isMonthView = isMonthView
-                    )
                 }
             }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .background(
-                        color = MaterialTheme.colorScheme.surface,
-                    )
             ) {
                 EventView(navController = navController).EventCard(
                     calendarUiModel,
-                    navigateToAddEvent,
-                    isLoadingEvents
+                    {
+                        CoroutineScope(Dispatchers.Main).launch  {
+                            Toast.makeText(context, "Optimizing Schedule", Toast.LENGTH_SHORT).show()
+                            isAiCompleted = HomeActivity().optimizeScheduleForToday(user.uid, date.date.atStartOfDay())
+                            if (isAiCompleted) {
+                                Toast.makeText(context, "AI Optimization Completed", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "AI Optimization Failed", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    isLoadingEvents,
+                    isAiCompleted
                 )
             }
         }
@@ -502,18 +481,6 @@ class CalendarView(private val navController: NavController) {
                 }
             }
             isLoadingEvents.value = false
-        }
-    }
-    @Composable
-    fun StartAiButton(onAddEventClickListener: () -> Unit) {
-        Button(
-            onClick = onAddEventClickListener,
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth()
-        ) {
-            Text("Optimize Schedule")
-
         }
     }
 }
