@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,6 +93,7 @@ class HomeActivity {
         val firestoreHelper = FirestoreHelper()
         val user = FirebaseLoginHelper().getCurrentUser()
         val context = LocalContext.current
+
 
         // Calculate the time of day
         val timeOfDay = when (java.time.LocalTime.now().hour) {
@@ -165,12 +165,19 @@ class HomeActivity {
                     Column {
                         var greeting by remember { mutableStateOf(timeOfDay.displayName) }
                         val defaultName = "Guest"
-                        val displayName = user?.displayName ?: defaultName
-                        greeting = "${timeOfDay.displayName}, $displayName!"
-                        if (user?.displayName != null || user?.displayName != "") {
-                            greeting = "${timeOfDay.displayName}, ${user?.displayName}!"
+                        if (user != null) {
+                            if (user.displayName == null || user.displayName == "") {
+                                greeting = "${timeOfDay.displayName}, $defaultName!"
+                            } else {
+                                greeting = "${timeOfDay.displayName}, ${user.displayName}!"
+                            }
+                        } else {
+                            greeting = "${timeOfDay.displayName}, $defaultName!"
                         }
-                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.CenterEnd) {
+
+                        Box(modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp), contentAlignment = Alignment.CenterEnd) {
                             Text(
                                 text = greeting,
                                 style = MaterialTheme.typography.h6
@@ -183,10 +190,10 @@ class HomeActivity {
 
                     val networkManager = NetworkManager(context)
 
-                    val isConnected by remember { mutableStateOf(false) }
-                    LaunchedEffect(networkManager) {
-                        networkManager.startListening()
-                    }
+//                    val isConnected by remember { mutableStateOf(false) }
+//                    LaunchedEffect(networkManager) {
+//                        networkManager.startListening()
+//                    }
 //                    LaunchedEffect(isConnected) {
 //                        networkManager.setNetworkChangeListener {
 //                            if (it) {

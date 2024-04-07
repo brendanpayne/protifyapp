@@ -45,8 +45,8 @@ class FirestoreHelper() {
     private fun createUserDocument(uid: String, dateCreated: Long, callback: (Boolean) -> Unit) {
         // [START add_document]
         val user = hashMapOf(
-            "dateCreated" to dateCreated,
-            "uid" to uid,
+            "homeAddress" to "",
+            "use4" to false,
         )
         db.collection("users").document(uid)
             .set(user)
