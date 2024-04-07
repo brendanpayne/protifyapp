@@ -54,34 +54,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
-
-
-@Composable
-fun GroupItem(navController: NavController, text: String, icon: ImageVector, route: String) {
-    Column (modifier = Modifier
-        .clickable(onClick = { navController.navigate(route) })
-        .height(84.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(icon, contentDescription = "$text Icon")
-            Text(
-                text,
-                modifier = Modifier
-                    .weight(1f)
-                    .align(Alignment.CenterVertically),
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-    Divider()
-}
 class HomeActivity {
     enum class TimeOfDay(val displayName: String) {
         MORNING("Good Morning"),
@@ -232,6 +204,32 @@ class HomeActivity {
         }
     }
 
+    @Composable
+    fun GroupItem(navController: NavController, text: String, icon: ImageVector, route: String) {
+        Column (modifier = Modifier
+            .clickable(onClick = { navController.navigate(route) })
+            .height(84.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(icon, contentDescription = "$text Icon")
+                Text(
+                    text,
+                    modifier = Modifier
+                        .weight(1f)
+                        .align(Alignment.CenterVertically),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+        Divider()
+    }
 
     @Composable
     fun SettingsIconButton(onClick: () -> Unit, alignment: Alignment) {
