@@ -579,7 +579,7 @@ open class AddEvent {
             modifier = Modifier.fillMaxWidth(1f)
         ) {
             OutlinedTextField(
-                value = formattedStartTime,
+                value = this@AddEvent.formattedStartTime,
                 onValueChange = { this@AddEvent.formattedStartTime = it },
                 placeholder = { Text("Start Time") },
                 modifier = Modifier
@@ -622,7 +622,7 @@ open class AddEvent {
             )
             Spacer(modifier = Modifier.width(4.dp))
             OutlinedTextField(
-                value = formattedEndTime,
+                value = this@AddEvent.formattedEndTime,
                 onValueChange = { this@AddEvent.formattedEndTime = it },
                 placeholder = { Text("End Time") },
                 modifier = Modifier
