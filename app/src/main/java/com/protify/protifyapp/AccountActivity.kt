@@ -1,5 +1,6 @@
 package com.protify.protifyapp
 
+import FirestoreEventString
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,22 +16,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.protify.protifyapp.features.calendar.CalendarUiModel
+import com.google.gson.Gson
 import com.protify.protifyapp.features.events.AddEvent
+import com.protify.protifyapp.features.events.Attendee
 import com.protify.protifyapp.features.events.EditEvent
 import com.protify.protifyapp.features.events.EventDetails
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.features.login.LoginActivity
 import com.protify.protifyapp.features.login.RegisterActivity
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 class AccountActivity {
@@ -128,6 +131,27 @@ class AccountActivity {
                 }
                 composable("recipeGenerator") {
                     RecipeActivity().RecipePage(navController)
+                }
+                composable("recipeEvent/{recipeEvent}/{requiredTime}") { navBackStackEntry ->
+                    val recipeEventJson = navBackStackEntry.arguments?.getString("recipeEvent")
+                    val requiredTime = navBackStackEntry.arguments?.getString("requiredTime")?: "30"
+                    val recipeEvent = Gson().fromJson(recipeEventJson, FirestoreEventString::class.java)
+                    // Map the FirestoreEventString to FirestoreEvent
+                    val event = FirestoreEvent(
+                        name = recipeEvent.name,
+                        nameLower = recipeEvent.nameLower,
+                        startTime = LocalDateTime.now().plusMinutes(10),
+                        endTime = LocalDateTime.now().plusMinutes(10).plusMinutes(requiredTime.toLong()),
+                        description = recipeEvent.description,
+                        attendees = recipeEvent.attendees?.map { Attendee(it.name, it.email, it.phoneNumber) }, // Map the Attendee
+                        importance = 3
+                   )
+                    EditEvent(event).EditEventPage {
+                        EditEvent(event).navigateBack(
+                            navController = navController
+                        )
+                    }
+
                 }
 
                 composable("eventDetails/{date}/{eventId}") { backStackEntry ->
