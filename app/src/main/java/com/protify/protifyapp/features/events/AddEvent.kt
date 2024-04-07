@@ -45,7 +45,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,7 +52,6 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -61,8 +59,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -77,7 +73,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -90,15 +85,14 @@ import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.google.firebase.FirebaseApp
-import com.google.firebase.firestore.auth.User
 import com.protify.protifyapp.APIKeys
 import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import com.protify.protifyapp.NetworkManager
+import com.protify.protifyapp.R
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.utils.MapsDurationUtils
 import com.protify.protifyapp.utils.WeatherUtils
-import com.protify.protifyapp.R
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -124,22 +118,23 @@ open class AddEvent {
     var rainCheck: Boolean = false
     var isOptimized: Boolean by mutableStateOf(true)
     var isOutside: Boolean by mutableStateOf(false)
+    var selectedDateGlobal by mutableStateOf(LocalDateTime.now()) // Store Date for DatePickerDialog
 
     private fun updateName(newName: String) {
         name = newName
     }
 
     private fun updateStartTime(hour: Int, minute: Int) {
-        val currentDateTime = LocalDateTime.now() // Get the current date and time, just a placeholder
+        val currentDateTime = selectedDateGlobal // Use the selected date from the DatePickerDialog
         val newStartTime = LocalDateTime.of(currentDateTime.year, currentDateTime.month, currentDateTime.dayOfMonth, hour, minute)
         startTime = newStartTime
         formattedStartTime(newStartTime)
     }
     private fun updateEndTime(hour: Int, minute: Int) {
-        val currentDateTime = LocalDateTime.now() // Get the current date and time, just a placeholder
-        val newStartTime = LocalDateTime.of(currentDateTime.year, currentDateTime.month, currentDateTime.dayOfMonth, hour, minute)
-        startTime = newStartTime
-        formattedStartTime(newStartTime)
+        val currentDateTime = selectedDateGlobal // Use the selected date from the DatePickerDialog
+        val newEndTime = LocalDateTime.of(currentDateTime.year, currentDateTime.month, currentDateTime.dayOfMonth, hour, minute)
+        endTime = newEndTime
+        formattedEndTime(newEndTime)
     }
 
     private fun formattedStartTime(startTime: LocalDateTime) {
@@ -162,15 +157,19 @@ open class AddEvent {
                 hour -= 12
             }
             formattedStartTime = if (minute < 10) {
-                "$month/$dayOfMonth/$year $hour:0$minute PM"
+                //"$month/$dayOfMonth/$year $hour:0$minute PM"
+                "$hour:0$minute PM"
             } else {
-                "$month/$dayOfMonth/$year $hour:$minute PM"
+                //"$month/$dayOfMonth/$year $hour:$minute PM"
+                "$hour:$minute PM"
             }
         } else {
             formattedStartTime = if (minute < 10) {
-                "$month/$dayOfMonth/$year $hour:0$minute AM"
+                //"$month/$dayOfMonth/$year $hour:0$minute AM"
+                "$hour:0$minute AM"
             } else {
-                "$month/$dayOfMonth/$year $hour:$minute AM"
+                //"$month/$dayOfMonth/$year $hour:$minute AM"
+                "$hour:$minute AM"
             }
         }
     }
@@ -194,15 +193,19 @@ open class AddEvent {
                 hour -= 12
             }
             formattedEndTime = if (minute < 10) {
-                "$month/$dayOfMonth/$year $hour:0$minute PM"
+                //"$month/$dayOfMonth/$year $hour:0$minute PM"
+                "$hour:0$minute PM"
             } else {
-                "$month/$dayOfMonth/$year $hour:$minute PM"
+                //"$month/$dayOfMonth/$year $hour:$minute PM"
+                "$hour:$minute PM"
             }
         } else {
             formattedEndTime = if (minute < 10) {
-                "$month/$dayOfMonth/$year $hour:0$minute AM"
+                //"$month/$dayOfMonth/$year $hour:0$minute AM"
+                "$hour:0$minute AM"
             } else {
-                "$month/$dayOfMonth/$year $hour:$minute AM"
+                //"$month/$dayOfMonth/$year $hour:$minute AM"
+                "$hour:$minute AM"
             }
         }
 
@@ -253,28 +256,27 @@ open class AddEvent {
         val dayOfMonth = LocalDateTime.now().dayOfMonth
         val month = LocalDateTime.now().monthValue - 1 //Subtract 1 to select the right day in the DatePickerDialog
         val year = LocalDateTime.now().year
-        val selectedDate = remember { mutableStateOf("")}
-        var selectedMonth = 0
-        var selectedDayOfMonth = 0
-        var selectedYear = 0
-        val datePickerDialog = android.app.DatePickerDialog(
+        val datePickerDialog = android.app.DatePickerDialog( // This isn't really used
             context, {_, year, month, dayOfMonth ->
-            //selectedDate.value = "$month/$dayOfMonth/$year"
             }, year, month, dayOfMonth
         )
         //Time Picker Dialog
         val hour = LocalDateTime.now().hour
         val minute = LocalDateTime.now().minute
         val selectedTime = remember { mutableStateOf("")}
-        var selectedHour = 0
-        var selectedMinute = 0
-        val timePickerDialog = TimePickerDialog(
+        val timePickerDialog = android.app.TimePickerDialog(
             context, {_, hour, minute ->
             selectedTime.value = "$hour:$minute"
-                selectedHour = hour
-                selectedMinute = minute
+                updateStartTime(hour, minute)
             }, hour, minute, false
         )
+        val endTimePickerDialog = android.app.TimePickerDialog(
+            context, {_, hour, minute ->
+            selectedTime.value = "$hour:$minute"
+                updateEndTime(hour, minute)
+            }, hour, minute, false
+        )
+
         //Time Zone
         val timeZoneNames = TimeZone.getAvailableIDs()
         //Importance
@@ -438,6 +440,7 @@ open class AddEvent {
                         formattedStartTime = formattedStartTime,
                         formattedEndTime = formattedEndTime,
                         timePickerDialog = timePickerDialog,
+                        endTimePickerDialog = endTimePickerDialog, // I know I shouldn't do this lol, but I need some way for one to set start and one to set end
                         timeError = timeError,
                         requiredEmpty = requiredEmpty,
                         selectedTime = selectedTime,
@@ -545,6 +548,12 @@ open class AddEvent {
                             selectedMonth = month + 1
                             selectedDayOfMonth = dayOfMonth
                             selectedYear = year
+                            selectedDateGlobal = LocalDateTime.of(year, month + 1, dayOfMonth, 0, 0) // Store the selected date for later use
+                            // Clear the time if the user changes the date
+                            formattedStartTime = ""
+                            formattedEndTime = ""
+                            endTime = LocalDateTime.MAX
+                            startTime = LocalDateTime.now()
                         }
                     }
                 ),
@@ -572,9 +581,7 @@ open class AddEvent {
     }
 
     @Composable
-    fun EventTimeItem(formattedStartTime: String, formattedEndTime: String, timePickerDialog: TimePickerDialog, timeError: Boolean, requiredEmpty: Boolean, selectedTime: MutableState<String>) {
-        var selectedHour by remember { mutableIntStateOf(0) }
-        var selectedMinute by remember { mutableIntStateOf(0) }
+    fun EventTimeItem(formattedStartTime: String, formattedEndTime: String, timePickerDialog: TimePickerDialog, endTimePickerDialog: TimePickerDialog, timeError: Boolean, requiredEmpty: Boolean, selectedTime: MutableState<String>) {
 
         Row(
             horizontalArrangement = Arrangement.Start,
@@ -591,12 +598,7 @@ open class AddEvent {
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() },
                         onClick = {
-                            timePickerDialog.show()
-                            timePickerDialog.setOnDismissListener {
-                                if (selectedTime.value != "") {
-                                    updateStartTime(selectedHour, selectedMinute) // TODO fix this
-                                }
-                            }
+                            timePickerDialog.show() // This should use the callback where the timePickerDialog is declared
                         }
                     ),
                 enabled = false,
@@ -639,12 +641,7 @@ open class AddEvent {
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() },
                         onClick = {
-                            timePickerDialog.show()
-                            timePickerDialog.setOnDismissListener {
-                                if (selectedTime.value != "") {
-                                    updateEndTime(selectedHour, selectedMinute)
-                                }
-                            }
+                            endTimePickerDialog.show() // This should use the callback where the timePickerDialog is declared
                         }
                     ),
                 enabled = false,
