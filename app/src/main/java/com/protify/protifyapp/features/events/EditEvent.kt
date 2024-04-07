@@ -1,9 +1,11 @@
 package com.protify.protifyapp.features.events
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
+import java.time.LocalDateTime
 
 class EditEvent (private val eventToEdit: FirestoreEvent) : AddEvent() {
     init {
@@ -37,7 +39,7 @@ class EditEvent (private val eventToEdit: FirestoreEvent) : AddEvent() {
             attendees = attendees,
             rainCheck = rainCheck,
             isOutside = isOutside,
-            isOptimized = isOptimized
+            isOptimized = !isOptimized
         )
         val errors = firestoreEvent.validateEvent(firestoreEvent)
         if (errors.isEmpty() && user != null && !dateError && isTimeSelected()) {
@@ -45,9 +47,15 @@ class EditEvent (private val eventToEdit: FirestoreEvent) : AddEvent() {
                 uid = user,
                 eventId = eventToEdit.id,
                 event = firestoreEvent,
-                callback = { navigateBack() }
+                callback = {
+                    if(it) {
+                        Toast.makeText(context, "Event updated successfully", Toast.LENGTH_SHORT).show()
+                        navigateBack()
+                    } else {
+                        Toast.makeText(context, "Failed to update event", Toast.LENGTH_SHORT).show()
+                    }
+                           },
             )
-            navigateBack()
         } else {
             super.handleErrors(errors, user, dateError, isTimeSelected(), context)
         }
@@ -82,8 +90,8 @@ class EditEvent (private val eventToEdit: FirestoreEvent) : AddEvent() {
             isOutside = event.isOutside
             isOptimized = !(event.isOptimized)
             selectedDateGlobal= event.startTime.toLocalDate().atStartOfDay() // Put in date picker
-            formattedStartTime(event.startTime)
-            formattedEndTime(event.endTime)
+            formattedStartTime = formatTime(event.startTime)
+            formattedEndTime = formatTime(event.endTime)
         }
 
         super.AddEventPage(navigateBack)
@@ -92,5 +100,32 @@ class EditEvent (private val eventToEdit: FirestoreEvent) : AddEvent() {
     @Composable
     fun EditEventPage(navigateBack: () -> Unit) {
         AddEventPage(navigateBack)
+    }
+    private fun formatTime(startTime: LocalDateTime): String {
+        var formattedStartTime: String
+        var hour = startTime.hour
+        var minute = startTime.minute
+
+        if (hour >= 12) {
+            if (hour > 12) {
+                hour -= 12
+            }
+            formattedStartTime = if (minute < 10) {
+                //"$month/$dayOfMonth/$year $hour:0$minute PM"
+                "$hour:0$minute PM"
+            } else {
+                //"$month/$dayOfMonth/$year $hour:$minute PM"
+                "$hour:$minute PM"
+            }
+        } else {
+            formattedStartTime = if (minute < 10) {
+                //"$month/$dayOfMonth/$year $hour:0$minute AM"
+                "$hour:0$minute AM"
+            } else {
+                //"$month/$dayOfMonth/$year $hour:$minute AM"
+                "$hour:$minute AM"
+            }
+        }
+        return formattedStartTime
     }
 }
