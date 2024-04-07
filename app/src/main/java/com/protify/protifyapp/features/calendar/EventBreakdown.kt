@@ -1,7 +1,5 @@
 package com.protify.protifyapp.features.calendar
 
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -28,11 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.protify.protifyapp.FirestoreHelper
+import androidx.navigation.NavController
 import com.protify.protifyapp.ui.theme.ProtifyTheme
+import java.time.LocalDate
 
 class EventBreakdown {
 
@@ -92,14 +93,10 @@ class EventBreakdown {
     fun DailySchedule(
         scale: Double = 1.0,
         eventList: List<Event> = listOf(),
-        uid: String = "",
-        day: String = "",
-        month: String = "",
-        year: String = "",
-        showTimes: Boolean = true
+        date: LocalDate,
+        showTimes: Boolean = true,
+        navController: NavController
     ) {
-        // Sort events by start time
-        val context: Context = LocalContext.current
         val timeSlots = createListTimeSlot(eventList)
         val scaledValue = scale.toInt()
         timeSlots.maxOfOrNull { it.height } ?: 0f
@@ -110,14 +107,19 @@ class EventBreakdown {
         val startTime = if (eventList.isNotEmpty())
             convertTimeToFloat(sortedEventList[0].startTime) else 9f // default 0900
         val startPosition = startTime * 60 * scaledValue
-        LaunchedEffect(key1 = day, key2 = month, key3 = year) {// scroll to start position when the user changes the day
+        LaunchedEffect(
+            key1 = date
+        ) {// scroll to start position when the user changes the day
             scrollState.scrollTo(startPosition.toInt() * 2) // This scrolls the screen far enough to see the first event
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
             TimeGrid(scaledValue, scrollState, showTimes)
             for (layer in layers) {
-                TimeSlotLayer(timeSlots, scaledValue, layer, context, uid, day, month, year, scrollState)
+                TimeSlotLayer(timeSlots, scaledValue, layer, date, scrollState, navController = navController)
             }
         }
     }
@@ -126,10 +128,8 @@ class EventBreakdown {
         val timeSlots = mutableListOf<TimeSlot>()
 
         for (event in events) {
-//            val layer = calculateLayer(event, events)
-//            val layer = events.indexOf(event)
             val layer = 0
-            val color = if (event.isAiSuggestion == true) Color.Red else Color.LightGray
+            val color = if (event.isAiSuggestion) Color.Red else Color.LightGray
             val height = (convertTimeToFloat(event.endTime) - convertTimeToFloat(event.startTime))
             timeSlots.add(TimeSlot(event.startTime, event.title, color, height, event.endTime, layer, event.id))
         }
@@ -219,6 +219,8 @@ class EventBreakdown {
             for (i in 1..11) {
                 TimeGridSlot("$i:00 PM", scale, showTimes)
             }
+            TimeGridSlot("12:00 AM", scale, showTimes)
+            Spacer(modifier = Modifier.height((60 * scale).dp))
         }
     }
 
@@ -227,45 +229,20 @@ class EventBreakdown {
         timeSlot: TimeSlot,
         scale: Int,
         layerColor: Color,
-        context: Context,
-        uid: String,
-        day: String,
-        month: String,
-        year: String,
-        overlappingEventsCount: Int
+        date: LocalDate,
+        overlappingEventsCount: Int,
+        navController: NavController
     ) {
         val durationInMinutes =
             (convertTimeToFloat(timeSlot.endTime) - convertTimeToFloat(timeSlot.startTime)) * 60
 
         Card(
             modifier = Modifier
-                .fillMaxWidth(1f / overlappingEventsCount)
                 .height((durationInMinutes * scale).dp)
+                .width(300.dp / overlappingEventsCount)
                 .padding(vertical = 1.dp)
                 .clickable {
-                           FirestoreHelper().getEventsAndIds(uid, day, month, year) { map ->
-                                 // Find the matching event
-                               val event = map.values.find { it == timeSlot.id }
-                               // map the id to the event
-                               if (event != null) {
-                                   // Navigate to the event details screen
-                                   Toast.makeText(context, "Event: ${event} found!", Toast.LENGTH_SHORT).show()
-                                   FirestoreHelper().deleteEventById(uid, month, year, event) {
-                                        if (it) {
-                                             Toast.makeText(context, "Event deleted!", Toast.LENGTH_SHORT).show()
-                                        } else {
-                                            Toast.makeText(
-                                                context,
-                                                "Event not deleted!",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                   }
-                               } else {
-                                      Toast.makeText(context, "Event not found!", Toast.LENGTH_SHORT).show()
-                               }
-
-                           }
+                    navController.navigate("eventDetails/${date}/${timeSlot.id}")
                 },
             colors = CardDefaults.elevatedCardColors(
                 containerColor = layerColor
@@ -274,25 +251,34 @@ class EventBreakdown {
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                if (timeSlot.text.isNotEmpty()) {
-                    Text(
-                        text = timeSlot.text,
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .fillMaxWidth(1f),
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-//                    Text(
-//                        text = ("${timeSlot.startTime} - ${timeSlot.endTime}"),
-//                        modifier = Modifier.padding(end = 4.dp),
-//                        style = MaterialTheme.typography.bodyMedium
-//                    )
+                Column {
+                    if (timeSlot.text.isNotEmpty()) {
+                        Text(
+                            text = timeSlot.text,
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (timeSlot.endTime.isNotEmpty() && timeSlot.startTime.isNotEmpty()) {
+                        Text(
+                            text = "${timeSlot.startTime} - ${timeSlot.endTime}",
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -303,14 +289,11 @@ class EventBreakdown {
         timeSlots: List<TimeSlot>,
         scale: Int,
         layer: Int,
-        context: Context,
-        uid: String,
-        day: String,
-        month: String,
-        year: String,
-        scrollState: ScrollState
+        date: LocalDate,
+        scrollState: ScrollState,
+        navController: NavController
     ) {
-        var layerColor = when (layer) {
+        val layerColor = when (layer) {
             0 -> MaterialTheme.colorScheme.primary
             1 -> MaterialTheme.colorScheme.secondary
             else -> MaterialTheme.colorScheme.error
@@ -327,19 +310,19 @@ class EventBreakdown {
                 modifier = Modifier.fillMaxWidth(0.8f),
                 horizontalAlignment = Alignment.End
             ) {
-                val timeSlots = timeSlots.sortedBy { convertTimeToFloat(it.startTime) }
-                val startTimeMinutes = (convertTimeToFloat(timeSlots[0].startTime)) * 60
+                val slots = timeSlots.sortedBy { convertTimeToFloat(it.startTime) }
+                val startTimeMinutes = (convertTimeToFloat(slots[0].startTime)) * 60
                 Spacer(modifier = Modifier.height(((30 + startTimeMinutes) * scale).dp)) // top padding
                 val displayedEvents = mutableMapOf<String, Int>()
 
-                for (i in timeSlots.indices) {
-                    val timeSlot = timeSlots[i]
+                for (i in slots.indices) {
+                    val timeSlot = slots[i]
 
-                    val nextEventStartTime = if (i < timeSlots.size - 1) convertTimeToFloat(timeSlots[i + 1].startTime) else 24f
+                    val nextEventStartTime = if (i < slots.size - 1) convertTimeToFloat(slots[i + 1].startTime) else 24f
                     val currentEventEndTime = convertTimeToFloat(timeSlot.endTime)
                     val differenceInMinutes = (nextEventStartTime - currentEventEndTime) * 60
 
-                    val overlappingEvents = timeSlots.filter{ checkOverlap(
+                    val overlappingEvents = slots.filter{ checkOverlap(
                         Event().apply { startTime = it.startTime; endTime = it.endTime },
                         Event().apply { startTime = timeSlot.startTime; endTime = timeSlot.endTime }
                     )}
@@ -349,23 +332,23 @@ class EventBreakdown {
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Start
                         ) {
-                            for (timeSlot in overlappingEvents) {
-                                val count = displayedEvents.getOrDefault(timeSlot.id, 0)
-                                if (count < overlappingEvents.size && !displayedEvents.containsKey(timeSlot.id)) {
-                                    EventBreakdownCard(timeSlot, scale, layerColor, context, uid, day, month, year, overlappingEvents.size)
-                                    displayedEvents[timeSlot.id] = count + 1
+                            for (t in overlappingEvents) {
+                                val count = displayedEvents.getOrDefault(t.id, 0)
+                                if (count < overlappingEvents.size && !displayedEvents.containsKey(t.id)) {
+                                    EventBreakdownCard(t, scale, layerColor, date, overlappingEvents.size, navController = navController)
+                                    displayedEvents[t.id] = count + 1
                                 }
                             }
                         }
                     } else if (!displayedEvents.containsKey(timeSlot.id) || displayedEvents[timeSlot.id]!! < 1)
                     {
-                        EventBreakdownCard(timeSlot, scale, layerColor, context, uid, day, month, year, 0)
+                        EventBreakdownCard(timeSlot, scale, layerColor, date, 0, navController = navController)
                         displayedEvents[timeSlot.id] = 1
                     }
 
                     Spacer(modifier = Modifier.height((differenceInMinutes * scale).dp))
                 }
-                Spacer(modifier = Modifier.height((60 * scale).dp))
+                //Spacer(modifier = Modifier.height((60 * scale).dp))
             }
         }
     }
@@ -375,7 +358,7 @@ class EventBreakdown {
     fun EventBreakdownPopulatedPreview() {
         ProtifyTheme {
             Surface {
-                DailySchedule(scale = 1.0, eventList = createListEvent())
+                DailySchedule(scale = 1.0, eventList = createListEvent(), date = LocalDate.now(), showTimes = true, navController = NavController(LocalContext.current))
             }
         }
     }

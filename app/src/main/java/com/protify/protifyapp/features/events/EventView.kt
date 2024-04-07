@@ -1,5 +1,7 @@
 package com.protify.protifyapp.features.events
 
+import android.content.Context
+import android.widget.Spinner
 import android.widget.Toast
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.background
@@ -10,14 +12,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,8 +43,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseUser
 import com.protify.protifyapp.features.calendar.CalendarUiModel
 import com.protify.protifyapp.features.calendar.Event
+import com.protify.protifyapp.features.calendar.EventBreakdown
+import com.protify.protifyapp.features.login.FirebaseLoginHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
@@ -107,7 +118,11 @@ class EventView (private val navController: NavController) {
     }
 
     @Composable
-    fun EventList(data: CalendarUiModel, isLoadingEvents: Boolean) {
+    fun EventList(
+        data: CalendarUiModel,
+        isLoadingEvents: Boolean,
+        isOptimizingEvents: Boolean
+    ) {
         if (isLoadingEvents) {
             Row (
                 modifier = Modifier
@@ -118,29 +133,58 @@ class EventView (private val navController: NavController) {
                 LoadingText()
             }
         } else {
-            if (data.selectedDate.hasEvents) {
-                LazyColumn(content = {
-                    items(data.selectedDate.events.size) { event ->
-                        EventItem(
-                            event = data.selectedDate.events[event],
-                            date = data.selectedDate.date.toString()
-                        )
-                    }
-                })
-            } else {
-                Row (
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ){
+            if (isOptimizingEvents) {
+                Column {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .size(48.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                    )
                     Text(
-                        text = "No events for this day!",
+                        text = "Optimizing events...",
                         modifier = Modifier
                             .padding(16.dp),
                         style = MaterialTheme.typography.titleMedium,
                         textAlign = TextAlign.Center
                     )
+                }
+            } else {
+                if (data.selectedDate.hasEvents) {
+                    /*
+                    LazyColumn(content = {
+                        items(data.selectedDate.events.size) { event ->
+                            EventItem(
+                                event = data.selectedDate.events[event],
+                                date = data.selectedDate.date.toString()
+                            )
+                        }
+                    })
+                     */
+
+                    EventBreakdown().DailySchedule(
+                        scale = 1.0,
+                        eventList = data.selectedDate.events,
+                        date = data.selectedDate.date,
+                        navController = navController
+                    )
+
+                } else {
+                    Row (
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ){
+                        Text(
+                            text = "No events for this day!",
+                            modifier = Modifier
+                                .padding(16.dp),
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }
@@ -188,7 +232,50 @@ class EventView (private val navController: NavController) {
     }
 
     @Composable
-    fun EventCard(data: CalendarUiModel, navigateToAddEvent: () -> Unit, isLoadingEvents: Boolean) {
+    fun OptimizeButton(optimizeEventClickListener: () -> Unit) {
+        Button(
+            onClick = optimizeEventClickListener,
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.primary)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ){
+                    Text(
+                        text = "Optimize Events",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        textAlign = TextAlign.Center,
+                    )
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Optimize Events",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun EventCard(
+        data: CalendarUiModel,
+        optimizeEventClickListener: () -> Unit,
+        isLoadingEvents: Boolean,
+        isOptimizingEvents: Boolean
+    ) {
+        /*
         ElevatedCard(
             modifier = Modifier
                 .padding(16.dp)
@@ -204,8 +291,20 @@ class EventView (private val navController: NavController) {
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 EventHeader()
-                EventList(data, isLoadingEvents)
+                EventList(data, isLoadingEvents, isOptimizingEvents)
+                if (!isOptimizingEvents) OptimizeButton(optimizeEventClickListener)
             }
+        }
+         */
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            EventHeader()
+            EventList(data, isLoadingEvents, isOptimizingEvents)
+            if (!isOptimizingEvents) OptimizeButton(optimizeEventClickListener)
         }
     }
 }
