@@ -55,6 +55,42 @@ class GetAISchedule(uid: String, homeAddress: String) {
             if (shouldOptimize) {
                 // Get the locations from each of the events
                 val locations = events.map { it.location }.toMutableList()
+                // If distinct locations is less than 2, then we need to run a different optimization
+                if(locations.distinct().size < 2) {
+                    // geocode the location
+                    events[0].location?.let {
+                        MapsDurationUtils(today).geocode(it) { lat, long ->
+                            // Get the non raining times
+                            WeatherUtils(lat, long).getNonRainingTimes(today) { nonRainingTimes ->
+                                // Make the call
+                                OptimizeSchedule(homeAddress = homeAddress,
+                                    day = today.dayOfMonth.toString(),
+                                    events = events,
+                                    month = today.monthValue.toString(),
+                                    optimalEventOrder = events,
+                                    travelTime = mutableListOf(),
+                                    year = today.year.toString()).makeCallNoLocation(use4 = use4, nonRainingTimes = nonRainingTimes) { optimizedEvents ->
+                                    if (optimizedEvents.events.isNotEmpty() && optimizedEvents.oldEvents.isNotEmpty()) {
+                                        // Store the events into the database
+                                        FirestoreHelper().importAIGeneratedEvent(optimizedSchedule = optimizedEvents, today, uid) { didSucceed ->
+                                            if (didSucceed) {
+                                                callback(true)
+                                                // If the events were not able to be stored, then the optimization failed
+                                            } else {
+                                                callback(false)
+                                            }
+                                        }
+                                        // If an empty list was returned, then the optimization failed
+                                    } else {
+                                        callback(false)
+                                    }
+
+                                }
+                            }
+
+                        }
+                    }
+                }
                 // Get Travel time
                 MapsDurationUtils(today).getDrivingTimes(homeAddress = homeAddress, endLocations = locations) {drivingTimes ->
                     // Get the matrix
@@ -75,7 +111,7 @@ class GetAISchedule(uid: String, homeAddress: String) {
                                             month = today.monthValue.toString(),
                                             optimalEventOrder = optimalOrder,
                                             travelTime = drivingTimes.toMutableList(),
-                                            year = today.year.toString()).makeCall(use4 = use4, nonRainingTimes = nonRainingTimes) { optimizedEvents ->
+                                            year = today.year.toString()).makeCallParallel(use4 = use4, nonRainingTimes = nonRainingTimes) { optimizedEvents ->
                                                 if (optimizedEvents.events.isNotEmpty() && optimizedEvents.oldEvents.isNotEmpty()) {
                                                     // Store the events into the database
                                                     FirestoreHelper().importAIGeneratedEvent(optimizedSchedule = optimizedEvents, today, uid) { didSucceed ->

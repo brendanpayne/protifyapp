@@ -157,8 +157,10 @@ open class AddEvent {
             }
         }
         dateError = false
-        if (hour > 12) {
-            hour -= 12
+        if (hour >= 12) {
+            if (hour > 12) {
+                hour -= 12
+            }
             formattedStartTime = if (minute < 10) {
                 "$month/$dayOfMonth/$year $hour:0$minute PM"
             } else {
@@ -187,8 +189,10 @@ open class AddEvent {
             }
         }
         dateError = false
-        if (hour > 12) {
-            hour -= 12
+        if (hour >= 12) {
+            if (hour > 12) {
+                hour -= 12
+            }
             formattedEndTime = if (minute < 10) {
                 "$month/$dayOfMonth/$year $hour:0$minute PM"
             } else {

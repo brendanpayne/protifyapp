@@ -43,6 +43,11 @@ import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ProfileActivity {
     val user = FirebaseAuth.getInstance().currentUser
@@ -62,12 +67,17 @@ class ProfileActivity {
         var homeAddress by remember { mutableStateOf("Loading...") } // Mutable state to recompose when the home address changes
         var newName by remember { mutableStateOf(name) }
         var newHomeAddress by remember { mutableStateOf("Loading...") }
+        var use4 by remember { mutableStateOf(false) }
+        var newUse4 by remember { mutableStateOf(false) }
         var context = LocalContext.current // Context for showing toasts
         // Fetch the user's home address from Firestore async so it doesn't block the loading of the page
         LaunchedEffect(key1 = user) {// This should only run once because user is a stable reference
-            val fetchedResult = FirestoreHelper().getUserHomeAddress(user!!.uid)
-            homeAddress = fetchedResult
-            newHomeAddress = fetchedResult
+            val fetchedUserData = FirestoreHelper().getUserProfileInfo(user!!.uid)
+                homeAddress = fetchedUserData.first
+                use4 = fetchedUserData.second
+                newHomeAddress = homeAddress
+                newUse4 = use4
+
         }
         // Maps API for autocomplete on home address
         val mapsAPI = APIKeys().getMapsKey()
@@ -125,24 +135,46 @@ class ProfileActivity {
                             )
                         }
                     },
-                    modifier = Modifier.onFocusChanged { focusState ->
-                        if (focusState.isFocused) {
-                            autocompleteLauncher.launch(
-                                Autocomplete.IntentBuilder(
-                                    AutocompleteActivityMode.OVERLAY,
-                                    listOf(Place.Field.ID, Place.Field.NAME, Place.Field.ADDRESS)
-                                ).build(context)
-                            )
+                    modifier = Modifier
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                autocompleteLauncher.launch(
+                                    Autocomplete
+                                        .IntentBuilder(
+                                            AutocompleteActivityMode.OVERLAY,
+                                            listOf(
+                                                Place.Field.ID,
+                                                Place.Field.NAME,
+                                                Place.Field.ADDRESS
+                                            )
+                                        )
+                                        .build(context)
+                                )
+                            }
                         }
-                    }.padding(16.dp),
+                        .padding(16.dp),
                     readOnly = true
                 )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Use GPT-4",
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp)) // Add some space between the text and the checkbox
+                    androidx.compose.material3.Checkbox(
+                        checked = newUse4,
+                        onCheckedChange = { newUse4 = it }
+                    )
+                }
                 Text(
                     text = email,
                     fontSize = 16.sp,
                     modifier = Modifier.padding(16.dp)
                 )
-                if (newHomeAddress != homeAddress || newName != name) { // Show save button only if there are changes
+                if (newHomeAddress != homeAddress || newName != name || newUse4 != use4) { // Show save button only if there are changes
                      Button(
                         onClick = {
                             if (newName != name) { // Update display name if it's different
@@ -167,24 +199,52 @@ class ProfileActivity {
                                     }
                                 }
                             }
-                            if (newHomeAddress != homeAddress) { // Update home address if it's different
-                                FirestoreHelper().setUserHomeAddress(user!!.uid, newHomeAddress)
-                                    .addOnCompleteListener { updateHomeAddress ->
-                                        if (updateHomeAddress.isSuccessful) {
-                                            homeAddress = newHomeAddress
-                                            Toast.makeText(
-                                                context,
-                                                "Home address updated successfully",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        } else {
-                                            Toast.makeText(
-                                                context,
-                                                "Failed to update home address",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
+                            CoroutineScope(Dispatchers.IO).launch {
+                                // If both the home address and the use4 value have changed, update both in Firestore
+                                if (newHomeAddress != homeAddress && newUse4 != use4) {
+                                    FirestoreHelper().setUserProfileInfo(
+                                        user!!.uid,
+                                        newHomeAddress,
+                                        newUse4
+                                    )
+                                    homeAddress = newHomeAddress
+                                    use4 = newUse4
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "Profile updated successfully",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
+                                } else if (newHomeAddress != homeAddress) { // Update home address if it's different
+                                    FirestoreHelper().setUserProfileInfo(
+                                        user!!.uid,
+                                        newHomeAddress,
+                                        null
+                                    )
+                                    homeAddress = newHomeAddress
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "Home Address updated successfully",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                } else if (newUse4 != use4) { // Update use4 value if it's different
+                                    FirestoreHelper().setUserProfileInfo(
+                                        user!!.uid,
+                                        null,
+                                        newUse4
+                                    )
+                                    use4 = newUse4
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "AI Preference updated successfully",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
                             }
                     },
                         modifier = Modifier.padding(16.dp)

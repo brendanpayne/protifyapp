@@ -1,7 +1,15 @@
 package com.protify.protifyapp
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,34 +51,39 @@ class AccountActivity {
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.logo),
+                            contentDescription = "Logo",
+                            modifier = Modifier.padding(16.dp)
+                        )
                         Text(
                             text = "Protify",
                             modifier = Modifier.padding(16.dp).fillMaxWidth(),
                             style = MaterialTheme.typography.headlineLarge,
                             textAlign = TextAlign.Center,
                         )
-                        Row (
+                        Text(
+                            text = "The AI-powered calendar app",
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            style = MaterialTheme.typography.labelLarge,
+                            textAlign = TextAlign.Center,
+                        )
+
+                        Button(
+                            onClick = { navController.navigate("register") },
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ){
-                            Button(
-                                onClick = { navController.navigate("register") },
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .weight(1f)
-                            ) {
-                                Text("New User")
-                            }
-                            Button(
-                                onClick = { navController.navigate("login") },
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .weight(1f)
-                            ) {
-                                Text("Existing User")
-                            }
+                                .padding(16.dp)
+                                .fillMaxWidth()
+                        ) {
+                            Text("New User")
+                        }
+                        Button(
+                            onClick = { navController.navigate("login") },
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth()
+                        ) {
+                            Text("Existing User")
                         }
                     }
                 }
@@ -112,6 +125,10 @@ class AccountActivity {
                 composable("privacyLocation") {
                     PrivacyActivity().PrivacyPage(navController)
                 }
+                composable("recipeGenerator") {
+                    RecipeActivity().RecipePage(navController)
+                }
+
                 composable("eventDetails/{date}/{eventId}") { backStackEntry ->
                     val date = backStackEntry.arguments?.getString("date")
                     val eventId = backStackEntry.arguments?.getString("eventId")

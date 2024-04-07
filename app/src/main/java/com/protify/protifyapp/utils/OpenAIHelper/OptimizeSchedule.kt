@@ -68,9 +68,10 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
     private var eventList = events.sortedBy { it.startTime } // Sort by startTime in ascending order
         .map { event ->
-            "${event.name} goes from ${event.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event.location == "") homeAddress else event.location} " +
-                    if (event.isOutside) "and is outdoors." else "." // If the event is outside, then add "and is outdoors."
+            "${event.name} goes from ${event.startTime.format(DateTimeFormatter.ofPattern("HH:mm"))} to ${event.endTime.format(DateTimeFormatter.ofPattern("HH:mm"))} at ${if (event.location == "") homeAddress else event.location}. "
+
         }
+    private var outdoorEventsString = events.filter { it.isOutside }.joinToString(", ") { it.name }
 
     private var eventString = eventList.joinToString(" ")
     //Get the travel time, origin, and destination from the travelTime list
@@ -117,10 +118,10 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         val systemContent: String
         if (use4) {
-            systemContent = AIPrompts().prioritizeEventOrderPrompt(hasRainingTimes, nonRainingTimes.formatNonRainingTimesToString(), dontRescheduleEvents)
+            systemContent = AIPrompts().prioritizeEventOrderPrompt(hasRainingTimes, nonRainingTimes.formatNonRainingTimesToString(), dontRescheduleEvents, outdoorEventsString)
 
         } else {
-            systemContent = AIPrompts().comprehensivePromptWithOptimalEventOrder(hasRainingTimes, nonRainingTimes.formatNonRainingTimesToString(), optimalEventOrderString, dontRescheduleEvents)
+            systemContent = AIPrompts().comprehensivePromptWithOptimalEventOrder(hasRainingTimes, nonRainingTimes.formatNonRainingTimesToString(), optimalEventOrderString, dontRescheduleEvents, outdoorEventsString)
         }
 
         makeRequest(systemContent, userContent, onComplete)
@@ -157,7 +158,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         val userContentOverride = "Here is a list of the events I have today: $eventString"
 
-        val systemContentOverride = AIPrompts().noEventOrderPrompt(hasRainingTimes, nonRainingTimes.formatNonRainingTimesToString(), dontRescheduleEvents)
+        val systemContentOverride = AIPrompts().noLocationPrompt(dontRescheduleEvents)
 
         makeRequest(systemContentOverride, userContentOverride, onComplete)
     }
@@ -246,6 +247,181 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         retry(0)
     }
 
+    /** Function that is called when the user didn't set any event locations for the entire day
+     *
+     */
+    fun makeCallNoLocation(use4: Boolean = false, nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, callback: (OptimizedSchedule) -> Unit) {
+        if (use4) {
+            model = "gpt-4-1106-preview" // This points to the latest (best?) model
+        }
+        // Init nonRainingTimes bool
+        var hasRainingTimes = true
+        // Check if the nonRainingTimes list is 0:00-00:00
+        if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0 && events.any { it.isOutside }) {
+            hasRainingTimes = false
+        }
+
+        // init parser
+        val parse = GsonBuilder().create()
+
+        // init has overlapping events
+        var hasOverlappingEvents = false
+
+        // Check for overlapping events
+        if (events.any { event -> events.any { it != event && it.startTime.isBefore(event.endTime) && it.endTime.isAfter(event.startTime) } }) {
+            hasOverlappingEvents = true
+        }
+
+        fun mainCall(iterations: Int, hasRainingTime: Boolean) {
+            if (iterations > 3) {
+                Log.i("OptimizeSchedule", "Main call failed after 3 attempts.")
+                return
+            }
+            getResponseNoLocationData(nonRainingTimes) {
+                if (it == "Error") {
+                    mainCall(iterations + 1, hasRainingTime)
+                } else {
+                    val optimizedSchedule: OptimizedSchedule
+                    try {
+                        optimizedSchedule = parse.fromJson(it, OptimizedSchedule::class.java)
+                    } catch (e: Exception) {
+                        mainCall(iterations + 1, hasRainingTime)
+                        return@getResponseNoLocationData
+                    }
+                    if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {
+                        callback(optimizedSchedule)
+                    } else {
+                        mainCall(iterations + 1, hasRainingTime)
+                    }
+                }
+            }
+        }
+
+        // If there are overlapping events, then remove them before making the main call
+        if (hasOverlappingEvents) {
+            removeOverlappingEvents {
+                if (it.isNotEmpty()) {
+                    updateEvents(it) // Update the events list
+                    mainCall(0, hasRainingTimes) // Make the main call
+                }
+            }
+        } else {
+            mainCall(0, hasRainingTimes) // Make the main call
+        }
+    }
+    fun makeCallParallel(use4: Boolean = false, nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>, callback: (OptimizedSchedule) -> Unit) {
+        var isCallbackInvoked = false // This is to prevent the callback from being called multiple times
+        var timesRan = 0
+        if (use4) {
+            model = "gpt-4-1106-preview" // This points to the latest (best?) model
+        }
+        // Init nonRainingTimes bool
+        var hasRainingTimes = true
+        // Check if the nonRainingTimes list is 0:00-00:00
+        if (nonRainingTimes.isNotEmpty()) { // Out of bounds check
+            if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0 && events.any { it.isOutside }) {
+                hasRainingTimes = false
+            }
+        }
+
+        // init parser
+        val parse = GsonBuilder().create()
+
+        // init has overlapping events
+        var hasOverlappingEvents = false
+
+        // Check for overlapping events
+        if (events.any { event -> events.any { it != event && it.startTime.isBefore(event.endTime) && it.endTime.isAfter(event.startTime) } }) {
+            hasOverlappingEvents = true
+        }
+        // Tries for a good response up to 3 times.
+        val maxRetries = 3
+
+        if (hasOverlappingEvents) {
+            removeOverlappingEvents {
+                if (it.isNotEmpty()) {
+                    updateEvents(it) // Update the events list
+                }
+            }
+        }
+        fun thirdCall() {
+            for (i in 0 until maxRetries) { // "Third call"
+                getResponseNoLocationData(nonRainingTimes) { response ->
+                    val optimizedSchedule: OptimizedSchedule
+                    try {
+                        optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+                    } catch (e: Exception) {
+                        return@getResponseNoLocationData
+                    }
+                    if (!isCallbackInvoked) { // If the callback hasn't been called yet
+                        if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {
+                            isCallbackInvoked = true
+                            callback(optimizedSchedule)
+                        }
+                    }
+                    timesRan++
+                    if (timesRan > maxRetries - 1 && !isCallbackInvoked) {
+                        callback(OptimizedSchedule(emptyList(), emptyList())) // Sad face emoji here
+                    }
+                }
+            }
+        }
+        fun secondCall() {
+            for (i in 0 until maxRetries) { // "Second call"
+                getResponseBlockedEvents { response ->
+                    val optimizedSchedule: OptimizedSchedule
+                    try {
+                        optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+                    } catch (e: Exception) {
+                        return@getResponseBlockedEvents
+                    }
+                    if (!isCallbackInvoked) { // If the callback hasn't been called yet
+                        if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {
+                            isCallbackInvoked = true
+                            callback(optimizedSchedule)
+                        }
+                    }
+                    timesRan++
+                    if (timesRan > maxRetries - 1 && !isCallbackInvoked) {
+                        timesRan = 0
+                        thirdCall()
+                    }
+                }
+
+            }
+
+        }
+        for (i in 0 until maxRetries) { // "Main call"
+            getResponse(use4, nonRainingTimes) { response ->
+                val optimizedSchedule: OptimizedSchedule
+                try {
+                    optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+                } catch (e: Exception) {
+                    return@getResponse
+                }
+                if (!isCallbackInvoked) { // If the callback hasn't been called yet
+                    if (hasRainingTimes) {
+                        if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule, nonRainingTimes)) {
+                            isCallbackInvoked = true
+                            callback(optimizedSchedule)
+                        }
+                    } else {
+                        if (optimizedSchedule.nullCheck() && qualityCheck(optimizedSchedule)) {
+                            isCallbackInvoked = true
+                            callback(optimizedSchedule)
+                        }
+                    }
+                }
+                timesRan++
+                if(timesRan > maxRetries -1 && !isCallbackInvoked) {
+                    timesRan = 0
+                    secondCall()
+                }
+            }
+        }
+
+    }
+
     /** This function is designed to be the main entry point into the AI call. It will start with a very strict prompt that gives it
      * a lot of information that it needs to parse through. If quality cannot be ensured, it will resort to using less factors in the prompt so it can
      * zero in on what the user needs from the AI
@@ -258,12 +434,6 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
             model = "gpt-4-1106-preview" // This points to the latest (best?) model
         }
 
-        // init hasOptimizedEvents bool
-        var hasOptimizedEvents = false
-        // Check if there are any events that are not allowed to be rescheduled
-        if(events.any { it.isOptimized }) {
-            hasOptimizedEvents = true
-        }
         // Init nonRainingTimes bool
         var hasRainingTimes = true
         // Check if the nonRainingTimes list is 0:00-00:00
@@ -378,11 +548,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                             callback(optimizedSchedule)
                             return@getResponse
                         } else {
-                            if (hasOptimizedEvents && iterations > 2) {
-                                mainCall(iterations, false)
-                            } else {
                                 mainCall(iterations + 1, false)
-                            }
                         }
                     }
                 }
@@ -423,7 +589,14 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                 }
                 //If the response is not an error, then parse the response
                 else {
-                    val optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+                    var optimizedSchedule: OptimizedSchedule = OptimizedSchedule(emptyList(), emptyList())
+                    try {
+                        optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
+                    } catch(e: Exception) {
+                        retry(retries + 1)
+                        return@getResponseBlockedEvents
+                    }
+
                     //If the schedule is not null, then call the callback, else retry
                     if (optimizedSchedule.nullCheck()) {
                         callback(optimizedSchedule)
@@ -525,10 +698,6 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         if (dontRescheduleEvents.size >= events.size) {
             return true
         }
-        //If the optimalEventOrder is in the same order as the events by start time, then it's fully optimized
-        if (events.sortedBy { it.startTime } == optimalEventOrder) {
-            return true
-        }
         return false
     }
 
@@ -538,24 +707,33 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
      */
     private fun qualityCheck(optimizedSchedule: OptimizedSchedule, nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>? = null): Boolean {
         var passedQualityCheck = true
+        val today = events[0].startTime // Get the day of the events by sampling the first event
         // Check that the number of events is the same
         if (optimizedSchedule.events.size != events.size) {
             passedQualityCheck = false
         }
         // Check that the events in events has a respective optimized event in optimizedSchedule.events
-        if (events.any { event -> optimizedSchedule.events.none { it.name == event.name } }) {
-            passedQualityCheck = false
+        for (event in events) {
+            val matchingEvent = optimizedSchedule.events.find { it.name == event.name }
+            if (matchingEvent == null) {
+                passedQualityCheck = false
+            }
         }
         // Check that the old events start and end times don't match the new events start and end times
-        if (optimizedSchedule.oldEvents.all { event ->
-                optimizedSchedule.events.all { it.name == event.name &&
-                        (it.startTime == event.startTime && it.endTime == event.endTime) }
-            }) {
+        var matchingStartAndEndTime = 0
+        for (event in events) {
+            val matchingEvent = optimizedSchedule.events.find { it.name == event.name }
+            if (matchingEvent != null) {
+                if (event.startTime == ParseTime().parseTime(matchingEvent.startTime, today) && event.endTime == ParseTime().parseTime(matchingEvent.endTime, today)) {
+                    matchingStartAndEndTime++
+                }
+            }
+        }
+        if (matchingStartAndEndTime == events.size) {
             passedQualityCheck = false
         }
         // Check that the events and old events have the same value when you subtract the start time from the end time
-        val today = events[0].startTime
-        var count = 0
+        var matchingEventDuration = 0
         for (event in optimizedSchedule.events) {
             val matchingEvent = events.find { it.name == event.name }
             if (matchingEvent != null) {
@@ -564,22 +742,23 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                     val oldDuration = ParseTime().parseTime(oldMatchingEvent.endTime, today).toLocalTime().toSecondOfDay() - ParseTime().parseTime(oldMatchingEvent.startTime, today).toLocalTime().toSecondOfDay()
                     val newDuration = ParseTime().parseTime(oldMatchingEvent.endTime, today).toLocalTime().toSecondOfDay() - ParseTime().parseTime(oldMatchingEvent.startTime, today).toLocalTime().toSecondOfDay()
                     if (oldDuration == newDuration) {
-                        count++
+                        matchingEventDuration++
                     }
                 }
             }
         }
-        if (count != optimizedSchedule.events.size) {
+        if (matchingEventDuration != optimizedSchedule.events.size) {
             passedQualityCheck = false
         }
 
 
 
         // If there are nonRainingTimes, then check that the events that have isOutside are scheduled during the non-raining times
+        var isScheduledDuringNonRainingTimeCount = 0
         if (nonRainingTimes != null) {
             for (event in events) {
-                val matchingEvent = optimizedSchedule.events.find { it.name == event.name }
-                if (event.isOutside && matchingEvent != null) {
+                val matchingEvent = optimizedSchedule.events.find { it.name == event.name } // Find event with matching name
+                if (event.isOutside && matchingEvent != null) { // If the event is outside and there is a matching event
                     // Parse the start and end times of the matching event
                     val timePartsStart = matchingEvent.startTime.split(":")
                     val hourStringStart = timePartsStart[0]
@@ -588,21 +767,31 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                     val hourStringEnd = timePartsEnd[0]
                     val minuteStringEnd = timePartsEnd[1]
                     // Will return true if the event is scheduled during a non-raining time
-                     passedQualityCheck = nonRainingTimes.any {
-                        val startHour = it.first.hour
-                        val startMinute = it.first.minute
-                        val endHour = it.second.hour
-                        val endMinute = it.second.minute
-                        val eventStartHour = hourStringStart.toInt()
-                        val eventStartMinute = minuteStringStart.toInt()
-                        val eventEndHour = hourStringEnd.toInt()
-                        val eventEndMinute = minuteStringEnd.toInt()
-                        return@any eventStartHour >= startHour && eventStartMinute >= startMinute && eventEndHour <= endHour && eventEndMinute <= endMinute
+                    val isScheduledDuringNonRainingTime = nonRainingTimes.any { timeRange ->
+                        val startTime = LocalDateTime.of( // Create a LocalDateTime object for the start time
+                            today.year,
+                            today.month,
+                            today.dayOfMonth,
+                            hourStringStart.toInt(),
+                            minuteStringStart.toInt()
+                        )
+                        val endTime = LocalDateTime.of( // Create a LocalDateTime object for the end time
+                            today.year,
+                            today.month,
+                            today.dayOfMonth,
+                            hourStringEnd.toInt(),
+                            minuteStringEnd.toInt()
+                        )
+                        startTime.isAfter(timeRange.first) && endTime.isBefore(timeRange.second) // Check if the event is scheduled during a non-raining time
                     }
-
-
+                    if (isScheduledDuringNonRainingTime) {
+                        isScheduledDuringNonRainingTimeCount++
+                    }
                 }
                 }
+            if (isScheduledDuringNonRainingTimeCount != events.filter { it.isOutside }.size) {
+                passedQualityCheck = false
+            }
         }
 
         // Check that non-movable events are not moved
@@ -616,6 +805,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         }
 
         // Check that the start time is before the end time
+        // This checks for events that go past midnight
         for (event in optimizedSchedule.events) {
             if (event.startTime >= event.endTime) {
                 passedQualityCheck = false

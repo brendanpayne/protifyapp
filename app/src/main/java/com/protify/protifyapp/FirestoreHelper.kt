@@ -2,7 +2,6 @@ package com.protify.protifyapp
 
 import OptimizedSchedule
 import android.util.Log
-import com.google.android.gms.tasks.Task
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.MetadataChanges
 import com.google.firebase.firestore.ktx.firestore
@@ -46,8 +45,8 @@ class FirestoreHelper() {
     private fun createUserDocument(uid: String, dateCreated: Long, callback: (Boolean) -> Unit) {
         // [START add_document]
         val user = hashMapOf(
-            "dateCreated" to dateCreated,
-            "uid" to uid,
+            "homeAddress" to "",
+            "use4" to false,
         )
         db.collection("users").document(uid)
             .set(user)
@@ -492,6 +491,7 @@ class FirestoreHelper() {
             }
 
     }
+    @Deprecated ("success and failure listeners are not working properly... Doesn't call back")
     /** Delete an event by ID
      * @param uid: The user's uid
      * @param day: The day of the event
@@ -967,7 +967,7 @@ class FirestoreHelper() {
     }
     /** This function will add the AI generated event to the database and set the isUserAccepted value to true, then delete the old event
      * @param uid: The user's uid
-     * @param event: The event to be accepted
+     * @param event: The event to be accepted THIS MUST BE THE AI GENERATED EVENT, NOT THE USER GENERATED EVENT
      * @param callback: A callback function that will return true if the event was accepted successfully, and false if it was not
      */
     fun acceptAIGeneratedEvent(
@@ -980,10 +980,20 @@ class FirestoreHelper() {
         event.isUserAccepted = true
         createEvent(uid, event) { createEvent ->
             if (createEvent) {
-               // If the event is successfully imported, then delete the old event
+               // If the event is successfully imported, then delete the old event AI generated event
+                event.isUserAccepted = false
                 deleteEvent(uid, event.startTime.dayOfMonth.toString(), event.startTime.month.toString(), event.startTime.year.toString(), event) { deleteEvent ->
                     // If the event is successfully deleted, return true
                     if (deleteEvent) {
+                        event.isAiSuggestion = false
+                        // Delete the old event
+                        deleteEvent(uid, event.startTime.dayOfMonth.toString(), event.startTime.month.toString(), event.startTime.year.toString(), event) { deleteUserEvent ->
+                            if (deleteUserEvent) {
+                                callback(true)
+                            } else {
+                                callback(false)
+                            }
+                        }
                         callback(true)
                     } else {
                         callback(false)
@@ -1076,34 +1086,59 @@ class FirestoreHelper() {
         }
 
     }
-    /** This asynchronous function will get the user's home address from the database
+   /** This function will get the user's profile information from the Firestore database
      * @param uid: The user's uid
-     * @return The user's home address. If the user does not have a home address, return "No home address found". If the user does not exist, return an empty string
+     * @return A Pair containing the user's home address and the use4 value
      */
-    suspend fun getUserHomeAddress(uid: String): String = suspendCoroutine { continuation ->
+    suspend fun getUserProfileInfo(uid: String): Pair<String, Boolean> = suspendCoroutine {continuation ->
         db.collection("users").document(uid).get()
             .addOnSuccessListener { document ->
                 if (document != null) {
-                    if (document.data?.get("homeAddress") != null) {
-                        // simulate a delay of 15 seconds
-                        continuation.resume(document.data?.get("homeAddress").toString())
-                    } else {
-                        continuation.resume("No home address found")
-                    }
+                        val homeAddress = document.data?.get("homeAddress") as? String ?: ""
+                        val use4 = document.data?.get("use4") as? Boolean ?: false
+                        continuation.resume(Pair(homeAddress, use4))
                 } else {
-                    continuation.resume("No home address found")
+                    continuation.resume(Pair("", false))
                 }
             }
             .addOnFailureListener {
-                continuation.resume("")
+                continuation.resume(Pair("", false))
             }
     }
-    /** This function sets the user's home address in their root document in the database
+    /** This function will set the user's profile information in the Firestore database
      * @param uid: The user's uid
      * @param homeAddress: The user's home address
-     * @return A task that will return true if the home address was set successfully, and false if it was not
+     * @param use4: The use4 value
+     * @return A boolean value indicating whether the user's profile information was set successfully
      */
-    fun setUserHomeAddress(uid: String, homeAddress: String): Task<Void> {
-        return db.collection("users").document(uid).set(hashMapOf("homeAddress" to homeAddress))
+    suspend fun setUserProfileInfo(uid: String, homeAddress: String?, use4: Boolean?): Boolean = suspendCoroutine { continuation ->
+        val userDocRef = db.collection("users").document(uid)
+
+        userDocRef.get().addOnSuccessListener { document ->
+            if (document != null) {
+                val currentHomeAddress = document.data?.get("homeAddress") as? String ?: ""
+                val currentUse4 = document.data?.get("use4") as? Boolean ?: false
+
+                val updates = hashMapOf<String, Any>(
+                    "homeAddress" to (homeAddress ?: currentHomeAddress),
+                    "use4" to (use4 ?: currentUse4)
+                )
+
+                userDocRef.set(updates)
+                    .addOnSuccessListener {
+                        Log.d("Firestore", "DocumentSnapshot successfully updated!")
+                        continuation.resume(true)
+                    }
+                    .addOnFailureListener { e ->
+                        Log.w("Firestore", "Error updating document", e)
+                        continuation.resume(false)
+                    }
+            } else {
+                continuation.resume(false)
+            }
+        }.addOnFailureListener { e ->
+            Log.w("Firestore", "Error getting document", e)
+            continuation.resume(false)
+        }
     }
 }

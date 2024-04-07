@@ -1,5 +1,6 @@
 package com.protify.protifyapp.features.calendar
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -48,7 +50,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.protify.protifyapp.features.events.EventView
+import com.protify.protifyapp.HomeActivity
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -93,7 +99,10 @@ class CalendarView(private val navController: NavController) {
                         onClick = {
                             onPreviousClickListener(data.startDate.date.minusWeeks(1)) // Go to the previous week
                         },
-                        modifier = Modifier.size(48.dp).padding(8.dp).align(Alignment.CenterVertically)
+                        modifier = Modifier
+                            .size(48.dp)
+                            .padding(8.dp)
+                            .align(Alignment.CenterVertically)
                     ) {
                         Surface(
                             shape = CircleShape,
@@ -110,7 +119,10 @@ class CalendarView(private val navController: NavController) {
                         onClick = {
                             onNextClickListener(data.startDate.date.plusWeeks(0)) // Go to the next week
                         },
-                        modifier = Modifier.size(48.dp).padding(8.dp).align(Alignment.CenterVertically)
+                        modifier = Modifier
+                            .size(48.dp)
+                            .padding(8.dp)
+                            .align(Alignment.CenterVertically)
                     ) {
                         Surface(
                             shape = CircleShape,
@@ -257,7 +269,6 @@ class CalendarView(private val navController: NavController) {
                                         }
                                     }
                                 }
-
                             },
                             confirmButton = {
                                 Button(onClick = { showDialog = false }) {
@@ -330,7 +341,9 @@ class CalendarView(private val navController: NavController) {
     @Composable
     fun Calendar(context: Context, navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
+        val user = FirebaseLoginHelper().getCurrentUser()
         //val selectedTabIndex by remember { mutableStateOf(0) }
+        var events by remember { mutableStateOf(listOf<Event>()) }
         var isMonthView by remember { mutableStateOf(false) }
         var calendarUiModel by remember {
             mutableStateOf(
@@ -341,6 +354,19 @@ class CalendarView(private val navController: NavController) {
             )
         }
         var isLoadingEvents by remember { mutableStateOf(true) }
+        var isAiCompleted by remember { mutableStateOf(false) }
+        var showAiEvents by remember { mutableStateOf(false) } // THis is for the AI event toggle button
+        val date = calendarUiModel.selectedDate
+        dataSource.getFirestoreEventsAndIds(
+            FirebaseLoginHelper().getCurrentUser()!!.uid,
+            FirebaseLoginHelper().getCurrentUser()?.metadata!!.creationTimestamp,
+            date.date.month.toString(),
+            date.date.dayOfMonth.toString(),
+            date.date.year.toString()
+        ) { fetchedEvents ->
+                events = fetchedEvents
+            isLoadingEvents = false
+        }
 
         Column(
             modifier = Modifier.fillMaxSize()
@@ -434,6 +460,21 @@ class CalendarView(private val navController: NavController) {
         }
         //fun navigateToEventDetails(navController: NavHostController, calendarUiModel: CalendarUiModel) {
         //    navController.navigate("eventDetails/${calendarUiModel.selectedDate.date}/${calendarUiModel.selectedDate.events[0].id}")
+    }
+    @Composable
+    fun startAiButton(onAddEventClickListener: () -> Unit) {
+    // Add AI Button
+        Button(
+            onClick = onAddEventClickListener,
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+        ) {
+            Text("Optimize Schedule")
+
+        }
+
+
     }
 }
 
