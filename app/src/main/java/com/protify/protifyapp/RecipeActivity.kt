@@ -9,15 +9,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.AlertDialog
-import androidx.compose.material.Button
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.DropdownMenu
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -94,12 +94,13 @@ class RecipeActivity {
                             .align(Alignment.BottomStart)
                     ) {
                         diets.forEach { diet ->
-                            DropdownMenuItem(onClick = {
-                                selectedDiet = diet.toString()
-                                expanded = false
-                            }) {
-                                Text(text = diet.toString())
-                            }
+                            DropdownMenuItem(
+                                text = {Text(text = diet.toString())},
+                                onClick = {
+                                    selectedDiet = diet.toString()
+                                    expanded = false
+                                }
+                            )
                         }
                     }
                 }
