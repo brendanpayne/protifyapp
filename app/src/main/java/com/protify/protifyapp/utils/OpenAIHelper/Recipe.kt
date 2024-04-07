@@ -20,16 +20,16 @@ class Recipe {
     )
 
     // Diet struct
-    enum class Diet {
-        Balanced,
-        HighProtein,
-        LowCarb,
-        LowFat,
-        Paleo,
-        Vegan,
-        Vegetarian,
-        Whole30,
-        Ketogenic
+    enum class Diet(val dietString: String) {
+        Balanced(""),
+        HighProtein("high-protein"),
+        LowCarb("low-carb"),
+        LowFat("low-fat"),
+        Paleo("paleo"),
+        Vegan("vegan"),
+        Vegetarian("vegetarian"),
+        Whole30("whole30"),
+        Ketogenic("keto")
     }
     private val model = "gpt-3.5-turbo-0125"
     //GPT 4 goated. GPT 3.5 is not reorganizing the shcedule properly, but GPT 4 is
@@ -58,19 +58,6 @@ class Recipe {
      */
     fun getRecipe(diet: Diet, time: Int, ingredients: List<String>, excludeIngredients: List<String>? = null, callback: (String) -> Unit) {
 
-        // Convert diet to string
-        val dietString = when (diet) {
-            Diet.Balanced -> "" // No diet specified
-            Diet.HighProtein -> "high-protein"
-            Diet.LowCarb -> "low-carb"
-            Diet.LowFat -> "low-fat"
-            Diet.Paleo -> "paleo"
-            Diet.Vegan -> "vegan"
-            Diet.Vegetarian -> "vegetarian"
-            Diet.Whole30 -> "whole30"
-            Diet.Ketogenic -> "keto"
-        }
-
         // Convert ingredients to string
         val ingredientsString = ingredients.joinToString(", ")
         // Convert excludeIngredients to string if not null
@@ -87,7 +74,7 @@ class Recipe {
                 " lastly, you will have an object called recipe_name and you will provide the name of the recipe."
 
         // Build user content
-        val userContent = "I want a $dietString recipe that includes $ingredientsString ${if (excludeIngredientsString.isNotEmpty()) "but excludes $excludeIngredientsString" else ""} and takes $time minutes to make."
+        val userContent = "I want a ${diet.dietString} recipe that includes $ingredientsString ${if (excludeIngredientsString.isNotEmpty()) "but excludes $excludeIngredientsString" else ""} and takes $time minutes to make."
 
         // Create request
         val request = Request(model, response_format, systemContent, userContent)
