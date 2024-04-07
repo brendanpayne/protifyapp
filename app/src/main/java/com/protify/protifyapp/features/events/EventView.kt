@@ -205,26 +205,6 @@ class EventView (private val navController: NavController) {
             ) {
                 EventHeader()
                 EventList(data, isLoadingEvents)
-                /*  Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .weight(1f, false)
-                ){
-                    Button(
-                        onClick = {
-                            navigateToAddEvent()
-                        },
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth()
-                    ) {
-                        Text("Add Event")
-                    }
-                }
-            }
-            */
-
             }
         }
     }

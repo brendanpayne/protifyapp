@@ -12,7 +12,7 @@ class CalendarUiModel(
     val endDate: Date = visibleDates.last()
     data class Date(
         val date: LocalDate,
-        val isSelected: Boolean,
+        var isSelected: Boolean,
         val isToday: Boolean,
         var hasEvents: Boolean,
     ) {
