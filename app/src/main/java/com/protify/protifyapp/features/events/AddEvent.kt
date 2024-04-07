@@ -527,13 +527,9 @@ open class AddEvent {
 
     @Composable
     fun EventDateItem(datePickerDialog: DatePickerDialog, dateError: Boolean) {
-        var selectedDate by remember { mutableStateOf("") }
-        var selectedMonth by remember { mutableIntStateOf(0) }
-        var selectedDayOfMonth by remember { mutableIntStateOf(0) }
-        var selectedYear by remember { mutableIntStateOf(0) }
         OutlinedTextField(
-            value = selectedDate,
-            onValueChange = { selectedDate = it },
+            value = "${selectedDateGlobal.monthValue}/${selectedDateGlobal.dayOfMonth}/${selectedDateGlobal.year}",
+            onValueChange = {  }, // This is a read-only field
             placeholder = { Text("Date") },
             modifier = Modifier
                 .fillMaxWidth(1f)
@@ -544,10 +540,6 @@ open class AddEvent {
                     onClick = {
                         datePickerDialog.show()
                         datePickerDialog.setOnDateSetListener { _, year, month, dayOfMonth ->
-                            selectedDate = "$month/$dayOfMonth/$year"
-                            selectedMonth = month + 1
-                            selectedDayOfMonth = dayOfMonth
-                            selectedYear = year
                             selectedDateGlobal = LocalDateTime.of(year, month + 1, dayOfMonth, 0, 0) // Store the selected date for later use
                             // Clear the time if the user changes the date
                             formattedStartTime = ""
@@ -567,15 +559,16 @@ open class AddEvent {
                 )
             },
             colors = OutlinedTextFieldDefaults.colors(
-                disabledBorderColor = if (selectedDate == "" && dateError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                //disabledBorderColor = if (selectedDate == "" && dateError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                disabledBorderColor = MaterialTheme.colorScheme.outline,
             ),
-            supportingText = {
-                if (selectedDate == "" && !dateError) {
-                    Text(
-                        text = "Required",
-                        color = MaterialTheme.colorScheme.outline,
-                    )
-                }
+            supportingText = { // Keeping this because removing it messes up padding
+//                if (selectedDate == "" && !dateError) {
+//                    Text(
+//                        text = "Required",
+//                        color = MaterialTheme.colorScheme.outline,
+//                    )
+//                }
             }
         )
     }
