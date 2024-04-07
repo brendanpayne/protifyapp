@@ -1,12 +1,22 @@
 package com.protify.protifyapp
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
@@ -36,46 +46,51 @@ class AccountActivity {
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.logo),
+                            contentDescription = "Logo",
+                            modifier = Modifier.padding(16.dp)
+                        )
                         Text(
                             text = "Protify",
                             modifier = Modifier.padding(16.dp).fillMaxWidth(),
                             style = MaterialTheme.typography.headlineLarge,
                             textAlign = TextAlign.Center,
                         )
-                        Row (
+                        Text(
+                            text = "The AI-powered calendar app",
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            style = MaterialTheme.typography.labelLarge,
+                            textAlign = TextAlign.Center,
+                        )
+
+                        Button(
+                            onClick = { navController.navigate("register") },
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ){
-                            Button(
-                                onClick = { navController.navigate("register") },
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .weight(1f)
-                            ) {
-                                Text("New User")
-                            }
-                            Button(
-                                onClick = { navController.navigate("login") },
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .weight(1f)
-                            ) {
-                                Text("Existing User")
-                            }
+                                .padding(16.dp)
+                                .fillMaxWidth()
+                        ) {
+                            Text("New User")
+                        }
+                        Button(
+                            onClick = { navController.navigate("login") },
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth()
+                        ) {
+                            Text("Existing User")
                         }
                     }
                 }
                 composable("register") {
-                    RegisterActivity().LandingPage() {
+                    RegisterActivity().LandingPage(navController) {
                         LoginActivity().navigateToHomePage(
                             navController = navController
                         )
                     }
                 }
                 composable("login") {
-                    LoginActivity().LoginPage {
+                    LoginActivity().LoginPage(navController) {
                         LoginActivity().navigateToHomePage(
                             navController = navController
                         )
@@ -104,6 +119,9 @@ class AccountActivity {
 
                 composable("privacyLocation") {
                     PrivacyActivity().PrivacyPage(navController)
+                }
+                composable("recipeGenerator") {
+                    RecipeActivity().RecipePage(navController)
                 }
                 /*
                 composable("eventDetails/{date}/{eventId}") { backStackEntry ->
