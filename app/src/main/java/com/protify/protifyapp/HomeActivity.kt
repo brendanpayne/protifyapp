@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,6 +93,7 @@ class HomeActivity {
         val firestoreHelper = FirestoreHelper()
         val user = FirebaseLoginHelper().getCurrentUser()
         val context = LocalContext.current
+
 
         // Calculate the time of day
         val timeOfDay = when (java.time.LocalTime.now().hour) {
@@ -165,28 +165,35 @@ class HomeActivity {
                     Column {
                         var greeting by remember { mutableStateOf(timeOfDay.displayName) }
                         val defaultName = "Guest"
-                        val displayName = user?.displayName ?: defaultName
-                        greeting = "${timeOfDay.displayName}, $displayName!"
-                        if (user?.displayName != null || user?.displayName != "") {
-                            greeting = "${timeOfDay.displayName}, ${user?.displayName}!"
+                        if (user != null) {
+                            if (user.displayName == null || user.displayName == "") {
+                                greeting = "${timeOfDay.displayName}, $defaultName!"
+                            } else {
+                                greeting = "${timeOfDay.displayName}, ${user.displayName}!"
+                            }
+                        } else {
+                            greeting = "${timeOfDay.displayName}, $defaultName!"
                         }
-                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.CenterEnd) {
+
+                        Box(modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp), contentAlignment = Alignment.CenterEnd) {
                             Text(
                                 text = greeting,
                                 style = MaterialTheme.typography.h6
                             )
                         }
-                        CalendarView().Calendar(navigateToAddEvent)
+                        CalendarView().Calendar(context, navigateToAddEvent)
                     }
 
                     SettingsIconButton(onClick = { scope.launch { scaffoldState.drawerState.open() } }, alignment = Alignment.TopStart)
 
                     val networkManager = NetworkManager(context)
 
-                    val isConnected by remember { mutableStateOf(false) }
-                    LaunchedEffect(networkManager) {
-                        networkManager.startListening()
-                    }
+//                    val isConnected by remember { mutableStateOf(false) }
+//                    LaunchedEffect(networkManager) {
+//                        networkManager.startListening()
+//                    }
 //                    LaunchedEffect(isConnected) {
 //                        networkManager.setNetworkChangeListener {
 //                            if (it) {
@@ -255,14 +262,14 @@ class HomeActivity {
     suspend fun optimizeScheduleForToday(uid: String, today: LocalDateTime): Boolean {
         val result = CompletableDeferred<Boolean>()
         CoroutineScope(Dispatchers.IO).launch {
-            // Get user's home address
-            val homeAddress = FirestoreHelper().getUserHomeAddress(uid)
-            if (homeAddress == "" || homeAddress == "No home address found") {
+            // Get user's home address and AI preferences
+            val profileInfo = FirestoreHelper().getUserProfileInfo(uid)
+            if (profileInfo.first == "") {
                 result.complete(false)
                 return@launch
             }
             // Optimize schedule for today
-            GetAISchedule(uid, homeAddress).getOptimizedSchedule(true, today) { success -> // For now, do one day in advance
+            GetAISchedule(uid, profileInfo.first).getOptimizedSchedule(profileInfo.second, today) { success -> // If the user hasn't set their use4 preferences, it will use 3.5
                 result.complete(success)
             }
         }

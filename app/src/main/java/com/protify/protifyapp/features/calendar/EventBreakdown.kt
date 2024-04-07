@@ -98,18 +98,20 @@ class EventBreakdown {
         year: String = "",
         showTimes: Boolean = true
     ) {
+        // Sort events by start time
         val context: Context = LocalContext.current
-        val timeSlots = if (eventList.isEmpty()) createListTimeSlot() else createListTimeSlot(eventList)
+        val timeSlots = createListTimeSlot(eventList)
         val scaledValue = scale.toInt()
         timeSlots.maxOfOrNull { it.height } ?: 0f
         val scrollState = rememberScrollState()
         val layers = timeSlots.map { it.layer }.distinct()
+        val sortedEventList = eventList.sortedBy { convertTimeToFloat(it.startTime) } // Sort events by start time to start on the right scroll position
 
         val startTime = if (eventList.isNotEmpty())
-            convertTimeToFloat(eventList[0].startTime) else 9f // default 0900
+            convertTimeToFloat(sortedEventList[0].startTime) else 9f // default 0900
         val startPosition = startTime * 60 * scaledValue
-        LaunchedEffect(key1 = true) {
-            scrollState.scrollTo(startPosition.toInt())
+        LaunchedEffect(key1 = day, key2 = month, key3 = year) {// scroll to start position when the user changes the day
+            scrollState.scrollTo(startPosition.toInt() * 2) // This scrolls the screen far enough to see the first event
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
@@ -127,8 +129,9 @@ class EventBreakdown {
 //            val layer = calculateLayer(event, events)
 //            val layer = events.indexOf(event)
             val layer = 0
+            val color = if (event.isAiSuggestion == true) Color.Red else Color.LightGray
             val height = (convertTimeToFloat(event.endTime) - convertTimeToFloat(event.startTime))
-            timeSlots.add(TimeSlot(event.startTime, event.title, Color.LightGray, height, event.endTime, layer, event.id))
+            timeSlots.add(TimeSlot(event.startTime, event.title, color, height, event.endTime, layer, event.id))
         }
 
         return timeSlots
@@ -240,23 +243,29 @@ class EventBreakdown {
                 .height((durationInMinutes * scale).dp)
                 .padding(vertical = 1.dp)
                 .clickable {
-                    FirestoreHelper().getEvent(
-                        uid,
-                        day,
-                        month,
-                        year,
-                        timeSlot.text
-                    ) { id, _ ->
-                        if (id == null) {
-                            Toast
-                                .makeText(
-                                    context,
-                                    "Event not found",
-                                    Toast.LENGTH_SHORT
-                                )
-                                .show()
-                        }
-                    }
+                           FirestoreHelper().getEventsAndIds(uid, day, month, year) { map ->
+                                 // Find the matching event
+                               val event = map.values.find { it == timeSlot.id }
+                               // map the id to the event
+                               if (event != null) {
+                                   // Navigate to the event details screen
+                                   Toast.makeText(context, "Event: ${event} found!", Toast.LENGTH_SHORT).show()
+                                   FirestoreHelper().deleteEventById(uid, month, year, event) {
+                                        if (it) {
+                                             Toast.makeText(context, "Event deleted!", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                "Event not deleted!",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                   }
+                               } else {
+                                      Toast.makeText(context, "Event not found!", Toast.LENGTH_SHORT).show()
+                               }
+
+                           }
                 },
             colors = CardDefaults.elevatedCardColors(
                 containerColor = layerColor
@@ -301,7 +310,7 @@ class EventBreakdown {
         year: String,
         scrollState: ScrollState
     ) {
-        val layerColor = when (layer) {
+        var layerColor = when (layer) {
             0 -> MaterialTheme.colorScheme.primary
             1 -> MaterialTheme.colorScheme.secondary
             else -> MaterialTheme.colorScheme.error
@@ -318,11 +327,11 @@ class EventBreakdown {
                 modifier = Modifier.fillMaxWidth(0.8f),
                 horizontalAlignment = Alignment.End
             ) {
+                val timeSlots = timeSlots.sortedBy { convertTimeToFloat(it.startTime) }
                 val startTimeMinutes = (convertTimeToFloat(timeSlots[0].startTime)) * 60
                 Spacer(modifier = Modifier.height(((30 + startTimeMinutes) * scale).dp)) // top padding
                 val displayedEvents = mutableMapOf<String, Int>()
-                // sort time slots by start time
-                val timeSlots = timeSlots.sortedBy { convertTimeToFloat(it.startTime) }
+
                 for (i in timeSlots.indices) {
                     val timeSlot = timeSlots[i]
 

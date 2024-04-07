@@ -1,4 +1,6 @@
 package com.protify.protifyapp.features.calendar
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -45,7 +48,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.protify.protifyapp.HomeActivity
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -90,7 +97,10 @@ class CalendarView {
                         onClick = {
                             onPreviousClickListener(data.startDate.date.minusWeeks(1)) // Go to the previous week
                         },
-                        modifier = Modifier.size(48.dp).padding(8.dp).align(Alignment.CenterVertically)
+                        modifier = Modifier
+                            .size(48.dp)
+                            .padding(8.dp)
+                            .align(Alignment.CenterVertically)
                     ) {
                         Surface(
                             shape = CircleShape,
@@ -107,7 +117,10 @@ class CalendarView {
                         onClick = {
                             onNextClickListener(data.startDate.date.plusWeeks(0)) // Go to the next week
                         },
-                        modifier = Modifier.size(48.dp).padding(8.dp).align(Alignment.CenterVertically)
+                        modifier = Modifier
+                            .size(48.dp)
+                            .padding(8.dp)
+                            .align(Alignment.CenterVertically)
                     ) {
                         Surface(
                             shape = CircleShape,
@@ -324,8 +337,9 @@ class CalendarView {
         return allDates.map { CalendarUiModel.Date(it, false, it.isEqual(dataSource.today), false) }
     }
     @Composable
-    fun Calendar(navigateToAddEvent: () -> Unit) {
+    fun Calendar(context: Context, navigateToAddEvent: () -> Unit) {
         val dataSource = CalendarDataSource()
+        val user = FirebaseLoginHelper().getCurrentUser()
         //val selectedTabIndex by remember { mutableStateOf(0) }
         var events by remember { mutableStateOf(listOf<Event>()) }
         var isMonthView by remember { mutableStateOf(false) }
@@ -338,6 +352,8 @@ class CalendarView {
             )
         }
         var isLoadingEvents by remember { mutableStateOf(true) }
+        var isAiCompleted by remember { mutableStateOf(false) }
+        var showAiEvents by remember { mutableStateOf(false) } // THis is for the AI event toggle button
         val date = calendarUiModel.selectedDate
         dataSource.getFirestoreEventsAndIds(
             FirebaseLoginHelper().getCurrentUser()!!.uid,
@@ -424,8 +440,6 @@ class CalendarView {
 //                            }
 //                            isLoadingEvents = false
 //                        }
-
-
                         val finalStartDate =
                             if (isMonthView) date.date else calendarUiModel.startDate.date
                         calendarUiModel = dataSource.getData(
@@ -439,26 +453,87 @@ class CalendarView {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(16.dp)
+                    .height(100.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface,
+                    )
+            ) {
+                // Toggle button for AI events
+                Checkbox(
+                    checked = showAiEvents,
+                    onCheckedChange = {
+                        showAiEvents = it
+                    },
+                    modifier = Modifier.align(Alignment.CenterStart)
+                )
+                startAiButton {
+                    CoroutineScope(Dispatchers.Main).launch  {
+                        Toast.makeText(context, "Optimizing Schedule", Toast.LENGTH_SHORT).show()
+                        isAiCompleted = HomeActivity().optimizeScheduleForToday(user!!.uid, date.date.atStartOfDay())
+                        if (isAiCompleted) {
+                            Toast.makeText(context, "AI Optimization Completed", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "AI Optimization Failed", Toast.LENGTH_SHORT).show()
+                        }
+
+
+                    }
+                }
+
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
                     .weight(if (isMonthView) 0.15f else 1f)
                     .background(
                         color = MaterialTheme.colorScheme.surface,
                     )
             ) {
                 val sortedEvents = events.sortedBy { it.startTime }
+                val aiEvents = sortedEvents.filter { it.isAiSuggestion }
+                val userEvents = sortedEvents.filter { !it.isAiSuggestion }
                 if (!isMonthView) { // Only shows the EventCard in week view
-                    EventBreakdown().DailySchedule(
-                        scale = 1.0,
-                        eventList = sortedEvents,
-                        uid = FirebaseLoginHelper().getCurrentUser()?.uid ?: "",
-                        day = date.date.dayOfMonth.toString(),
-                        month = date.date.month.toString(),
-                        year = date.date.year.toString()
-                    )
+                    if (showAiEvents) {
+                        EventBreakdown().DailySchedule(
+                            scale = 1.0,
+                            eventList = aiEvents,
+                            uid = FirebaseLoginHelper().getCurrentUser()?.uid ?: "",
+                            day = date.date.dayOfMonth.toString(),
+                            month = date.date.month.toString(),
+                            year = date.date.year.toString()
+                        )
+
+                    } else {
+                        EventBreakdown().DailySchedule(
+                            scale = 1.0,
+                            eventList = userEvents,
+                            uid = FirebaseLoginHelper().getCurrentUser()?.uid ?: "",
+                            day = date.date.dayOfMonth.toString(),
+                            month = date.date.month.toString(),
+                            year = date.date.year.toString()
+                        )
+                    }
                 }
             }
         }
         //fun navigateToEventDetails(navController: NavHostController, calendarUiModel: CalendarUiModel) {
         //    navController.navigate("eventDetails/${calendarUiModel.selectedDate.date}/${calendarUiModel.selectedDate.events[0].id}")
+    }
+    @Composable
+    fun startAiButton(onAddEventClickListener: () -> Unit) {
+    // Add AI Button
+        Button(
+            onClick = onAddEventClickListener,
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth()
+        ) {
+            Text("Optimize Schedule")
+
+        }
+
+
     }
 }
 

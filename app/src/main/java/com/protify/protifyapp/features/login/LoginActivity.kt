@@ -29,6 +29,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.protify.protifyapp.FirestoreHelper
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 class LoginActivity {
     private var email by mutableStateOf("")
@@ -97,7 +100,20 @@ class LoginActivity {
                                     // Sign in success, update UI with the signed-in user's information
                                     task.result?.user?.let {
                                         //navController.navigate("home")
-                                        navigateToHomePage()
+                                        val user = FirebaseLoginHelper().getCurrentUser()
+                                        if (user != null) {
+                                            FirestoreHelper().userExists(user.uid, LocalDateTime.now().toInstant(
+                                                ZoneOffset.UTC).epochSecond) { exists ->
+                                                if (exists) {
+                                                    navigateToHomePage()
+                                                } else {
+                                                    Toast.makeText(context, "Error making user document", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+
+                                        } else {
+                                            Toast.makeText(context, "Null user", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
                                 } else {
                                     Toast.makeText(

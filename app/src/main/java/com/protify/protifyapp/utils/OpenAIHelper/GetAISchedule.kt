@@ -111,7 +111,7 @@ class GetAISchedule(uid: String, homeAddress: String) {
                                             month = today.monthValue.toString(),
                                             optimalEventOrder = optimalOrder,
                                             travelTime = drivingTimes.toMutableList(),
-                                            year = today.year.toString()).makeCall(use4 = use4, nonRainingTimes = nonRainingTimes) { optimizedEvents ->
+                                            year = today.year.toString()).makeCallParallel(use4 = use4, nonRainingTimes = nonRainingTimes) { optimizedEvents ->
                                                 if (optimizedEvents.events.isNotEmpty() && optimizedEvents.oldEvents.isNotEmpty()) {
                                                     // Store the events into the database
                                                     FirestoreHelper().importAIGeneratedEvent(optimizedSchedule = optimizedEvents, today, uid) { didSucceed ->
