@@ -23,6 +23,10 @@ class MainActivity : ComponentActivity() {
                 color = MaterialTheme.colorScheme.primary,
                 darkIcons = false
             )
+            controller.setNavigationBarColor(
+                color = MaterialTheme.colorScheme.primary,
+                darkIcons = false
+            )
             ProtifyTheme {
                 AccountActivity().AccountPage()
             }
