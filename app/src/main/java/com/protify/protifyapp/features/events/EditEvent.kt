@@ -21,8 +21,6 @@ class EditEvent (private val eventToEdit: FirestoreEvent) : AddEvent() {
     }
 
     override fun saveEvent(
-        isOutside: Boolean,
-        isOptimized: Boolean,
         user: String?,
         navigateBack: () -> Unit,
         context: Context
@@ -63,13 +61,11 @@ class EditEvent (private val eventToEdit: FirestoreEvent) : AddEvent() {
     @Composable
     override fun EventCreateItem(
         buttonString: String,
-        isOutside: Boolean,
-        isOptimized: Boolean,
         user: String?,
         navigateBack: () -> Unit,
         context: Context
     ) {
-        super.EventCreateItem ("Save Changes", isOutside, isOptimized, user, navigateBack, context)
+        super.EventCreateItem ("Save Changes", user, navigateBack, context)
     }
 
     @Composable
@@ -84,7 +80,10 @@ class EditEvent (private val eventToEdit: FirestoreEvent) : AddEvent() {
             importance = event.importance!!
             attendees = event.attendees!!
             isOutside = event.isOutside
-            isOptimized = event.isOptimized
+            isOptimized = !(event.isOptimized)
+            selectedDateGlobal= event.startTime.toLocalDate().atStartOfDay() // Put in date picker
+            formattedStartTime(event.startTime)
+            formattedEndTime(event.endTime)
         }
 
         super.AddEventPage(navigateBack)

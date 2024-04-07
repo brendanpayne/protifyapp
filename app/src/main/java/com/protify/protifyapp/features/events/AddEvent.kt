@@ -137,7 +137,7 @@ open class AddEvent {
         formattedEndTime(newEndTime)
     }
 
-    private fun formattedStartTime(startTime: LocalDateTime) {
+    fun formattedStartTime(startTime: LocalDateTime) {
         val year = startTime.year
         val month = startTime.monthValue
         val dayOfMonth = startTime.dayOfMonth
@@ -173,7 +173,7 @@ open class AddEvent {
             }
         }
     }
-    private fun formattedEndTime(endTime: LocalDateTime) {
+    fun formattedEndTime(endTime: LocalDateTime) {
         val year = endTime.year
         val month = endTime.monthValue
         val dayOfMonth = endTime.dayOfMonth
@@ -460,13 +460,11 @@ open class AddEvent {
                 }
                 item {
                     EventOutdoorsItem(
-                        isOutside = isOutside,
                         onCheckedChange = { isChecked -> updateIsOutside(isChecked) }
                     )
                 }
                 item {
                     EventAIItem(
-                        isOptimized = isOptimized,
                         onCheckedChange = { isChecked -> updateIsOptimized(isChecked) }
                     )
                 }
@@ -848,7 +846,7 @@ open class AddEvent {
     }
 
     @Composable
-    fun EventOutdoorsItem(isOutside: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    fun EventOutdoorsItem(onCheckedChange: (Boolean) -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth(1f)
@@ -879,7 +877,8 @@ open class AddEvent {
     }
 
     @Composable
-    fun EventAIItem(isOptimized: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    fun EventAIItem(onCheckedChange: (Boolean) -> Unit) {
+
         Row(
             modifier = Modifier
                 .fillMaxWidth(1f)
@@ -1020,8 +1019,6 @@ open class AddEvent {
     @Composable
     open fun EventCreateItem(
         buttonText: String = "Create Event",
-        isOutside: Boolean,
-        isOptimized: Boolean,
         user: String?,
         navigateBack: () -> Unit,
         context: Context
@@ -1031,7 +1028,7 @@ open class AddEvent {
                 .fillMaxSize()
                 .padding(start= 16.dp, end = 16.dp, bottom = 16.dp),
             onClick = {
-                saveEvent(isOutside, isOptimized, user, navigateBack, context)
+                saveEvent(user, navigateBack, context)
             },
             colors = ButtonDefaults.elevatedButtonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -1047,8 +1044,6 @@ open class AddEvent {
     }
 
     open fun saveEvent(
-        isOutside: Boolean,
-        isOptimized: Boolean,
         user: String?,
         navigateBack: () -> Unit,
         context: Context
@@ -1188,7 +1183,7 @@ open class AddEvent {
         Column {
             AddEventHeader(title = "Add New Event", onBackClick = navigateBack)
             AddEventUI(navigateBack)
-            EventCreateItem("Create Event", isOutside, isOptimized, user, navigateBack, context)
+            EventCreateItem("Create Event", user, navigateBack, context)
         }
     }
 
