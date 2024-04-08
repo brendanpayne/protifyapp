@@ -359,16 +359,6 @@ class CalendarView(private val navController: NavController) {
         var showAiEvents by remember { mutableStateOf(false) } // THis is for the AI event toggle button
         val date = calendarUiModel.selectedDate
         val user = FirebaseLoginHelper().getCurrentUser()
-        dataSource.getFirestoreEventsAndIds(
-            user!!.uid,
-            user.metadata!!.creationTimestamp,
-            date.date.month.toString(),
-            date.date.dayOfMonth.toString(),
-            date.date.year.toString()
-        ) { fetchedEvents ->
-                events = fetchedEvents
-            isLoadingEvents = false
-        }
 
         fetchEvents(
             scope = rememberCoroutineScope(),
@@ -405,7 +395,7 @@ class CalendarView(private val navController: NavController) {
 
                             isLoadingEvents = true
                             dataSource.getFirestoreEventsAndIds(
-                                user.uid,
+                                user!!.uid,
                                 user.metadata!!.creationTimestamp,
                                 date.date.month.toString(),
                                 date.date.dayOfMonth.toString(),
@@ -442,7 +432,7 @@ class CalendarView(private val navController: NavController) {
                         CoroutineScope(Dispatchers.Main).launch  {
                             Toast.makeText(context, "Optimizing Schedule", Toast.LENGTH_SHORT).show()
                             isAiCompleted = false // Set to false to show loading spinner
-                            isAiSuccessful = HomeActivity().optimizeScheduleForToday(user.uid, date.date.atStartOfDay())
+                            isAiSuccessful = HomeActivity().optimizeScheduleForToday(user!!.uid, date.date.atStartOfDay())
                             isAiCompleted = true // Set to true to show events
                             if (isAiSuccessful) {
                                 Toast.makeText(context, "AI Optimization Completed", Toast.LENGTH_SHORT).show()
