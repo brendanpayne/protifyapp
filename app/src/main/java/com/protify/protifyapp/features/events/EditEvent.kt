@@ -7,7 +7,7 @@ import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import java.time.LocalDateTime
 
-class EditEvent (private val eventToEdit: FirestoreEvent) : AddEvent() {
+class EditEvent (private val eventToEdit: FirestoreEvent, private val isRecipe: Boolean = false) : AddEvent() {
     init {
         name = eventToEdit.name
         startTime = eventToEdit.startTime
@@ -43,19 +43,35 @@ class EditEvent (private val eventToEdit: FirestoreEvent) : AddEvent() {
         )
         val errors = firestoreEvent.validateEvent(firestoreEvent)
         if (errors.isEmpty() && user != null && !dateError && isTimeSelected()) {
-            FirestoreHelper().modifyEvent(
-                uid = user,
-                eventId = eventToEdit.id,
-                event = firestoreEvent,
-                callback = {
-                    if(it) {
-                        Toast.makeText(context, "Event updated successfully", Toast.LENGTH_SHORT).show()
-                        navigateBack()
-                    } else {
-                        Toast.makeText(context, "Failed to update event", Toast.LENGTH_SHORT).show()
+            if(isRecipe) {
+                FirestoreHelper().createEvent(
+                    uid = user,
+                    event = firestoreEvent,
+                    callback = {
+                        if(it) {
+                            Toast.makeText(context, "Event added successfully", Toast.LENGTH_SHORT).show()
+                            navigateBack()
+                        } else {
+                            Toast.makeText(context, "Failed to add event", Toast.LENGTH_SHORT).show()
+                        }
                     }
-                           },
-            )
+                )
+            } else {
+                FirestoreHelper().modifyEvent(
+                    uid = user,
+                    eventId = eventToEdit.id,
+                    event = firestoreEvent,
+                    callback = {
+                        if(it) {
+                            Toast.makeText(context, "Event updated successfully", Toast.LENGTH_SHORT).show()
+                            navigateBack()
+                        } else {
+                            Toast.makeText(context, "Failed to update event", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                )
+            }
+
         } else {
             super.handleErrors(errors, user, dateError, isTimeSelected(), context)
         }

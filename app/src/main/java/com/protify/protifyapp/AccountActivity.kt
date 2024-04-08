@@ -146,7 +146,7 @@ class AccountActivity {
                         attendees = recipeEvent.attendees?.map { Attendee(it.name, it.email, it.phoneNumber) }, // Map the Attendee
                         importance = 3
                    )
-                    EditEvent(event).EditEventPage {
+                    EditEvent(event, true).EditEventPage {
                         EditEvent(event).navigateBack(
                             navController = navController
                         )

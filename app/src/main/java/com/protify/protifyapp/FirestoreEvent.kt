@@ -43,7 +43,7 @@ class FirestoreEvent(
     }
 
     private fun validateDescription(description: String): Error? {
-        if (description.length > 250) {
+        if (description.length > 1000) {
             return Error("Description is too long")
         }
         return null
