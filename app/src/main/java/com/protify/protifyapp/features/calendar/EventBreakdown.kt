@@ -3,10 +3,12 @@ package com.protify.protifyapp.features.calendar
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -355,9 +357,13 @@ class EventBreakdown {
             contentAlignment = Alignment.TopEnd
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(0.8f),
-                horizontalAlignment = Alignment.End
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .fillMaxHeight(),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Top
             ) {
+                val lastEventEndtime = timeSlots.maxOfOrNull { convertTimeToFloat(it.endTime) } ?: 24f
                 val slots = if (showOptimizedEvents.value)
                     timeSlots.sortedBy { convertTimeToFloat(it.startTime) }
                 else timeSlots.filter { !it.isAiSuggestion }.sortedBy { convertTimeToFloat(it.startTime) }
@@ -407,6 +413,7 @@ class EventBreakdown {
                         Spacer(modifier = Modifier.height((differenceInMinutes * scale).dp))
                     }
                 }
+                Spacer(modifier = Modifier.height(((24 - lastEventEndtime) * 60 * scale).dp)) // bottom padding
             }
         }
     }
