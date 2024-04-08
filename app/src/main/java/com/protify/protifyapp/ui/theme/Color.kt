@@ -3,7 +3,7 @@ package com.protify.protifyapp.ui.theme
 import androidx.compose.ui.graphics.Color
 
 val Primary = Color(0xFF673AB7)
-val PrimaryVariant = Color(0xFF9575CD)
+val PrimaryVariant = Color(0xFF7E57C2)
 val Secondary = Color(0xFF3F51B5)
 val SecondaryVariant = Color(0xFF7986CB)
 val LightBackground = Color(0xFFEDE7F6)

@@ -21,10 +21,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonElevation
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,10 +42,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseUser
+import com.protify.protifyapp.R
 import com.protify.protifyapp.features.calendar.CalendarUiModel
 import com.protify.protifyapp.features.calendar.Event
 import com.protify.protifyapp.features.calendar.EventBreakdown
@@ -52,6 +58,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 
@@ -121,15 +128,16 @@ class EventView (private val navController: NavController) {
     fun EventList(
         data: CalendarUiModel,
         isLoadingEvents: Boolean,
-        isOptimizingEvents: Boolean
+        isOptimizingEvents: Boolean,
+        optimizeEventClickListener: () -> Unit
     ) {
         if (isLoadingEvents) {
-            Row (
+            Row(
                 modifier = Modifier
                     .fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
-            ){
+            ) {
                 LoadingText()
             }
         } else {
@@ -152,31 +160,35 @@ class EventView (private val navController: NavController) {
                 }
             } else {
                 if (data.selectedDate.hasEvents) {
-                    /*
-                    LazyColumn(content = {
-                        items(data.selectedDate.events.size) { event ->
-                            EventItem(
-                                event = data.selectedDate.events[event],
-                                date = data.selectedDate.date.toString()
-                            )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .fillMaxHeight(1f)
+                    ) {
+                        EventBreakdown().DailySchedule(
+                            scale = 1.0,
+                            eventList = data.selectedDate.events,
+                            date = data.selectedDate.date,
+                            navController = navController
+                        )
+                        if (data.selectedDate.date.isBefore(LocalDate.now())) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                                    .align(Alignment.BottomCenter)
+                            ) {
+                                OptimizeButton(optimizeEventClickListener)
+                            }
                         }
-                    })
-                     */
-
-                    EventBreakdown().DailySchedule(
-                        scale = 1.0,
-                        eventList = data.selectedDate.events,
-                        date = data.selectedDate.date,
-                        navController = navController
-                    )
-
+                    }
                 } else {
-                    Row (
+                    Row(
                         modifier = Modifier
                             .fillMaxSize(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
-                    ){
+                    ) {
                         Text(
                             text = "No events for this day!",
                             modifier = Modifier
@@ -233,8 +245,13 @@ class EventView (private val navController: NavController) {
 
     @Composable
     fun OptimizeButton(optimizeEventClickListener: () -> Unit) {
-        Button(
+        ElevatedButton(
             onClick = optimizeEventClickListener,
+            elevation = ButtonDefaults.buttonElevation(8.dp),
+            colors = ButtonDefaults.elevatedButtonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth()
@@ -244,13 +261,12 @@ class EventView (private val navController: NavController) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.primary)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
-                ){
+                ) {
                     Text(
                         text = "Optimize Events",
                         style = MaterialTheme.typography.titleMedium,
@@ -258,7 +274,7 @@ class EventView (private val navController: NavController) {
                         textAlign = TextAlign.Center,
                     )
                     Icon(
-                        imageVector = Icons.Default.Refresh,
+                        imageVector = ImageVector.vectorResource(id = R.drawable.outline_auto_fix_high_24),
                         contentDescription = "Optimize Events",
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.padding(8.dp)
@@ -275,36 +291,19 @@ class EventView (private val navController: NavController) {
         isLoadingEvents: Boolean,
         isOptimizingEvents: Boolean
     ) {
-        /*
-        ElevatedCard(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxSize(),
-            shape = RoundedCornerShape(8.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-            colors = CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-            )
-        ) {
-            Column(
-                modifier = Modifier.fillMaxHeight(),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                EventHeader()
-                EventList(data, isLoadingEvents, isOptimizingEvents)
-                if (!isOptimizingEvents) OptimizeButton(optimizeEventClickListener)
-            }
-        }
-         */
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
-            verticalArrangement = Arrangement.SpaceBetween
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            EventHeader()
-            EventList(data, isLoadingEvents, isOptimizingEvents)
-            if (!isOptimizingEvents) OptimizeButton(optimizeEventClickListener)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.Top
+            ) {
+                EventHeader()
+                EventList(data, isLoadingEvents, isOptimizingEvents, optimizeEventClickListener)
+            }
         }
     }
 }

@@ -115,7 +115,7 @@ class EventBreakdown {
 
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
         ) {
             TimeGrid(scaledValue, scrollState, showTimes)
             for (layer in layers) {
@@ -239,7 +239,7 @@ class EventBreakdown {
         Card(
             modifier = Modifier
                 .height((durationInMinutes * scale).dp)
-                .width(300.dp / overlappingEventsCount)
+                .width(320.dp / overlappingEventsCount)
                 .padding(vertical = 1.dp)
                 .clickable {
                     navController.navigate("eventDetails/${date}/${timeSlot.id}")
@@ -294,7 +294,7 @@ class EventBreakdown {
         navController: NavController
     ) {
         val layerColor = when (layer) {
-            0 -> MaterialTheme.colorScheme.primary
+            0 -> MaterialTheme.colorScheme.primaryContainer
             1 -> MaterialTheme.colorScheme.secondary
             else -> MaterialTheme.colorScheme.error
         }
