@@ -706,6 +706,20 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
      * @return: Returns true if the schedule is fully optimized, else false
      */
     private fun qualityCheck(optimizedSchedule: OptimizedSchedule, nonRainingTimes: List<Pair<LocalDateTime, LocalDateTime>>? = null): Boolean {
+
+        // Try to parse the start time and end time of all of the events, if it fails, then return false
+        try {
+            optimizedSchedule.events.forEach { event ->
+                ParseTime().parseTime(event.startTime, events[0].startTime)
+            }
+            optimizedSchedule.oldEvents.forEach { event ->
+                ParseTime().parseTime(event.endTime, events[0].startTime)
+            }
+        } catch (e: Exception) {
+            return false
+        }
+
+
         var passedQualityCheck = true
         val today = events[0].startTime // Get the day of the events by sampling the first event
         // Check that the number of events is the same
