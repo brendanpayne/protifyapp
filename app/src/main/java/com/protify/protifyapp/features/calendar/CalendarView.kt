@@ -338,7 +338,11 @@ class CalendarView(private val navController: NavController) {
         }
     }
     @Composable
-    fun Calendar(context: Context, navigateToAddEvent: () -> Unit) {
+    fun Calendar(
+        context: Context,
+        navigateToAddEvent: () -> Unit,
+        showOptimizedEvents: MutableState<Boolean>
+    ) {
         val dataSource = CalendarDataSource()
         var events by remember { mutableStateOf(listOf<Event>()) }
         var isMonthView by remember { mutableStateOf(false) }
@@ -444,7 +448,8 @@ class CalendarView(private val navController: NavController) {
                         }
                     },
                     isLoadingEvents,
-                    isAiCompleted
+                    isAiCompleted,
+                    showOptimizedEvents
                 )
             }
         }

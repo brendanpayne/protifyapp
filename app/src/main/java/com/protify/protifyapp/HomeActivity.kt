@@ -26,6 +26,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,7 +71,7 @@ class HomeActivity {
         val firestoreHelper = FirestoreHelper()
         val user = FirebaseLoginHelper().getCurrentUser()
         val context = LocalContext.current
-
+        val showOptimizedEvents = remember { mutableStateOf(true) }
 
         // Calculate the time of day
         val timeOfDay = when (java.time.LocalTime.now().hour) {
@@ -83,14 +84,14 @@ class HomeActivity {
         Surface {
             ModalDrawer(
                 drawerState = scaffoldState.drawerState,
-                drawerContent = { DrawerContent(navController) },
-                content = { HomeContent(timeOfDay, user, navController, navigateToAddEvent, scaffoldState) }
+                drawerContent = { DrawerContent(navController, showOptimizedEvents) },
+                content = { HomeContent(timeOfDay, user, navController, navigateToAddEvent, scaffoldState, showOptimizedEvents) }
             )
         }
     }
 
     @Composable
-    private fun DrawerContent(navController: NavHostController) {
+    private fun DrawerContent(navController: NavHostController, showOptimizedEvents: MutableState<Boolean>) {
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween,
@@ -115,11 +116,12 @@ class HomeActivity {
                         textAlign = TextAlign.Start
                     )
                 }
-                Divider()
                 // Group related items
                 GroupItem(navController, "Profile", Icons.Filled.PlayArrow, "profile")
                 GroupItem(navController, "Privacy & Location", Icons.Filled.PlayArrow, "privacyLocation")
                 GroupItem(navController, "Recipe Generator",Icons.Filled.PlayArrow, "recipeGenerator")
+                //GroupItem(navController, "About", Icons.Filled.PlayArrow, "about")
+                OptimizeSlider(showOptimizedEvents)
             }
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -141,14 +143,46 @@ class HomeActivity {
                         color = Color.White
                     )
                 }
-                Divider()
             }
         }
 
     }
 
     @Composable
-    private fun HomeContent(timeOfDay: TimeOfDay, user: FirebaseUser?, navController: NavHostController, navigateToAddEvent: () -> Unit, scaffoldState: ScaffoldState) {
+    fun OptimizeSlider(showOptimizedEvents: MutableState<Boolean>){
+        Column{
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "Show AI Optimized Events",
+                    style = if (!showOptimizedEvents.value)
+                        MaterialTheme.typography.bodyMedium else
+                            MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Switch(
+                    checked = showOptimizedEvents.value,
+                    onCheckedChange = { showOptimizedEvents.value = it }
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun HomeContent(
+        timeOfDay: TimeOfDay,
+        user: FirebaseUser?,
+        navController: NavHostController,
+        navigateToAddEvent: () -> Unit,
+        scaffoldState: ScaffoldState,
+        showOptimizedEvents: MutableState<Boolean>
+    ) {
         val scope = rememberCoroutineScope()
         val firestoreHelper = FirestoreHelper()
         val context = LocalContext.current
@@ -183,7 +217,7 @@ class HomeActivity {
                         )
                     }
                 }
-                CalendarView(navController).Calendar(context, navigateToAddEvent)
+                CalendarView(navController).Calendar(context, navigateToAddEvent, showOptimizedEvents)
             }
 
             val networkManager = NetworkManager(context)

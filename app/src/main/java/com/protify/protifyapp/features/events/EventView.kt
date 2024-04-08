@@ -1,7 +1,5 @@
 package com.protify.protifyapp.features.events
 
-import android.content.Context
-import android.widget.Spinner
 import android.widget.Toast
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.background
@@ -15,25 +13,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonElevation
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -45,21 +40,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.google.firebase.auth.FirebaseUser
 import com.protify.protifyapp.R
 import com.protify.protifyapp.features.calendar.CalendarUiModel
 import com.protify.protifyapp.features.calendar.Event
 import com.protify.protifyapp.features.calendar.EventBreakdown
-import com.protify.protifyapp.features.login.FirebaseLoginHelper
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 
 class EventView (private val navController: NavController) {
@@ -129,7 +118,8 @@ class EventView (private val navController: NavController) {
         data: CalendarUiModel,
         isLoadingEvents: Boolean,
         isOptimizingEvents: Boolean,
-        optimizeEventClickListener: () -> Unit
+        optimizeEventClickListener: () -> Unit,
+        showOptimizedEvents: MutableState<Boolean>
     ) {
         if (isLoadingEvents) {
             Row(
@@ -169,7 +159,8 @@ class EventView (private val navController: NavController) {
                             scale = 1.0,
                             eventList = data.selectedDate.events,
                             date = data.selectedDate.date,
-                            navController = navController
+                            navController = navController,
+                            showOptimizedEvents = showOptimizedEvents
                         )
                         if (data.selectedDate.date.isBefore(LocalDate.now())) {
                             Box(
@@ -199,47 +190,6 @@ class EventView (private val navController: NavController) {
                     }
                 }
             }
-        }
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    private fun EventItem(event: Event, date: String) {
-        Card(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            onClick = {
-                if (event.id != "") {
-                    navController.navigate("eventDetails/${date}/${event.id}")
-                } else {
-                    Toast.makeText(
-                        navController.context,
-                        "Event ID not found",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-        ) {
-            Column {
-                EventItemContent(event)
-            }
-        }
-    }
-
-    @Composable
-    private fun EventItemContent(event: Event) {
-        Row {
-            Text(
-                text = event.title,
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = "${event.startTime} - ${event.endTime}",
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.bodyMedium
-            )
         }
     }
 
@@ -289,7 +239,8 @@ class EventView (private val navController: NavController) {
         data: CalendarUiModel,
         optimizeEventClickListener: () -> Unit,
         isLoadingEvents: Boolean,
-        isOptimizingEvents: Boolean
+        isOptimizingEvents: Boolean,
+        showOptimizedEvents: MutableState<Boolean>
     ) {
         Box(
             modifier = Modifier
@@ -302,7 +253,7 @@ class EventView (private val navController: NavController) {
                 verticalArrangement = Arrangement.Top
             ) {
                 EventHeader()
-                EventList(data, isLoadingEvents, isOptimizingEvents, optimizeEventClickListener)
+                EventList(data, isLoadingEvents, isOptimizingEvents, optimizeEventClickListener, showOptimizedEvents)
             }
         }
     }
