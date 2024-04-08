@@ -5,8 +5,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.ScrollableDefaults
-import androidx.compose.foundation.gestures.snapping.SnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,7 +27,6 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
-import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -357,7 +354,8 @@ class CalendarView(private val navController: NavController) {
             )
         }
         var isLoadingEvents by remember { mutableStateOf(true) }
-        var isAiCompleted by remember { mutableStateOf(false) }
+        var isAiCompleted by remember { mutableStateOf(true) } // This is for the loading spinner when the AI is optimizing the schedule
+        var isAiSuccessful by remember { mutableStateOf(false) }
         var showAiEvents by remember { mutableStateOf(false) } // THis is for the AI event toggle button
         val date = calendarUiModel.selectedDate
         val user = FirebaseLoginHelper().getCurrentUser()
@@ -437,12 +435,16 @@ class CalendarView(private val navController: NavController) {
                     .weight(1f)
             ) {
                 EventView(navController = navController).EventCard(
+                    // isAiCompleted is used improperly. It is used to show the loading spinner when the AI is optimizing the schedule
+                    // If the AI runs and fails, then isAiCompleted will be false and the loading spinner will show
                     calendarUiModel,
                     {
                         CoroutineScope(Dispatchers.Main).launch  {
                             Toast.makeText(context, "Optimizing Schedule", Toast.LENGTH_SHORT).show()
-                            isAiCompleted = HomeActivity().optimizeScheduleForToday(user.uid, date.date.atStartOfDay())
-                            if (isAiCompleted) {
+                            isAiCompleted = false // Set to false to show loading spinner
+                            isAiSuccessful = HomeActivity().optimizeScheduleForToday(user.uid, date.date.atStartOfDay())
+                            isAiCompleted = true // Set to true to show events
+                            if (isAiSuccessful) {
                                 Toast.makeText(context, "AI Optimization Completed", Toast.LENGTH_SHORT).show()
                             } else {
                                 Toast.makeText(context, "AI Optimization Failed", Toast.LENGTH_SHORT).show()

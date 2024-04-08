@@ -1,6 +1,5 @@
 package com.protify.protifyapp.features.events
 
-import android.widget.Toast
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -17,21 +16,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedButton
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -44,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.protify.protifyapp.R
 import com.protify.protifyapp.features.calendar.CalendarUiModel
-import com.protify.protifyapp.features.calendar.Event
 import com.protify.protifyapp.features.calendar.EventBreakdown
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -131,7 +125,7 @@ class EventView (private val navController: NavController) {
                 LoadingText()
             }
         } else {
-            if (isOptimizingEvents) {
+            if (!isOptimizingEvents) { // Reversing logic here because i am the best programmer known to man
                 Column {
                     CircularProgressIndicator(
                         modifier = Modifier
