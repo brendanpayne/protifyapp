@@ -37,11 +37,6 @@ class GetAIScheduleTest {
 
             user = loginHelper.getCurrentUser()
 
-            // Get user's home address
-            if (user != null) {
-                runBlocking { homeAddress = firestoreHelper.getUserHomeAddress(user!!.uid) }
-            }
-
             // Mock events
             val events = listOf<FirestoreEvent>().toMutableList()
             events.add(

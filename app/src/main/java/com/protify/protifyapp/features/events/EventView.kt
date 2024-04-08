@@ -162,7 +162,7 @@ class EventView (private val navController: NavController) {
                             navController = navController,
                             showOptimizedEvents = showOptimizedEvents
                         )
-                        if (data.selectedDate.date.isBefore(LocalDate.now())) {
+                        if (data.selectedDate.date.isAfter(LocalDate.now())) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()

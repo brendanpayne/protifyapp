@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.google.android.gms.maps.MapsInitializer
 import com.google.firebase.auth.FirebaseUser
 import com.protify.protifyapp.features.calendar.CalendarView
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
@@ -72,6 +73,9 @@ class HomeActivity {
         val user = FirebaseLoginHelper().getCurrentUser()
         val context = LocalContext.current
         val showOptimizedEvents = remember { mutableStateOf(true) }
+
+        // Initialize Google Maps
+        MapsInitializer.initialize(context)
 
         // Calculate the time of day
         val timeOfDay = when (java.time.LocalTime.now().hour) {

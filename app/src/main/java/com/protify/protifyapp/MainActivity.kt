@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.view.WindowCompat
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.google.android.gms.maps.MapsInitializer
 import com.google.firebase.FirebaseApp
 import com.protify.protifyapp.ui.theme.ProtifyTheme
 
