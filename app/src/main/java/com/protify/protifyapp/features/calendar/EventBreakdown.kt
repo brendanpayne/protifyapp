@@ -3,7 +3,6 @@ package com.protify.protifyapp.features.calendar
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -109,7 +107,7 @@ class EventBreakdown {
             },
             Event().apply {
                 title = "Event 6"
-                startTime = "14:00"
+                startTime = "14:30"
                 endTime = "15:30"
                 description = "Description for Event 4"
                 location = "Location for Event 4"
@@ -366,62 +364,82 @@ class EventBreakdown {
                 val startTimeMinutes = (convertTimeToFloat(slots[0].startTime)) * 60
                 Spacer(modifier = Modifier.height(((30 + startTimeMinutes) * scale).dp)) // top padding
                 val displayedEvents = mutableMapOf<String, Int>()
+                var count = 0
 
-                for (i in slots.indices) {
-                    val timeSlot = slots[i]
+                val groupedSlots = groupOverlappingEvents(slots.toMutableList())
 
-                    var nextEventStartTime = if (i < slots.size - 1)
-                        convertTimeToFloat(slots[i + 1].startTime) else 24f
-                    var currentEventEndTime = convertTimeToFloat(timeSlot.endTime)
 
-                    val overlappingEvents = slots.filter{ checkOverlap(
-                        Event().apply { startTime = it.startTime; endTime = it.endTime },
-                        Event().apply { startTime = timeSlot.startTime; endTime = timeSlot.endTime }
-                    )}
-                    if (overlappingEvents.size > 1) {
-                        val firstEvent = overlappingEvents[0]
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start
-                        ) {
-                            for (t in overlappingEvents) {
-                                val count = displayedEvents.getOrDefault(t.id, 0)
-                                val overlapSpacing = (convertTimeToFloat(t.startTime) - convertTimeToFloat(firstEvent.startTime))
-                                currentEventEndTime = if (convertTimeToFloat(t.endTime) > currentEventEndTime)
-                                    convertTimeToFloat(t.endTime) else
-                                        currentEventEndTime // latest ending time of overlapping events
-                                if (count < overlappingEvents.size && !displayedEvents.containsKey(t.id)) {
-                                    Column{
-                                        Spacer(modifier = Modifier.height((overlapSpacing * 60 * scale).dp))
+                for (i in groupedSlots.indices) {
+                    val group = groupedSlots[i]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                    ) {
+                        for (t in group) {
+                            // Add each item to a column, with the start time of the first event minus the start time of the current event
+                            val overlapSpacing = (convertTimeToFloat(t.startTime) - convertTimeToFloat(group.first().startTime))
+                            Column {
+                                Spacer(modifier = Modifier.height((overlapSpacing * 60 * scale).dp))
+                                if (!displayedEvents.containsKey(t.id)) {
                                         EventBreakdownCard(
                                             t,
                                             scale,
                                             date,
-                                            overlappingEvents.size,
+                                            group.size,
                                             navController = navController
                                         )
-                                        displayedEvents[t.id] = count + 1
+                                        count++
+                                        displayedEvents[t.id] = 1
                                     }
-                                }
+
                             }
                         }
-                    } else if (!displayedEvents.containsKey(timeSlot.id) || displayedEvents[timeSlot.id]!! < 1) {
-                        EventBreakdownCard(
-                            timeSlot,
-                            scale,
-                            date,
-                            0,
-                            navController = navController
-                        )
-                        displayedEvents[timeSlot.id] = 1
                     }
-                    val differenceInMinutes = (nextEventStartTime - currentEventEndTime) * 60
-                    Spacer(modifier = Modifier.height((differenceInMinutes * scale).dp))
+
+                    // Add a spacer after each group except the last one
+                    if (i < groupedSlots.size - 1) {
+                        // Sort group by end time
+                        val endTimeGroupSorted = group.sortedBy { it.endTime }
+                        val nextGroupStartTimeSorted = groupedSlots[i + 1].sortedBy { it.startTime }
+                        val currentGroupEndTime = convertTimeToFloat(endTimeGroupSorted.last().endTime)
+                        val nextGroupStartTime = convertTimeToFloat(nextGroupStartTimeSorted.first().startTime)
+                        val differenceInMinutes = (nextGroupStartTime - currentGroupEndTime) * 60
+                        Spacer(modifier = Modifier.height((differenceInMinutes * scale).dp))
+                    }
                 }
             }
         }
     }
+    private fun checkOverlapBoosted(timeSlot1: EventBreakdown.TimeSlot, timeSlot2: EventBreakdown.TimeSlot): Boolean {
+        val timeSlot1Start = convertTimeToFloat(timeSlot1.startTime)
+        val timeSlot1End = convertTimeToFloat(timeSlot1.endTime)
+        val timeSlot2Start = convertTimeToFloat(timeSlot2.startTime)
+        val timeSlot2End = convertTimeToFloat(timeSlot2.endTime)
+        return (timeSlot1Start < timeSlot2End && timeSlot1End > timeSlot2Start)
+    }
+
+    fun groupOverlappingEvents(slots: MutableList<TimeSlot>): List<List<TimeSlot>> {
+        val groupedSlots = mutableListOf<List<TimeSlot>>()
+
+        while (slots.isNotEmpty()) {
+            val group = mutableListOf<TimeSlot>()
+            findOverlappingEvents(slots[0], slots, group)
+            groupedSlots.add(group)
+        }
+
+        return groupedSlots
+    }
+
+    fun findOverlappingEvents(event: TimeSlot, slots: MutableList<TimeSlot>, group: MutableList<TimeSlot>) {
+        group.add(event)
+        slots.remove(event)
+
+        val overlappingEvents = slots.filter { checkOverlapBoosted(event, it) }.toMutableList()
+        for (overlappingEvent in overlappingEvents) {
+            findOverlappingEvents(overlappingEvent, slots, group)
+        }
+    }
+
 
     @Preview
     @Composable
