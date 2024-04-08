@@ -371,7 +371,7 @@ open class AddEvent {
             }
         }
         // Get the non-raining times if there are values for start time and end time and update when any of those change
-        LaunchedEffect(startTime, endTime, location, isOutside) {
+        LaunchedEffect(startTime, endTime, isOutside) {
             rainCheck = false
             if (startTime != LocalDateTime.now() && endTime != LocalDateTime.MAX && location != "" && isOutside) { // Make sure the user has already selected a start time, end time, isOutside is true, and location is not empty
                 if (startTime.isAfter(LocalDateTime.now()) && endTime.isBefore(LocalDateTime.now().plusDays(7))) // Make sure the start time is in the future and the end time is within a week

@@ -242,8 +242,12 @@ class MapsDurationUtils(departTime: LocalDateTime) {
                     onComplete(0.0,0.0)
                     return
                 }
-                val geocodeResponse = gson.fromJson(body, GeocodedResponse::class.java)
-                onComplete(geocodeResponse.results[0].geometry.location.lat, geocodeResponse.results[0].geometry.location.lng)
+                try {
+                    val geocodeResponse = gson.fromJson(body, GeocodedResponse::class.java)
+                    onComplete(geocodeResponse.results[0].geometry.location.lat, geocodeResponse.results[0].geometry.location.lng)
+                } catch (e: Exception) {
+                    onComplete(0.0,0.0)
+                }
             }
         })
     }
