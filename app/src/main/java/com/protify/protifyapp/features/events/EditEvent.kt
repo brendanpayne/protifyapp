@@ -79,7 +79,11 @@ class EditEvent (private val eventToEdit: FirestoreEvent, private val isRecipe: 
 
     @Composable
     override fun AddEventHeader(title: String, onBackClick: () -> Unit) {
-        super.AddEventHeader("Edit Event", onBackClick)
+        if (isRecipe) {
+            super.AddEventHeader("Create Event", onBackClick)
+        } else {
+            super.AddEventHeader("Edit Event", onBackClick)
+        }
     }
 
     @Composable
