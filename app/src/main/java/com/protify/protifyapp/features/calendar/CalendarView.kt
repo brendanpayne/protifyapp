@@ -45,6 +45,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -81,6 +82,7 @@ class CalendarView(private val navController: NavController) {
         isMonthView: Boolean,
     ) {
         val isSelected = selectedDate == date
+        val isToday = date.date == LocalDate.now()
         val eventCount = eventsForAllDates[date.date]?.size ?: 0
         val backgroundColor by animateColorAsState(
             targetValue = when {
@@ -112,7 +114,7 @@ class CalendarView(private val navController: NavController) {
                     modifier = Modifier
                         .border(
                             width = 2.dp,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                            color = if (isToday) MaterialTheme.colorScheme.primary else Color.Transparent,
                             shape = RoundedCornerShape(8.dp)
                         )
                 ) {
