@@ -14,11 +14,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ModalDrawer
 import androidx.compose.material.ScaffoldState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.rememberScaffoldState
@@ -88,14 +90,19 @@ class HomeActivity {
         Surface {
             ModalDrawer(
                 drawerState = scaffoldState.drawerState,
-                drawerContent = { DrawerContent(navController, showOptimizedEvents) },
+                drawerContent = { DrawerContent(navController, showOptimizedEvents, scaffoldState, scope) },
                 content = { HomeContent(timeOfDay, user, navController, navigateToAddEvent, scaffoldState, showOptimizedEvents) }
             )
         }
     }
 
     @Composable
-    private fun DrawerContent(navController: NavHostController, showOptimizedEvents: MutableState<Boolean>) {
+    private fun DrawerContent(
+        navController: NavHostController,
+        showOptimizedEvents: MutableState<Boolean>,
+        scaffoldState: ScaffoldState,
+        scope: CoroutineScope
+    ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween,
@@ -112,13 +119,30 @@ class HomeActivity {
                         .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        "Settings",
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        textAlign = TextAlign.Start
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = {
+                            scope.launch {
+                                scaffoldState.drawerState.close()
+                            }
+                        }) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                        Text(
+                            text = "Settings",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                        // This is a placeholder to push the title to the center
+                        Spacer(modifier = Modifier.size(48.dp))
+                    }
                 }
                 // Group related items
                 GroupItem(navController, "Profile", Icons.Filled.PlayArrow, "profile")
