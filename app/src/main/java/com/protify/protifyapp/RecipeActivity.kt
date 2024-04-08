@@ -1,9 +1,13 @@
 package com.protify.protifyapp
 
+import FirestoreEventString
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -219,9 +223,29 @@ class RecipeActivity {
                                 }
                             }
                         },
-                        confirmButton = {
-                            Button(onClick = { showDialog = false }) {
-                                Text("OK")
+                        buttons = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) { // Wrap the buttons in a Row to place them next to each other
+                                Button(onClick = { showDialog = false }) {
+                                    Text("OK")
+                                }
+                                Button(onClick = {
+                                    // Create a mock event with the recipeResponse as the description
+                                    val recipeEvent = FirestoreEventString(
+                                        name = recipeResponse.recipeName,
+                                        nameLower = recipeResponse.recipeName.lowercase(),
+                                        startTime = "",
+                                        endTime = "",
+                                        description = descriptionBuilder(recipeResponse)
+                                    )
+                                    // Serialize the event and send it to the navigation controller
+                                    navController.navigate("recipeEvent/${Gson().toJson(recipeEvent)}/${recipeResponse.requiredTime}")
+                                }) {
+                                    Text("Create Event")
+                                }
                             }
                         }
                     )
@@ -240,6 +264,18 @@ class RecipeActivity {
                 Icon(Icons.Filled.ArrowBack, contentDescription = "Go back")
             }
         }
+    }
+    fun descriptionBuilder(recipeResponse: RecipeResponse): String {
+        val description = StringBuilder()
+        description.append("Ingredients:\n")
+        recipeResponse.ingredients.forEach { (ingredient, measurement) ->
+            description.append("$ingredient: $measurement\n")
+        }
+        description.append("\nInstructions:\n")
+        recipeResponse.instructions.forEachIndexed { index, instruction ->
+            description.append("${index + 1}. $instruction\n")
+        }
+        return description.toString()
     }
 }
 

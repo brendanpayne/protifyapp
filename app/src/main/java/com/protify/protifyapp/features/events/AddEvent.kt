@@ -826,13 +826,13 @@ open class AddEvent {
                 .height(150.dp),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = if (description?.length!! > 250) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
-                unfocusedBorderColor = if (description?.length!! > 250) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                focusedBorderColor = if (description?.length!! > 1000) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                unfocusedBorderColor = if (description?.length!! > 1000) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
             ),
             supportingText = {
-                if (description?.length!! > 250) {
+                if (description?.length!! > 1000) {
                     Text(
-                        text = "${description!!.length}/250",
+                        text = "${description!!.length}/1000",
                         color = MaterialTheme.colorScheme.error,
                     )
                 } else {
