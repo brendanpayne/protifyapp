@@ -126,7 +126,12 @@ class EventView (private val navController: NavController) {
             }
         } else {
             if (!isOptimizingEvents) { // Reversing logic here because i am the best programmer known to man
-                Column {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     CircularProgressIndicator(
                         modifier = Modifier
                             .padding(16.dp)
