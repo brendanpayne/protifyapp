@@ -352,24 +352,6 @@ open class AddEvent {
                 }
             }
         )
-        //isOutside boolean
-        //var isOutside by remember { mutableStateOf(false) }
-        //isOptimized boolean
-        //var isOptimized by remember { mutableStateOf(true)}
-        //Get network state so we can toggle Firestore offline/online
-        val isConnected by remember { mutableStateOf(false) }
-        LaunchedEffect(networkManager) {
-            networkManager.startListening()
-        }
-        LaunchedEffect(isConnected) {
-            networkManager.setNetworkChangeListener {
-                if(it) {
-                    FirestoreHelper().toggleOfflineOnline(true)
-                } else {
-                    FirestoreHelper().toggleOfflineOnline(false)
-                }
-            }
-        }
         // Get the non-raining times if there are values for start time and end time and update when any of those change
         LaunchedEffect(startTime, endTime, isOutside) {
             rainCheck = false

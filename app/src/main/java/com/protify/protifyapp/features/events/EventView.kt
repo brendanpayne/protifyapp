@@ -244,6 +244,7 @@ class EventView (private val navController: NavController) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(top=8.dp)
                 .background(MaterialTheme.colorScheme.background)
         ) {
             Column(

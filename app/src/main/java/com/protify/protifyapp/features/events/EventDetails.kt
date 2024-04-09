@@ -1,5 +1,6 @@
 package com.protify.protifyapp.features.events
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,28 +22,40 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.datasource.LoremIpsum
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.navigation.NavHostController
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -55,6 +68,7 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
+import com.protify.protifyapp.R
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.utils.EventUtils
 import com.protify.protifyapp.utils.MapsDurationUtils
@@ -151,22 +165,62 @@ class EventDetails {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            //OldEventDetailsBody(event = event)
-            Text(
-                text = event.name,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold
-            )
+            EventTitle(event = event)
             EventTimeDetails(event = event)
             if (event.attendees != null && event.attendees!!.isNotEmpty()) {
-                EventAttendees(attendees = event.attendees!!)
+                //EventAttendees(attendees = event.attendees!!)
             }
             if (event.description != null && event.description!!.isNotBlank()) {
                 EventDescDetails(desc = event.description!!)
             }
             if (event.location != null) {
                 EventLocationDetails(event = event)
+            }
+        }
+    }
+
+    @Composable
+    private fun EventTitle(event: FirestoreEvent) {
+        var tooltipState by remember { mutableStateOf(false) }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (event.isAiSuggestion) {
+                IconButton(
+                    onClick = { tooltipState = !tooltipState },
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.outline_auto_awesome_24),
+                        contentDescription = "AI Suggestion",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            Text(
+                text = event.name,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+            DropdownMenu(
+                expanded = tooltipState,
+                onDismissRequest = { tooltipState = false },
+                modifier = Modifier
+                    .padding(8.dp),
+            ) {
+                Text(
+                    text = "AI Optimized",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(8.dp)
+                )
+                Text(
+                    text = "This event was optimized by Protify's AI",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(8.dp)
+                )
             }
         }
     }
@@ -328,38 +382,6 @@ class EventDetails {
                     ) {
                         CircularProgressIndicator()
                     }
-                }
-            }
-        }
-    }
-
-    @Composable
-    private fun OldEventDetailsBody(event: FirestoreEvent) {
-        Column{
-            event::class.java.declaredFields.forEach { field ->
-                field.isAccessible = true
-                val value = field.get(event)
-                val readableValue = EventUtils().convertToReadableValue(field.name, value)
-                if (readableValue.isNotBlank()) {
-                    Card(
-                        modifier = Modifier.padding(8.dp),
-                        content = {
-                            Column(
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = field.name.uppercase(Locale.ROOT),
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Text(
-                                    text = readableValue,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    )
                 }
             }
         }

@@ -241,31 +241,6 @@ class RecipeActivity {
                                 Text("OK")
                             }
                         }
-//                        buttons = {
-//                            Row(
-//                                modifier = Modifier.fillMaxWidth()
-//                                    .padding(16.dp),
-//                                horizontalArrangement = Arrangement.SpaceBetween,
-//                            ) { // Wrap the buttons in a Row to place them next to each other
-//                                Button(onClick = { showDialog = false }) {
-//                                    Text("OK")
-//                                }
-//                                Button(onClick = {
-//                                    // Create a mock event with the recipeResponse as the description
-//                                    val recipeEvent = FirestoreEventString(
-//                                        name = recipeResponse.recipeName,
-//                                        nameLower = recipeResponse.recipeName.lowercase(),
-//                                        startTime = "",
-//                                        endTime = "",
-//                                        description = descriptionBuilder(recipeResponse)
-//                                    )
-//                                    // Serialize the event and send it to the navigation controller
-//                                    navController.navigate("recipeEvent/${Gson().toJson(recipeEvent)}/${recipeResponse.requiredTime}")
-//                                }) {
-//                                    Text("Create Event")
-//                                }
-//                            }
-//                        }
                     )
                 }
             }
