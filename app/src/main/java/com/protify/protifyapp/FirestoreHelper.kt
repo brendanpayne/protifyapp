@@ -288,6 +288,8 @@ class FirestoreHelper() {
                             isAiSuggestion = (document.data["isAiSuggestion"] as Boolean),
                             isUserAccepted = (document.data["isUserAccepted"] as Boolean)
                         )
+                        firestoreEvent.id = document.id
+
                         events[firestoreEvent] = document.id
 
                     }

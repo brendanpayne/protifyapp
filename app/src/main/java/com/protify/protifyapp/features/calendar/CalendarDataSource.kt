@@ -18,8 +18,7 @@ class CalendarDataSource {
         }
 
 
-        fun getData(startDate: LocalDate = today.plusWeeks(-1), lastSelectedDate: LocalDate, isMonthView: Boolean): CalendarUiModel {
-            //Old Code May need to still use: fun getData(startDate: LocalDate = today, lastSelectedDate: LocalDate, isMonthView: Boolean): CalendarUiModel {
+    fun getData(startDate: LocalDate = today.plusWeeks(-1), lastSelectedDate: LocalDate, isMonthView: Boolean): CalendarUiModel {
         val firstDay = if (isMonthView) {
             val firstDayOfMonth = startDate.withDayOfMonth(1)
             if (firstDayOfMonth.dayOfWeek == DayOfWeek.SUNDAY) {
@@ -32,7 +31,7 @@ class CalendarDataSource {
         }
         val lastDay = if (isMonthView) {
             val lastDayOfMonth = startDate.withDayOfMonth(startDate.lengthOfMonth())
-            if (lastDayOfMonth.dayOfWeek != DayOfWeek.SATURDAY) {
+            if (lastDayOfMonth.dayOfWeek != DayOfWeek.SUNDAY) {
                 lastDayOfMonth.with(TemporalAdjusters.next(DayOfWeek.SUNDAY))
             } else {
                 lastDayOfMonth.plusDays(1)
@@ -40,20 +39,34 @@ class CalendarDataSource {
         } else {
             firstDay.plusDays(7)
         }
-        val visibleDates = getDatesBetween(firstDay, lastDay)
+        val visibleDates = getDatesBetween(firstDay, lastDay, isMonthView)
         return toUiModel(visibleDates, lastSelectedDate)
     }
 
-    fun getDatesBetween(startDate: LocalDate, endDate: LocalDate): List<LocalDate> {
-        val numOfDays = ChronoUnit.DAYS.between(startDate, endDate)
-        return Stream.iterate(startDate) { date ->
-            date.plusDays(1)
-        }
-            .limit(numOfDays)
-            .collect(Collectors.toList())
+fun getDatesBetween(startDate: LocalDate, endDate: LocalDate, isMonthView: Boolean): List<LocalDate> {
+    val start: LocalDate
+    val end: LocalDate
+    if (isMonthView) {
+        start = startDate.withDayOfMonth(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+        val endOfMonth = endDate.withDayOfMonth(endDate.lengthOfMonth())
+        end = if (endOfMonth.dayOfWeek == DayOfWeek.SUNDAY &&
+            endOfMonth.month == startDate.plus(15, ChronoUnit.DAYS).month) // if the first date and the second date are in the same month
+            endOfMonth
+        else
+            endOfMonth.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+    } else {
+        start = startDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+        end = start.plusDays(7)
     }
+    val numOfDays = ChronoUnit.DAYS.between(start, end)
+    return Stream.iterate(start) { date ->
+        date.plusDays(1)
+    }
+        .limit(numOfDays)
+        .collect(Collectors.toList())
+}
 
-    private fun toUiModel(
+    fun toUiModel(
         dateList: List<LocalDate>,
         lastSelectedDate: LocalDate
     ): CalendarUiModel {
@@ -64,33 +77,14 @@ class CalendarDataSource {
             },
         )
     }
- fun getFirestoreEvents(uid: String, dateCreated: Long, month: String, day: String, year: String, callback: (List<Event>) -> Unit) {
-        FirestoreHelper().userExists(uid,dateCreated) { userExists ->
-            if (userExists) {
-                FirestoreHelper().getEvents(uid, day, month, year) { events ->
-                    if (events.isNotEmpty()) {
-                        val convertedEvents = mutableListOf<Event>()
-                        events.forEach {
-                            convertedEvents.add(convertFirestoreEvent(it))
-                        }
-                        callback(convertedEvents)
-                    }
-                    else {
-                        callback(listOf())
-                    }
-                }
-            }
-            else {
-                callback(listOf())
-            }
-        }
-    }
+
     fun getFirestoreEventsAndIds(uid: String, dateCreated: Long, month: String, day: String, year: String, callback: (List<Event>) -> Unit) {
         FirestoreHelper().userExists(uid,dateCreated) { userExists ->
             if (userExists) {
                 FirestoreHelper().getEventsAndIds(uid, day, month, year) { hashMap ->
                     if (hashMap.isNotEmpty()) {
                         val convertedEvents = mutableListOf<Event>()
+                        // set CalendarUiModel hasEvents to true
                         hashMap.forEach {
                             convertedEvents.add(convertFirestoreEvent(it.key, it.value))
                         }
@@ -99,15 +93,13 @@ class CalendarDataSource {
                     else {
                         callback(listOf())
                     }
-
                 }
-            }
-            else {
             }
         }
     }
     private fun convertFirestoreEvent (firestoreEvent: FirestoreEvent, id: String? = null): Event {
         val convertedEvent = Event()
+        convertedEvent.id = firestoreEvent.id!!
         convertedEvent.attendees = firestoreEvent.attendees!!
         convertedEvent.description = firestoreEvent.description!!
         convertedEvent.endTime = firestoreEvent.endTime.format(DateTimeFormatter.ofPattern("h:mm a"))
@@ -127,6 +119,6 @@ class CalendarDataSource {
         isSelected = isSelectedDate,
         isToday = date.isEqual(today),
         date = date,
-        hasEvents = true,
+        hasEvents = false,
     )
 }

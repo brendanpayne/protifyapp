@@ -1,7 +1,5 @@
 package com.protify.protifyapp.features.calendar
 
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,44 +8,56 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.protify.protifyapp.FirestoreHelper
+import androidx.navigation.NavController
+import com.protify.protifyapp.R
 import com.protify.protifyapp.ui.theme.ProtifyTheme
+import java.time.LocalDate
 
 class EventBreakdown {
 
     data class TimeSlot(
         val startTime: String,
         val text: String,
-        val color: Color,
         val height: Float = 1f,
         val endTime: String = "",
         val layer: Int = 0,
-        val id: String = ""
+        val id: String = "",
+        val isAiSuggestion: Boolean = false
     )
 
     private fun createListEvent(): List<Event> {
-        // placeholder until event logic is implemented
+        // placeholder for preview
         return listOf(
             Event().apply {
                 title = "Event 1"
@@ -66,6 +76,7 @@ class EventBreakdown {
                 location = "Location for Event 2"
                 attendees = listOf()
                 id = "2"
+                isAiSuggestion = true
             },
             Event().apply {
                 title = "Event 3"
@@ -78,12 +89,33 @@ class EventBreakdown {
             },
             Event().apply {
                 title = "Event 4"
-                startTime = "14:00"
+                startTime = "12:30"
+                endTime = "13:30"
+                description = "Description for Event 3"
+                location = "Location for Event 3"
+                attendees = listOf()
+                id = "4"
+                isAiSuggestion = true
+            },
+            Event().apply {
+                title = "Event 5"
+                startTime = "12:10"
+                endTime = "14:00"
+                description = "Description for Event 4"
+                location = "Location for Event 4"
+                attendees = listOf()
+                id = "5"
+                isAiSuggestion = false
+            },
+            Event().apply {
+                title = "Event 6"
+                startTime = "14:30"
                 endTime = "15:30"
                 description = "Description for Event 4"
                 location = "Location for Event 4"
                 attendees = listOf()
-                id = "4"
+                id = "6"
+                isAiSuggestion = true
             }
         )
     }
@@ -92,14 +124,11 @@ class EventBreakdown {
     fun DailySchedule(
         scale: Double = 1.0,
         eventList: List<Event> = listOf(),
-        uid: String = "",
-        day: String = "",
-        month: String = "",
-        year: String = "",
-        showTimes: Boolean = true
+        date: LocalDate,
+        showTimes: Boolean = true,
+        navController: NavController,
+        showOptimizedEvents: MutableState<Boolean>
     ) {
-        // Sort events by start time
-        val context: Context = LocalContext.current
         val timeSlots = createListTimeSlot(eventList)
         val scaledValue = scale.toInt()
         timeSlots.maxOfOrNull { it.height } ?: 0f
@@ -110,14 +139,27 @@ class EventBreakdown {
         val startTime = if (eventList.isNotEmpty())
             convertTimeToFloat(sortedEventList[0].startTime) else 9f // default 0900
         val startPosition = startTime * 60 * scaledValue
-        LaunchedEffect(key1 = day, key2 = month, key3 = year) {// scroll to start position when the user changes the day
+        LaunchedEffect(
+            key1 = date
+        ) {// scroll to start position when the user changes the day
             scrollState.scrollTo(startPosition.toInt() * 2) // This scrolls the screen far enough to see the first event
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+        ) {
             TimeGrid(scaledValue, scrollState, showTimes)
             for (layer in layers) {
-                TimeSlotLayer(timeSlots, scaledValue, layer, context, uid, day, month, year, scrollState)
+                TimeSlotLayer(
+                    timeSlots,
+                    scaledValue,
+                    layer,
+                    date,
+                    scrollState,
+                    navController,
+                    showOptimizedEvents
+                )
             }
         }
     }
@@ -126,12 +168,9 @@ class EventBreakdown {
         val timeSlots = mutableListOf<TimeSlot>()
 
         for (event in events) {
-//            val layer = calculateLayer(event, events)
-//            val layer = events.indexOf(event)
             val layer = 0
-            val color = if (event.isAiSuggestion == true) Color.Red else Color.LightGray
             val height = (convertTimeToFloat(event.endTime) - convertTimeToFloat(event.startTime))
-            timeSlots.add(TimeSlot(event.startTime, event.title, color, height, event.endTime, layer, event.id))
+            timeSlots.add(TimeSlot(event.startTime, event.title, height, event.endTime, layer, event.id, event.isAiSuggestion))
         }
 
         return timeSlots
@@ -194,7 +233,7 @@ class EventBreakdown {
                     text = time,
                     modifier = Modifier.padding(start = 8.dp),
                     style = MaterialTheme.typography.bodySmall.copy(color = Color.Red),
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             Divider(color = Color.Gray, thickness = 1.dp)
@@ -219,6 +258,8 @@ class EventBreakdown {
             for (i in 1..11) {
                 TimeGridSlot("$i:00 PM", scale, showTimes)
             }
+            TimeGridSlot("12:00 AM", scale, showTimes)
+            Spacer(modifier = Modifier.height((60 * scale).dp))
         }
     }
 
@@ -226,73 +267,72 @@ class EventBreakdown {
     fun EventBreakdownCard(
         timeSlot: TimeSlot,
         scale: Int,
-        layerColor: Color,
-        context: Context,
-        uid: String,
-        day: String,
-        month: String,
-        year: String,
-        overlappingEventsCount: Int
+        date: LocalDate,
+        overlappingEventsCount: Int,
+        navController: NavController
     ) {
         val durationInMinutes =
             (convertTimeToFloat(timeSlot.endTime) - convertTimeToFloat(timeSlot.startTime)) * 60
+        val layerColor = when (timeSlot.isAiSuggestion) {
+            true -> MaterialTheme.colorScheme.secondary
+            false -> MaterialTheme.colorScheme.primary
+        }
 
         Card(
             modifier = Modifier
-                .fillMaxWidth(1f / overlappingEventsCount)
                 .height((durationInMinutes * scale).dp)
+                .width(320.dp / overlappingEventsCount)
                 .padding(vertical = 1.dp)
                 .clickable {
-                           FirestoreHelper().getEventsAndIds(uid, day, month, year) { map ->
-                                 // Find the matching event
-                               val event = map.values.find { it == timeSlot.id }
-                               // map the id to the event
-                               if (event != null) {
-                                   // Navigate to the event details screen
-                                   Toast.makeText(context, "Event: ${event} found!", Toast.LENGTH_SHORT).show()
-                                   FirestoreHelper().deleteEventById(uid, month, year, event) {
-                                        if (it) {
-                                             Toast.makeText(context, "Event deleted!", Toast.LENGTH_SHORT).show()
-                                        } else {
-                                            Toast.makeText(
-                                                context,
-                                                "Event not deleted!",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                   }
-                               } else {
-                                      Toast.makeText(context, "Event not found!", Toast.LENGTH_SHORT).show()
-                               }
-
-                           }
+                    navController.navigate("eventDetails/${date}/${timeSlot.id}")
                 },
             colors = CardDefaults.elevatedCardColors(
                 containerColor = layerColor
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            Row(
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .fillMaxSize()
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                if (timeSlot.text.isNotEmpty()) {
-                    Text(
-                        text = timeSlot.text,
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                ) {
+                    if (timeSlot.text.isNotEmpty()) {
+                        Text(
+                            text = timeSlot.text,
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (timeSlot.endTime.isNotEmpty() && timeSlot.startTime.isNotEmpty()) {
+                        Text(
+                            text = "${timeSlot.startTime} - ${timeSlot.endTime}",
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                if (timeSlot.isAiSuggestion) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.outline_auto_awesome_24),
+                        contentDescription = "AI Suggested Event",
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .fillMaxWidth(1f),
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                            .size(16.dp)
+                            .align(Alignment.TopEnd)
                     )
-//                    Text(
-//                        text = ("${timeSlot.startTime} - ${timeSlot.endTime}"),
-//                        modifier = Modifier.padding(end = 4.dp),
-//                        style = MaterialTheme.typography.bodyMedium
-//                    )
                 }
             }
         }
@@ -303,18 +343,11 @@ class EventBreakdown {
         timeSlots: List<TimeSlot>,
         scale: Int,
         layer: Int,
-        context: Context,
-        uid: String,
-        day: String,
-        month: String,
-        year: String,
-        scrollState: ScrollState
+        date: LocalDate,
+        scrollState: ScrollState,
+        navController: NavController,
+        showOptimizedEvents: MutableState<Boolean>
     ) {
-        var layerColor = when (layer) {
-            0 -> MaterialTheme.colorScheme.primary
-            1 -> MaterialTheme.colorScheme.secondary
-            else -> MaterialTheme.colorScheme.error
-        }
         Box(
             modifier = Modifier
                 .fillMaxWidth(1f)
@@ -324,58 +357,127 @@ class EventBreakdown {
             contentAlignment = Alignment.TopEnd
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(0.8f),
-                horizontalAlignment = Alignment.End
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .fillMaxHeight(),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Top
             ) {
-                val timeSlots = timeSlots.sortedBy { convertTimeToFloat(it.startTime) }
-                val startTimeMinutes = (convertTimeToFloat(timeSlots[0].startTime)) * 60
+                val lastEventEndtime = timeSlots.maxOfOrNull { convertTimeToFloat(it.endTime) } ?: 24f
+                val slots = if (showOptimizedEvents.value)
+                    timeSlots.sortedBy { convertTimeToFloat(it.startTime) }
+                else timeSlots.filter { !it.isAiSuggestion }.sortedBy { convertTimeToFloat(it.startTime) }
+                val startTimeMinutes = (convertTimeToFloat(slots[0].startTime)) * 60
                 Spacer(modifier = Modifier.height(((30 + startTimeMinutes) * scale).dp)) // top padding
                 val displayedEvents = mutableMapOf<String, Int>()
+                var count = 0
 
-                for (i in timeSlots.indices) {
-                    val timeSlot = timeSlots[i]
+                val groupedSlots = groupOverlappingEvents(slots.toMutableList())
 
-                    val nextEventStartTime = if (i < timeSlots.size - 1) convertTimeToFloat(timeSlots[i + 1].startTime) else 24f
-                    val currentEventEndTime = convertTimeToFloat(timeSlot.endTime)
-                    val differenceInMinutes = (nextEventStartTime - currentEventEndTime) * 60
 
-                    val overlappingEvents = timeSlots.filter{ checkOverlap(
-                        Event().apply { startTime = it.startTime; endTime = it.endTime },
-                        Event().apply { startTime = timeSlot.startTime; endTime = timeSlot.endTime }
-                    )}
+                for (i in groupedSlots.indices) {
+                    val group = groupedSlots[i]
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                    ) {
+                        for (t in group) {
+                            // Add each item to a column, with the start time of the first event minus the start time of the current event
+                            val overlapSpacing = (convertTimeToFloat(t.startTime) - convertTimeToFloat(group.first().startTime))
+                            Column {
+                                Spacer(modifier = Modifier.height((overlapSpacing * 60 * scale).dp))
+                                if (!displayedEvents.containsKey(t.id)) {
+                                        EventBreakdownCard(
+                                            t,
+                                            scale,
+                                            date,
+                                            group.size,
+                                            navController = navController
+                                        )
+                                        count++
+                                        displayedEvents[t.id] = 1
+                                    }
 
-                    if (overlappingEvents.size > 1) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start
-                        ) {
-                            for (timeSlot in overlappingEvents) {
-                                val count = displayedEvents.getOrDefault(timeSlot.id, 0)
-                                if (count < overlappingEvents.size && !displayedEvents.containsKey(timeSlot.id)) {
-                                    EventBreakdownCard(timeSlot, scale, layerColor, context, uid, day, month, year, overlappingEvents.size)
-                                    displayedEvents[timeSlot.id] = count + 1
-                                }
                             }
                         }
-                    } else if (!displayedEvents.containsKey(timeSlot.id) || displayedEvents[timeSlot.id]!! < 1)
-                    {
-                        EventBreakdownCard(timeSlot, scale, layerColor, context, uid, day, month, year, 0)
-                        displayedEvents[timeSlot.id] = 1
                     }
 
-                    Spacer(modifier = Modifier.height((differenceInMinutes * scale).dp))
+                    // Add a spacer after each group except the last one
+                    if (i < groupedSlots.size - 1) {
+                        // Sort group by end time
+                        val endTimeGroupSorted = group.sortedBy { it.endTime }
+                        val nextGroupStartTimeSorted = groupedSlots[i + 1].sortedBy { it.startTime }
+                        val currentGroupEndTime = convertTimeToFloat(endTimeGroupSorted.last().endTime)
+                        val nextGroupStartTime = convertTimeToFloat(nextGroupStartTimeSorted.first().startTime)
+                        val differenceInMinutes = (nextGroupStartTime - currentGroupEndTime) * 60
+                        Spacer(modifier = Modifier.height((differenceInMinutes * scale).dp))
+                    }
                 }
-                Spacer(modifier = Modifier.height((60 * scale).dp))
+                Spacer(modifier = Modifier.height(((24 - lastEventEndtime) * 60 * scale).dp)) // bottom padding
             }
         }
     }
+    private fun checkOverlapBoosted(timeSlot1: EventBreakdown.TimeSlot, timeSlot2: EventBreakdown.TimeSlot): Boolean {
+        val timeSlot1Start = convertTimeToFloat(timeSlot1.startTime)
+        val timeSlot1End = convertTimeToFloat(timeSlot1.endTime)
+        val timeSlot2Start = convertTimeToFloat(timeSlot2.startTime)
+        val timeSlot2End = convertTimeToFloat(timeSlot2.endTime)
+        return (timeSlot1Start < timeSlot2End && timeSlot1End > timeSlot2Start)
+    }
+
+    fun groupOverlappingEvents(slots: MutableList<TimeSlot>): List<List<TimeSlot>> {
+        val groupedSlots = mutableListOf<List<TimeSlot>>()
+
+        while (slots.isNotEmpty()) {
+            val group = mutableListOf<TimeSlot>()
+            findOverlappingEvents(slots[0], slots, group)
+            groupedSlots.add(group)
+        }
+
+        return groupedSlots
+    }
+
+    fun findOverlappingEvents(event: TimeSlot, slots: MutableList<TimeSlot>, group: MutableList<TimeSlot>) {
+        group.add(event)
+        slots.remove(event)
+
+        val overlappingEvents = slots.filter { checkOverlapBoosted(event, it) }.toMutableList()
+        for (overlappingEvent in overlappingEvents) {
+            findOverlappingEvents(overlappingEvent, slots, group)
+        }
+    }
+
 
     @Preview
     @Composable
     fun EventBreakdownPopulatedPreview() {
         ProtifyTheme {
             Surface {
-                DailySchedule(scale = 1.0, eventList = createListEvent())
+                DailySchedule(
+                    scale = 1.0,
+                    eventList = createListEvent(),
+                    date = LocalDate.now(),
+                    showTimes = true,
+                    navController = NavController(LocalContext.current),
+                    showOptimizedEvents = remember { mutableStateOf(false) }
+                )
+            }
+        }
+    }
+
+    @Preview
+    @Composable
+    fun EventBreakdownPopulatedAIPreview() {
+        ProtifyTheme {
+            Surface {
+                DailySchedule(
+                    scale = 1.0,
+                    eventList = createListEvent(),
+                    date = LocalDate.now(),
+                    showTimes = true,
+                    navController = NavController(LocalContext.current),
+                    showOptimizedEvents = remember { mutableStateOf(true) }
+                )
             }
         }
     }

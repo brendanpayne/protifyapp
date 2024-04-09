@@ -27,7 +27,7 @@ class GetAIScheduleTest {
         var homeAddress: String = ""
         @JvmStatic
         @BeforeClass
-        fun setUp() {
+        suspend fun setUp() {
             var loginLatch = CountDownLatch(1)
 
             // Login
@@ -36,11 +36,6 @@ class GetAIScheduleTest {
             loginLatch.await(10, TimeUnit.SECONDS)
 
             user = loginHelper.getCurrentUser()
-
-            // Get user's home address
-            if (user != null) {
-                runBlocking { homeAddress = firestoreHelper.getUserHomeAddress(user!!.uid) }
-            }
 
             // Mock events
             val events = listOf<FirestoreEvent>().toMutableList()

@@ -4,24 +4,26 @@ import com.protify.protifyapp.features.events.Attendee
 import java.time.LocalDateTime
 
 class FirestoreEvent(
-    val name: String,
+    var name: String,
     val nameLower: String,
     var startTime: LocalDateTime,
     var endTime: LocalDateTime,
     var location: String? = "",
-    val description: String? = "",
-    val timeZone: String? = "",
-    val importance: Int? = 1,
-    val attendees: List<Attendee>? = null,
-    val rainCheck: Boolean = false,
-    val isRaining: Boolean = false,
-    val mapsCheck: Boolean = false,
-    val distance: Int = 0,
-    val isOutside: Boolean = false,
-    val isOptimized: Boolean = false,
+    var description: String? = "",
+    var timeZone: String? = "",
+    var importance: Int? = 1,
+    var attendees: List<Attendee>? = null,
+    var rainCheck: Boolean = false,
+    var isRaining: Boolean = false,
+    var mapsCheck: Boolean = false,
+    var distance: Int = 0,
+    var isOutside: Boolean = false,
+    var isOptimized: Boolean = false,
     var isAiSuggestion: Boolean = false,
     var isUserAccepted: Boolean = false,
+    var id: String = "",
 ) {
+
     fun validateEvent(event: FirestoreEvent): List<Error> {
         val errors = mutableListOf<Error>()
         validateName(event.name)?.let { errors.add(it) }
@@ -41,7 +43,7 @@ class FirestoreEvent(
     }
 
     private fun validateDescription(description: String): Error? {
-        if (description.length > 250) {
+        if (description.length > 1000) {
             return Error("Description is too long")
         }
         return null
