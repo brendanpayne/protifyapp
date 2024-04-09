@@ -733,7 +733,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                 passedQualityCheck = false
             }
         }
-        // Check that the old events start and end times don't match the new events start and end times
+//         Check that the old events start and end times don't match the new events start and end times
         var matchingStartAndEndTime = 0
         for (event in events) {
             val matchingEvent = optimizedSchedule.events.find { it.name == event.name }
@@ -754,7 +754,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                 val oldMatchingEvent = optimizedSchedule.oldEvents.find { it.name == event.name }
                 if (oldMatchingEvent != null) {
                     val oldDuration = ParseTime().parseTime(oldMatchingEvent.endTime, today).toLocalTime().toSecondOfDay() - ParseTime().parseTime(oldMatchingEvent.startTime, today).toLocalTime().toSecondOfDay()
-                    val newDuration = ParseTime().parseTime(oldMatchingEvent.endTime, today).toLocalTime().toSecondOfDay() - ParseTime().parseTime(oldMatchingEvent.startTime, today).toLocalTime().toSecondOfDay()
+                    val newDuration = matchingEvent.endTime.toLocalTime().toSecondOfDay() - matchingEvent.startTime.toLocalTime().toSecondOfDay()
                     if (oldDuration == newDuration) {
                         matchingEventDuration++
                     }
@@ -769,7 +769,7 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
 
         // If there are nonRainingTimes, then check that the events that have isOutside are scheduled during the non-raining times
         var isScheduledDuringNonRainingTimeCount = 0
-        if (nonRainingTimes != null) {
+        if (!nonRainingTimes.isNullOrEmpty()) {
             for (event in events) {
                 val matchingEvent = optimizedSchedule.events.find { it.name == event.name } // Find event with matching name
                 if (event.isOutside && matchingEvent != null) { // If the event is outside and there is a matching event
