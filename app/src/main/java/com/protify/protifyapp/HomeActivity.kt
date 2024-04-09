@@ -153,7 +153,7 @@ class HomeActivity {
                 GroupItem(navController, "Profile", Icons.Filled.PlayArrow, "profile")
                 GroupItem(navController, "Privacy & Location", Icons.Filled.PlayArrow, "privacyLocation")
                 GroupItem(navController, "Recipe Generator",Icons.Filled.PlayArrow, "recipeGenerator")
-                //GroupItem(navController, "About", Icons.Filled.PlayArrow, "about")
+                GroupItem(navController, "About", Icons.Filled.PlayArrow, "about")
                 OptimizeSlider(showOptimizedEvents)
             }
             Column(
