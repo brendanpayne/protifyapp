@@ -134,7 +134,7 @@ class EventDetails {
                     },
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Delete event", tint = MaterialTheme.colorScheme.surface)
+                    Icon(Icons.Filled.Delete, contentDescription = "Delete event", tint = MaterialTheme.colorScheme.onPrimary)
                 }
                 FloatingActionButton(
                     onClick = {
@@ -142,7 +142,7 @@ class EventDetails {
                     },
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Icon(Icons.Filled.Edit, contentDescription = "Edit event", tint = MaterialTheme.colorScheme.surface)
+                    Icon(Icons.Filled.Edit, contentDescription = "Edit event", tint = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }
@@ -404,7 +404,7 @@ class EventDetails {
                 Text(
                     text = "Event Details",
                     style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSecondary,
+                    color = MaterialTheme.colorScheme.onPrimary,
                 )
                 // This is a placeholder to push the title to the center
                 Spacer(modifier = Modifier.size(48.dp))

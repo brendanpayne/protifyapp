@@ -14,15 +14,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.Button
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,9 +35,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.widget.Autocomplete
@@ -53,14 +56,6 @@ class ProfileActivity {
     val user = FirebaseAuth.getInstance().currentUser
     var name by mutableStateOf(user?.displayName.takeIf { it?.isNotEmpty() == true } ?: "Enter your Display Name") // Mutable state to recompose when the name changes
     val email = user?.email ?: "Unknown"
-
-
-    @Composable
-    fun BackButton(navController: NavController) {
-        IconButton(onClick = { navController.popBackStack() }) {
-            Icon(Icons.Filled.ArrowBack, contentDescription = "Go back")
-        }
-    }
 
     @Composable
     fun ProfilePage(navController: NavController) {
@@ -95,18 +90,13 @@ class ProfileActivity {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                BackButton(navController)
-                Spacer(modifier = Modifier.width(16.dp)) 
-            }
+            ProfileHeader(onBackClick = { navController.popBackStack() })
             Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(
@@ -120,18 +110,20 @@ class ProfileActivity {
                     value = newName,
                     onValueChange = { newName = it },
                     label = { Text("Display Name") },
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
                 )
                 OutlinedTextField(
                     value = newHomeAddress,
                     onValueChange = { newHomeAddress = it },
                     label = { Text("Home Address") },
                     trailingIcon = {
-                        androidx.compose.material3.IconButton(onClick = { newHomeAddress = "" }) {
-                            androidx.compose.material3.Icon(
+                        IconButton(onClick = { newHomeAddress = "" }) {
+                            Icon(
                                 imageVector = Icons.Default.Delete,
                                 contentDescription = "Delete",
-                                tint = MaterialTheme.colorScheme.outline,
+                                tint = MaterialTheme.colorScheme.onSurface,
                             )
                         }
                     },
@@ -152,7 +144,8 @@ class ProfileActivity {
                                 )
                             }
                         }
-                        .padding(16.dp),
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
                     readOnly = true
                 )
                 Row(
@@ -252,6 +245,30 @@ class ProfileActivity {
                         Text("Save Changes")
                     }
                 }
+            }
+        }
+    }
+    @Composable
+    private fun ProfileHeader(onBackClick: () -> Unit){
+        Surface(
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { onBackClick() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+                Text(
+                    text = "Profile Settings",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+                // This is a placeholder to push the title to the center
+                Spacer(modifier = Modifier.size(48.dp))
             }
         }
     }

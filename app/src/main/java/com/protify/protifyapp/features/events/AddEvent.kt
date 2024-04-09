@@ -849,10 +849,10 @@ open class AddEvent {
                 checked = isOutside,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.surface,
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                     checkedTrackColor = MaterialTheme.colorScheme.primary,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.primary,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surface,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.surface,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.background,
                 )
             )
         }
@@ -881,10 +881,10 @@ open class AddEvent {
                 checked = isOptimized,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.surface,
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                     checkedTrackColor = MaterialTheme.colorScheme.primary,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.primary,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surface,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.surface,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.background,
                 )
             )
         }
@@ -945,7 +945,7 @@ open class AddEvent {
                                     Icon(
                                         imageVector = Icons.Default.Add,
                                         contentDescription = "Add Attendee",
-                                        tint = MaterialTheme.colorScheme.surface,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
                                         modifier = Modifier.align(Alignment.Center)
                                     )
                                 }
@@ -1149,7 +1149,7 @@ open class AddEvent {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSecondary,
+                    color = MaterialTheme.colorScheme.onPrimary,
                 )
                 // This is a placeholder to push the title to the center
                 Spacer(modifier = Modifier.size(48.dp))

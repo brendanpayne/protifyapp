@@ -2,15 +2,22 @@ package com.protify.protifyapp
 
 import FirestoreEventString
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
@@ -20,7 +27,9 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -58,23 +68,20 @@ class RecipeActivity {
 
         var showDialog by remember { mutableStateOf(false) }
         var isLoading by remember { mutableStateOf(false) }
-        Box(modifier = Modifier.fillMaxSize()) {
-            BackButton(navController)
+        Column{
+            RecipeHeader(onBackClick = { navController.popBackStack() })
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp)
+                    .fillMaxWidth()
+                    .padding(16.dp)
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "Recipe Generator",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 32.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 32.dp)
-                )
-                Box {// Wrap text field and dropdown in a box to allow for dropdown to be displayed over text field
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
                     OutlinedTextField(
                         value = selectedDiet,
                         onValueChange = { selectedDiet = it },
@@ -84,13 +91,14 @@ class RecipeActivity {
                                 Icon(Icons.Filled.ArrowDropDown, contentDescription = "Open dropdown")
                             }
                         },
-                        isError = selectedDiet == "Select Diet"
+                        isError = selectedDiet == "Select Diet",
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
                         modifier = Modifier
-                            .width(200.dp)
+                            .width(250.dp)
                             .height(300.dp)
                             .align(Alignment.BottomStart)
                     ) {
@@ -121,7 +129,7 @@ class RecipeActivity {
                             }
                         },
                         label = { Text("Ingredients") },
-                        modifier = Modifier.padding(top = 16.dp),
+                        modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
                         isError = ingredient.isEmpty() && ingredients.value.size == 1
                     )
                     // Add a new ingredient field if the last field is filled
@@ -147,7 +155,7 @@ class RecipeActivity {
                             }
                         },
                         label = { Text("Exclude Ingredients") },
-                        modifier = Modifier.padding(top = 16.dp)
+                        modifier = Modifier.padding(top = 16.dp).fillMaxWidth()
                     )
                     // Add a new exclude ingredient field if the last field is filled
                     if (index == excludeIngredients.value.size - 1 && excludeIngredient.isNotEmpty()) {
@@ -160,7 +168,7 @@ class RecipeActivity {
                     value = time,
                     onValueChange = { time = it },
                     label = { Text("Time (in minutes)") },
-                    modifier = Modifier.padding(top = 16.dp),
+                    modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
                     isError = (time.toIntOrNull() ?: 0) < minTime
                 )
                 // Submit button
@@ -197,9 +205,21 @@ class RecipeActivity {
                             }
                         }
                     },
-                    modifier = Modifier.padding(top = 32.dp)
+                    modifier = Modifier
+                        .padding(top = 32.dp)
+                        .fillMaxWidth()
+                        .height(48.dp)
+                    ,
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Generate Recipe")
+                    Text(
+                        text = "Generate Recipe",
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    )
                 }
                 if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.padding(top = 32.dp))
@@ -246,15 +266,27 @@ class RecipeActivity {
             }
         }
     }
-
     @Composable
-    fun BackButton(navController: NavController) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            IconButton(
-                onClick = { navController.popBackStack() },
-                modifier = Modifier.align(Alignment.TopStart)
+    private fun RecipeHeader(onBackClick: () -> Unit){
+        Surface(
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = "Go back")
+                IconButton(onClick = { onBackClick() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+                Text(
+                    text = "Recipe Generator",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+                // This is a placeholder to push the title to the center
+                Spacer(modifier = Modifier.size(48.dp))
             }
         }
     }

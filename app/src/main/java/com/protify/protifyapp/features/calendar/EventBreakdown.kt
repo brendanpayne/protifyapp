@@ -233,7 +233,7 @@ class EventBreakdown {
                     text = time,
                     modifier = Modifier.padding(start = 8.dp),
                     style = MaterialTheme.typography.bodySmall.copy(color = Color.Red),
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             Divider(color = Color.Gray, thickness = 1.dp)

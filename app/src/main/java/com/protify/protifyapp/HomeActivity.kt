@@ -87,7 +87,10 @@ class HomeActivity {
             else -> TimeOfDay.NIGHT
         }
 
-        Surface {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.surface
+        ) {
             ModalDrawer(
                 drawerState = scaffoldState.drawerState,
                 drawerContent = { DrawerContent(navController, showOptimizedEvents, scaffoldState, scope) },
@@ -104,7 +107,9 @@ class HomeActivity {
         scope: CoroutineScope
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.surface)
+                .fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -168,7 +173,7 @@ class HomeActivity {
                         "Logout",
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }

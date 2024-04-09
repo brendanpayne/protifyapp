@@ -73,7 +73,7 @@ class EventView (private val navController: NavController) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Add Event",
-                            tint = MaterialTheme.colorScheme.surface,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
