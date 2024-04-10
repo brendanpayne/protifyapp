@@ -339,7 +339,6 @@ class CalendarView(private val navController: NavController) {
     @Composable
     fun Calendar(
         context: Context,
-        navigateToAddEvent: () -> Unit,
         showOptimizedEvents: MutableState<Boolean>
     ) {
         val dataSource = CalendarDataSource()

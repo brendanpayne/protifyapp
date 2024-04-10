@@ -111,20 +111,17 @@ class AccountActivity {
                 }
 
                 composable("home") {
-                    HomeActivity().HomePage(navController) {
-                        HomeActivity().navigateToAddEvent(
-                            navController = navController
-                        )
-                    }
+                    HomeActivity().HomePage(navController)
                 }
 
 
-                composable("addEvent") {
-                    AddEvent().AddEventPage {
+                composable("addEvent/{date}") { backStackEntry ->
+                    val date = backStackEntry.arguments?.getString("date")?: LocalDate.now().toString()
+                    AddEvent().AddEventPage(navigateBack = {
                         AddEvent().navigateBack(
                             navController = navController
                         )
-                    }
+                    }, date = date)
                 }
                 composable("profile") {
                     ProfileActivity().ProfilePage(navController)

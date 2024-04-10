@@ -68,7 +68,7 @@ class HomeActivity {
 
     @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
     @Composable
-    fun HomePage(navController: NavHostController, navigateToAddEvent: () -> Unit) {
+    fun HomePage(navController: NavHostController) {
         val scaffoldState = rememberScaffoldState()
         val scope = rememberCoroutineScope()
         val firestoreHelper = FirestoreHelper()
@@ -94,7 +94,7 @@ class HomeActivity {
             ModalDrawer(
                 drawerState = scaffoldState.drawerState,
                 drawerContent = { DrawerContent(navController, showOptimizedEvents, scaffoldState, scope) },
-                content = { HomeContent(timeOfDay, user, navController, navigateToAddEvent, scaffoldState, showOptimizedEvents) }
+                content = { HomeContent(timeOfDay, user, navController, scaffoldState, showOptimizedEvents) }
             )
         }
     }
@@ -212,7 +212,6 @@ class HomeActivity {
         timeOfDay: TimeOfDay,
         user: FirebaseUser?,
         navController: NavHostController,
-        navigateToAddEvent: () -> Unit,
         scaffoldState: ScaffoldState,
         showOptimizedEvents: MutableState<Boolean>
     ) {
@@ -250,7 +249,7 @@ class HomeActivity {
                         )
                     }
                 }
-                CalendarView(navController).Calendar(context, navigateToAddEvent, showOptimizedEvents)
+                CalendarView(navController).Calendar(context, showOptimizedEvents)
             }
 
             val networkManager = NetworkManager(context)
@@ -312,12 +311,12 @@ class HomeActivity {
     fun CalendarAppPreview() {
         val navController = rememberNavController()
         ProtifyTheme {
-            HomePage(navController, navigateToAddEvent = {})
+            HomePage(navController)
         }
     }
 
-    fun navigateToAddEvent(navController: NavHostController) {
-        navController.navigate("addEvent")
+    fun navigateToAddEvent(navController: NavHostController, date: String) {
+        navController.navigate("addEvent/${date}")
     }
     /** This function runs asynchronously to optimize the schedule for today
      * @param uid The user's unique identifier

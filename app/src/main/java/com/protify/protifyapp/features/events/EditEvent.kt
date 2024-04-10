@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import com.protify.protifyapp.FirestoreEvent
 import com.protify.protifyapp.FirestoreHelper
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class EditEvent (private val eventToEdit: FirestoreEvent, private val isRecipe: Boolean = false) : AddEvent() {
     init {
@@ -97,7 +98,7 @@ class EditEvent (private val eventToEdit: FirestoreEvent, private val isRecipe: 
     }
 
     @Composable
-    override fun AddEventPage(navigateBack: () -> Unit) {
+    override fun AddEventPage(navigateBack: () -> Unit, date: String) {
         eventToEdit.let { event ->
             name = event.name
             startTime = event.startTime
@@ -114,12 +115,12 @@ class EditEvent (private val eventToEdit: FirestoreEvent, private val isRecipe: 
             formattedEndTime = formatTime(event.endTime)
         }
 
-        super.AddEventPage(navigateBack)
+        super.AddEventPage(navigateBack, selectedDateGlobal.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
     }
 
     @Composable
     fun EditEventPage(navigateBack: () -> Unit) {
-        AddEventPage(navigateBack)
+        AddEventPage(navigateBack, "")
     }
     private fun formatTime(startTime: LocalDateTime): String {
         var formattedStartTime: String

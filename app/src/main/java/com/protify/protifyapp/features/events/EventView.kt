@@ -43,11 +43,13 @@ import com.protify.protifyapp.features.calendar.EventBreakdown
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 
 class EventView (private val navController: NavController) {
     @Composable
-    fun EventHeader() {
+    fun EventHeader(date: LocalDate) {
+        val formattedDate = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -60,7 +62,7 @@ class EventView (private val navController: NavController) {
                 )
                 IconButton(
                     onClick = {
-                        navController.navigate("addEvent")
+                        navController.navigate("addEvent/${formattedDate}")
                     },
                     modifier = Modifier.padding(8.dp),
                 ) {
@@ -252,7 +254,7 @@ class EventView (private val navController: NavController) {
                     .fillMaxSize(),
                 verticalArrangement = Arrangement.Top
             ) {
-                EventHeader()
+                EventHeader(data.selectedDate.date)
                 EventList(data, isLoadingEvents, isOptimizingEvents, optimizeEventClickListener, showOptimizedEvents)
             }
         }

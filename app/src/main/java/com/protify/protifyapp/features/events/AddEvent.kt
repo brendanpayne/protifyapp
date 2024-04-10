@@ -93,6 +93,7 @@ import com.protify.protifyapp.R
 import com.protify.protifyapp.features.login.FirebaseLoginHelper
 import com.protify.protifyapp.utils.MapsDurationUtils
 import com.protify.protifyapp.utils.WeatherUtils
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -247,17 +248,20 @@ open class AddEvent {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun AddEventUI(navigateBack: () -> Unit) {
+    fun AddEventUI(navigateBack: () -> Unit, defaultDate: LocalDate = LocalDate.now()) {
+
+        selectedDateGlobal = LocalDateTime.of(defaultDate, LocalDateTime.now().toLocalTime()) // Set the selected date to the default date
+
         val context = LocalContext.current
         val user = FirebaseLoginHelper().getCurrentUser()?.uid
         var requiredEmpty by remember { mutableStateOf(false) }
         val networkManager = NetworkManager(context)
         //Date Picker Dialog
-        val dayOfMonth = LocalDateTime.now().dayOfMonth
-        val month = LocalDateTime.now().monthValue - 1 //Subtract 1 to select the right day in the DatePickerDialog
-        val year = LocalDateTime.now().year
-        val datePickerDialog = android.app.DatePickerDialog( // This isn't really used
-            context, {_, year, month, dayOfMonth ->
+        val dayOfMonth = defaultDate.dayOfMonth
+        val month = defaultDate.monthValue - 1 //Subtract 1 to select the right day in the DatePickerDialog
+        val year = defaultDate.year
+        val datePickerDialog = DatePickerDialog( // This isn't really used
+            context, { _, year, month, dayOfMonth ->
             }, year, month, dayOfMonth
         )
         //Time Picker Dialog
@@ -415,6 +419,7 @@ open class AddEvent {
                     EventDateItem(
                         datePickerDialog = datePickerDialog,
                         dateError = dateError,
+                        defaultDate = defaultDate
                     )
                 }
                 item {
@@ -506,9 +511,9 @@ open class AddEvent {
     }
 
     @Composable
-    fun EventDateItem(datePickerDialog: DatePickerDialog, dateError: Boolean) {
+    fun EventDateItem(datePickerDialog: DatePickerDialog, dateError: Boolean, defaultDate: LocalDate) {
         OutlinedTextField(
-            value = "${selectedDateGlobal.monthValue}/${selectedDateGlobal.dayOfMonth}/${selectedDateGlobal.year}",
+            value = selectedDateGlobal.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")),
             onValueChange = {  }, // This is a read-only field
             placeholder = { Text("Date") },
             modifier = Modifier
@@ -1158,13 +1163,14 @@ open class AddEvent {
     }
 
     @Composable
-    open fun AddEventPage(navigateBack: () -> Unit) {
+    open fun AddEventPage(navigateBack: () -> Unit, date: String) {
         val context = LocalContext.current
         val user = FirebaseLoginHelper().getCurrentUser()?.uid
+        val dateToLocalDate = LocalDate.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
         FirebaseApp.initializeApp(context)
         Column {
             AddEventHeader(title = "Add New Event", onBackClick = navigateBack)
-            AddEventUI(navigateBack)
+            AddEventUI(navigateBack, dateToLocalDate)
             EventCreateItem("Create Event", user, navigateBack, context)
         }
     }
