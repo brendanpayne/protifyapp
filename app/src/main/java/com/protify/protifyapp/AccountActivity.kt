@@ -129,7 +129,9 @@ class AccountActivity {
                 composable("profile") {
                     ProfileActivity().ProfilePage(navController)
                 }
-
+                composable("about") {
+                    AboutActivity().AboutPage(navController)
+                }
                 composable("privacyLocation") {
                     PrivacyActivity().PrivacyPage(navController)
                 }
