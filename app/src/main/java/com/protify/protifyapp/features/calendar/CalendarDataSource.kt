@@ -43,28 +43,31 @@ class CalendarDataSource {
         return toUiModel(visibleDates, lastSelectedDate)
     }
 
-fun getDatesBetween(startDate: LocalDate, endDate: LocalDate, isMonthView: Boolean): List<LocalDate> {
-    val start: LocalDate
-    val end: LocalDate
-    if (isMonthView) {
-        start = startDate.withDayOfMonth(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
-        val endOfMonth = endDate.withDayOfMonth(endDate.lengthOfMonth())
-        end = if (endOfMonth.dayOfWeek == DayOfWeek.SUNDAY &&
-            endOfMonth.month == startDate.plus(15, ChronoUnit.DAYS).month) // if the first date and the second date are in the same month
-            endOfMonth
-        else
-            endOfMonth.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
-    } else {
-        start = startDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
-        end = start.plusDays(7)
+    fun getDatesBetween(startDate: LocalDate, endDate: LocalDate, isMonthView: Boolean): List<LocalDate> {
+        val start: LocalDate
+        val end: LocalDate
+        if (isMonthView) {
+            start = startDate.withDayOfMonth(1).with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+            var endOfMonth = endDate.withDayOfMonth(endDate.lengthOfMonth())
+            if (endOfMonth.dayOfWeek == DayOfWeek.SUNDAY) {
+                endOfMonth = endOfMonth.plusDays(7) // Add an extra week if the month ends on a Sunday
+            }
+            end = if (endOfMonth.dayOfWeek == DayOfWeek.SUNDAY &&
+                endOfMonth.month == startDate.plus(15, ChronoUnit.DAYS).month) // if the first date and the second date are in the same month
+                endOfMonth
+            else
+                endOfMonth.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+        } else {
+            start = startDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+            end = start.plusDays(7)
+        }
+        val numOfDays = ChronoUnit.DAYS.between(start, end)
+        return Stream.iterate(start) { date ->
+            date.plusDays(1)
+        }
+            .limit(numOfDays)
+            .collect(Collectors.toList())
     }
-    val numOfDays = ChronoUnit.DAYS.between(start, end)
-    return Stream.iterate(start) { date ->
-        date.plusDays(1)
-    }
-        .limit(numOfDays)
-        .collect(Collectors.toList())
-}
 
     fun toUiModel(
         dateList: List<LocalDate>,

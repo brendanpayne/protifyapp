@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +35,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -40,6 +43,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -71,12 +75,12 @@ class CalendarView(private val navController: NavController) {
         )
     })
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun CalendarItem(
         date: CalendarUiModel.Date,
         onClickListener: (CalendarUiModel.Date) -> Unit,
         isMonthView: Boolean,
+        isSameMonth: Boolean
     ) {
         val isSelected = selectedDate == date
         val isToday = date.date == LocalDate.now()
@@ -85,6 +89,13 @@ class CalendarView(private val navController: NavController) {
             targetValue = when {
                 isSelected -> MaterialTheme.colorScheme.primary
                 else -> MaterialTheme.colorScheme.surface
+            },
+            label = ""
+        )
+        val textColor by animateColorAsState(
+            targetValue = when {
+                isSelected -> MaterialTheme.colorScheme.onPrimary
+                else -> MaterialTheme.colorScheme.onSurface
             },
             label = ""
         )
@@ -127,6 +138,9 @@ class CalendarView(private val navController: NavController) {
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.ExtraBold,
                             ),
+                            color = textColor.copy(
+                                alpha = if (isSameMonth) 1f else 0.5f
+                            ),
                             textAlign = TextAlign.Center,
                         )
                     }
@@ -160,6 +174,7 @@ class CalendarView(private val navController: NavController) {
         onToggleViewClickListener: () -> Unit,
         isMonthView: Boolean
     ) {
+        val scope = rememberCoroutineScope()
         val dataSource = CalendarDataSource()
         val startMonth = LocalDate.of(1970, 1, 1)
         val startWeek = LocalDate.of(1970, 1, 4)
@@ -178,12 +193,40 @@ class CalendarView(private val navController: NavController) {
         },
             initialPage = weeksSince1970
         )
+        var isCurrentMonth: Boolean = true
+
+        LaunchedEffect (monthState){
+            snapshotFlow { monthState.currentPage }.collect { page ->
+                val monthToShow = startMonth.plusMonths(page.toLong())
+                val visibleDates = dataSource.getDatesBetween(
+                    monthToShow.withDayOfMonth(1),
+                    monthToShow.withDayOfMonth(monthToShow.lengthOfMonth()),
+                    true
+                )
+                val monthData = dataSource.toUiModel(visibleDates, dataSource.today)
+                if (monthData.visibleDates.isNotEmpty()) {
+                    selectedDate = monthData.visibleDates[6]
+                    fetchEvents(
+                        scope,
+                        monthData,
+                        dataSource,
+                        eventsForAllDates,
+                        mutableStateOf(true)
+                    )
+                }
+            }
+        }
+
 
         if (isMonthView) {
             HorizontalPager(
                 state = monthState,
                 modifier = Modifier.fillMaxWidth(),
-                beyondBoundsPageCount = 1
+                beyondBoundsPageCount = 0,
+                flingBehavior = PagerDefaults.flingBehavior(
+                    state = monthState,
+                    pagerSnapDistance = PagerSnapDistance.atMost(1)
+                )
             ) { pageIndex ->
                 val monthToShow = startMonth.plusMonths(pageIndex.toLong())
                 val visibleDates = dataSource.getDatesBetween(
@@ -239,8 +282,8 @@ class CalendarView(private val navController: NavController) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 week.forEach { date ->
-                                    CalendarItem(date, onDateClickListener, true)
-                                    // TODO: Fix isSelected not updating on click
+                                    isCurrentMonth = date.date.month == monthData.visibleDates[15].date.month
+                                    CalendarItem(date, onDateClickListener, true, isCurrentMonth)
                                     // TODO: Fix event view/firebase flakiness on month view
                                 }
                             }
@@ -279,7 +322,11 @@ class CalendarView(private val navController: NavController) {
                 HorizontalPager(
                     state = weekState,
                     modifier = Modifier.fillMaxWidth(),
-                    beyondBoundsPageCount = 1
+                    beyondBoundsPageCount = 1,
+                    flingBehavior = PagerDefaults.flingBehavior(
+                        state = weekState,
+                        pagerSnapDistance = PagerSnapDistance.atMost(1)
+                    )
                 ) { pageIndex ->
                     val weekToShow = startWeek.plusWeeks(pageIndex.toLong())
                     val visibleDates = dataSource.getDatesBetween(
@@ -302,7 +349,7 @@ class CalendarView(private val navController: NavController) {
                                     .padding(start = 16.dp, end = 16.dp)
                             ) {
                                 items(weekData.visibleDates) { date ->
-                                    CalendarItem(date, onDateClickListener, false) // TODO: Fix isSelected not updating on click
+                                    CalendarItem(date, onDateClickListener, false, isCurrentMonth) // TODO: Fix isSelected not updating on click
                                 }
                             }
                         }
@@ -468,6 +515,7 @@ class CalendarView(private val navController: NavController) {
                             date.date.year.toString()
                         ) { events ->
                             if (events.isNotEmpty()) {
+                                calendarUiModel.selectedDate.hasEvents = events.isNotEmpty()
                                 calendarUiModel.selectedDate.events = events
                                 eventsForAllDates[date.date] = events
                                 calendarUiModel.selectedDate.hasEvents = true
