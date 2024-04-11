@@ -353,6 +353,11 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                     try {
                         optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
                     } catch (e: Exception) {
+                        timesRan++
+                        if (timesRan > maxRetries - 1 && !isCallbackInvoked) {
+                            timesRan = 0
+                            thirdCall()
+                        }
                         return@getResponseNoLocationData
                     }
                     if (!isCallbackInvoked) { // If the callback hasn't been called yet
@@ -375,6 +380,11 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                     try {
                         optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
                     } catch (e: Exception) {
+                        timesRan++
+                        if (timesRan > maxRetries - 1 && !isCallbackInvoked) {
+                            timesRan = 0
+                            thirdCall()
+                        }
                         return@getResponseBlockedEvents
                     }
                     if (!isCallbackInvoked) { // If the callback hasn't been called yet
@@ -399,6 +409,11 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                 try {
                     optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
                 } catch (e: Exception) {
+                    timesRan++
+                    if (timesRan > maxRetries - 1 && !isCallbackInvoked) {
+                        timesRan = 0
+                        thirdCall()
+                    }
                     return@getResponse
                 }
                 if (!isCallbackInvoked) { // If the callback hasn't been called yet
