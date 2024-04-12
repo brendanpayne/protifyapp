@@ -14,9 +14,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -30,8 +33,8 @@ class AboutActivity {
     data class DevProfile(
         var name: String,
         var linkedIn: String,
-        var github: String,
-        var email: String,
+        var github: String? = null,
+        var email: String? = null,
         var desc: String,
         var image: Int
     )
@@ -40,40 +43,33 @@ class AboutActivity {
         DevProfile(
             name = "Tom McReynolds",
             linkedIn = "https://www.linkedin.com/in/tommymcreynolds/",
-            github = "",
-            email = "",
+            github = "uc-mcreyntm",
             desc = "Backend Developer",
             image = R.drawable.tom
         ),
         DevProfile(
             name = "Brendan Payne",
             linkedIn = "https://www.linkedin.com/in/payneb2/",
-            github = "",
-            email = "",
+            github = "brendanpayne",
             desc = "Full Stack Developer",
             image = R.drawable.brendan
         ),
         DevProfile(
             name = "Tyler Malovrh",
             linkedIn = "https://www.linkedin.com/in/tyler-malovrh-8b99a1205/",
-            github = "",
-            email = "",
+            github = "Tmal1652",
             desc = "Frontend Developer",
             image = R.drawable.tyler
         ),
         DevProfile(
             name = "Cole Kramer",
             linkedIn = "https://www.linkedin.com/in/colekramer000/",
-            github = "",
-            email = "",
             desc = "Security Analyst",
             image = R.drawable.cole
         ),
         DevProfile(
             name = "Trever Adkins",
             linkedIn = "https://www.linkedin.com/in/trever-adkins-649921148/",
-            github = "",
-            email = "",
             desc = "Security Analyst",
             image = R.drawable.trever
         )
@@ -177,6 +173,7 @@ class AboutActivity {
                     contentDescription = "Developer Image",
                     modifier = Modifier
                         .size(100.dp)
+                        .shadow(4.dp, CircleShape)
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop
                 )
@@ -199,6 +196,29 @@ class AboutActivity {
                         .padding(top = 8.dp)
                         .fillMaxWidth()
                 )
+                devProfile.github?.let {
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(id = R.drawable.github_mark),
+                            contentDescription = "GitHub",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .padding(start = 4.dp)
+                        )
+                    }
+                }
             }
         }
     }
