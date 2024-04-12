@@ -110,6 +110,7 @@ class CalendarDataSource {
         convertedEvent.location = firestoreEvent.location!!
         convertedEvent.title = firestoreEvent.name!!
         convertedEvent.isAiSuggestion = firestoreEvent.isAiSuggestion
+        convertedEvent.isOptimized = firestoreEvent.isOptimized
         if (id != null && id != "") {
             convertedEvent.id = id
         }

@@ -181,18 +181,30 @@ class EventDetails {
 
     @Composable
     private fun EventTitle(event: FirestoreEvent) {
-        var tooltipState by remember { mutableStateOf(false) }
+        var tooltipStateAI by remember { mutableStateOf(false) }
+        var tooltipStateLocked by remember { mutableStateOf(false) }
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (event.isAiSuggestion) {
+            if (event.isAiSuggestion && !event.isOptimized) {
                 IconButton(
-                    onClick = { tooltipState = !tooltipState },
+                    onClick = { tooltipStateAI = !tooltipStateAI },
                 ) {
                     Icon(
                         imageVector = ImageVector.vectorResource(id = R.drawable.outline_auto_awesome_24),
                         contentDescription = "AI Suggestion",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            if (event.isOptimized) {
+                IconButton(
+                    onClick = { tooltipStateLocked = !tooltipStateLocked },
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.lock),
+                        contentDescription = "Locked Event",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -204,10 +216,9 @@ class EventDetails {
                 fontWeight = FontWeight.Bold
             )
             DropdownMenu(
-                expanded = tooltipState,
-                onDismissRequest = { tooltipState = false },
-                modifier = Modifier
-                    .padding(8.dp),
+                expanded = tooltipStateAI,
+                onDismissRequest = { tooltipStateAI = false },
+                modifier = Modifier.padding(8.dp),
             ) {
                 Text(
                     text = "AI Optimized",
@@ -216,7 +227,25 @@ class EventDetails {
                     modifier = Modifier.padding(8.dp)
                 )
                 Text(
-                    text = "This event was optimized by Protify's AI",
+                    text = "This event was optimized by Protify's AI.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+            DropdownMenu(
+                expanded = tooltipStateLocked,
+                onDismissRequest = { tooltipStateLocked = false },
+                modifier = Modifier.padding(8.dp),
+            ) {
+                Text(
+                    text = "Locked Event",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(8.dp)
+                )
+                Text(
+                    text = "This event is locked and cannot be\noptimized by Protify's AI.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                     modifier = Modifier.padding(8.dp)

@@ -1,8 +1,10 @@
 package com.protify.protifyapp.features.calendar
 
+import android.util.Log
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
@@ -53,7 +56,8 @@ class EventBreakdown {
         val endTime: String = "",
         val layer: Int = 0,
         val id: String = "",
-        val isAiSuggestion: Boolean = false
+        val isAiSuggestion: Boolean = false,
+        val isOptimized: Boolean = false
     )
 
     private fun createListEvent(): List<Event> {
@@ -67,6 +71,7 @@ class EventBreakdown {
                 location = "Location for Event 1"
                 attendees = listOf()
                 id = "1"
+                isOptimized = true
             },
             Event().apply {
                 title = "Event 2"
@@ -77,6 +82,7 @@ class EventBreakdown {
                 attendees = listOf()
                 id = "2"
                 isAiSuggestion = true
+                isOptimized = true
             },
             Event().apply {
                 title = "Event 3"
@@ -170,7 +176,16 @@ class EventBreakdown {
         for (event in events) {
             val layer = 0
             val height = (convertTimeToFloat(event.endTime) - convertTimeToFloat(event.startTime))
-            timeSlots.add(TimeSlot(event.startTime, event.title, height, event.endTime, layer, event.id, event.isAiSuggestion))
+            timeSlots.add(TimeSlot(
+                startTime = event.startTime,
+                text = event.title,
+                height = height,
+                endTime = event.endTime,
+                layer = layer,
+                id = event.id,
+                isAiSuggestion = event.isAiSuggestion,
+                isOptimized = event.isOptimized
+            ))
         }
 
         return timeSlots
@@ -328,6 +343,16 @@ class EventBreakdown {
                     Icon(
                         imageVector = ImageVector.vectorResource(id = R.drawable.outline_auto_awesome_24),
                         contentDescription = "AI Suggested Event",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .align(Alignment.TopEnd)
+                    )
+                }
+                if (timeSlot.isOptimized && !timeSlot.isAiSuggestion) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.lock),
+                        contentDescription = "Locked Event",
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier
                             .size(16.dp)
