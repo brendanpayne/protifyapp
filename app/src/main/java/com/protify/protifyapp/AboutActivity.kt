@@ -88,7 +88,7 @@ class AboutActivity {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                AboutHeader(onBackClick = {})
+                AboutHeader(onBackClick = { navController.popBackStack() })
                 AboutContent()
             }
         }
