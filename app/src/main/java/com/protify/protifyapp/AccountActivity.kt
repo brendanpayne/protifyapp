@@ -123,6 +123,16 @@ class AccountActivity {
                         )
                     }, date = date)
                 }
+                composable("addEvent/{date}/{startTime}/{endTime}") { backStackEntry ->
+                    val date = backStackEntry.arguments?.getString("date")?: LocalDate.now().toString()
+                    val startTime = backStackEntry.arguments?.getString("startTime")?: "00:00"
+                    val endTime = backStackEntry.arguments?.getString("endTime")?: "23:59"
+                    AddEvent().AddEventPage(navigateBack = {
+                        AddEvent().navigateBack(
+                            navController = navController
+                        )
+                    }, date = date, startTime = startTime, endTime = endTime)
+                }
                 composable("profile") {
                     ProfileActivity().ProfilePage(navController)
                 }

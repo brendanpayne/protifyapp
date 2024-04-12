@@ -1,5 +1,6 @@
 package com.protify.protifyapp.features.events
 
+import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.ContentUris
@@ -95,6 +96,7 @@ import com.protify.protifyapp.utils.MapsDurationUtils
 import com.protify.protifyapp.utils.WeatherUtils
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 open class AddEvent {
@@ -120,6 +122,8 @@ open class AddEvent {
     var isOptimized: Boolean by mutableStateOf(true)
     var isOutside: Boolean by mutableStateOf(false)
     var selectedDateGlobal by mutableStateOf(LocalDateTime.now()) // Store Date for DatePickerDialog
+    var selectedStartTimeGlobal by mutableStateOf(LocalTime.now()) // Store Time for TimePickerDialog
+    var selectedEndTimeGlobal by mutableStateOf(LocalTime.MAX) // Store Time for TimePickerDialog
 
     private fun updateName(newName: String) {
         name = newName
@@ -246,11 +250,22 @@ open class AddEvent {
         this.isOptimized = isOptimized
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
+    @SuppressLint("SuspiciousIndentation")
     @Composable
-    fun AddEventUI(navigateBack: () -> Unit, defaultDate: LocalDate = LocalDate.now()) {
+    fun AddEventUI(
+        navigateBack: () -> Unit,
+        defaultDate: LocalDate = LocalDate.now(),
+        defaultStartTime: LocalDateTime = LocalDateTime.now(),
+        defaultEndTime: LocalDateTime = LocalDateTime.MAX
+    ) {
 
-        selectedDateGlobal = LocalDateTime.of(defaultDate, LocalDateTime.now().toLocalTime()) // Set the selected date to the default date
+        startTime = defaultStartTime
+        endTime = defaultEndTime
+
+        formattedStartTime(startTime)
+        formattedEndTime(endTime)
+
+        selectedDateGlobal = LocalDateTime.of(defaultDate, startTime.toLocalTime()) // Set the selected date to the default date
 
         val context = LocalContext.current
         val user = FirebaseLoginHelper().getCurrentUser()?.uid
@@ -1163,14 +1178,21 @@ open class AddEvent {
     }
 
     @Composable
-    open fun AddEventPage(navigateBack: () -> Unit, date: String) {
+    open fun AddEventPage(
+        navigateBack: () -> Unit,
+        date: String,
+        startTime: String = "00:00",
+        endTime: String = "00:00"
+    ) {
         val context = LocalContext.current
         val user = FirebaseLoginHelper().getCurrentUser()?.uid
         val dateToLocalDate = LocalDate.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        val startTimeToLocalTime = dateToLocalDate.atTime(LocalTime.parse(startTime, DateTimeFormatter.ofPattern("HH:mm")))
+        val endTimeToLocalTime = dateToLocalDate.atTime(LocalTime.parse(endTime, DateTimeFormatter.ofPattern("HH:mm")))
         FirebaseApp.initializeApp(context)
         Column {
             AddEventHeader(title = "Add New Event", onBackClick = navigateBack)
-            AddEventUI(navigateBack, dateToLocalDate)
+            AddEventUI(navigateBack, dateToLocalDate, startTimeToLocalTime, endTimeToLocalTime)
             EventCreateItem("Create Event", user, navigateBack, context)
         }
     }

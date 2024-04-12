@@ -98,11 +98,16 @@ class EditEvent (private val eventToEdit: FirestoreEvent, private val isRecipe: 
     }
 
     @Composable
-    override fun AddEventPage(navigateBack: () -> Unit, date: String) {
+    override fun AddEventPage(
+        navigateBack: () -> Unit,
+        date: String,
+        startTime: String,
+        endTime: String
+    ) {
         eventToEdit.let { event ->
             name = event.name
-            startTime = event.startTime
-            endTime = event.endTime
+            this.startTime = event.startTime
+            this.endTime = event.endTime
             location = event.location
             description = event.description
             timeZone = event.timeZone
@@ -111,11 +116,18 @@ class EditEvent (private val eventToEdit: FirestoreEvent, private val isRecipe: 
             isOutside = event.isOutside
             isOptimized = !(event.isOptimized)
             selectedDateGlobal= event.startTime.toLocalDate().atStartOfDay() // Put in date picker
+            selectedEndTimeGlobal = event.endTime.toLocalTime()
+            selectedStartTimeGlobal = event.startTime.toLocalTime()
             formattedStartTime = formatTime(event.startTime)
             formattedEndTime = formatTime(event.endTime)
         }
 
-        super.AddEventPage(navigateBack, selectedDateGlobal.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+        super.AddEventPage(
+            navigateBack,
+            selectedDateGlobal.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+            selectedStartTimeGlobal.format(DateTimeFormatter.ofPattern("hh:mm")),
+            selectedEndTimeGlobal.format(DateTimeFormatter.ofPattern("hh:mm"))
+        )
     }
 
     @Composable

@@ -208,23 +208,26 @@ class EventBreakdown {
         return (hour * 60 + minute) / 60
     }
 
-    private fun calculateLayer(event: Event, events: List<Event>): Int {
-        val sortedEvents = events.sortedByDescending {
-            convertTimeToFloat(it.endTime) - convertTimeToFloat(it.startTime)
+    private fun twelveToTwentyFour(time: String): String {
+        val timeArray = time.split(":")
+        var hour = timeArray[0].toInt()
+        val minute = timeArray[1].substring(0, 2)
+        val amPm = timeArray[1].substring(2).trim()
+
+        if (amPm == "PM" && hour < 12) {
+            hour += 12
+        } else if (amPm == "AM" && hour == 12) {
+            hour = 0
         }
-        val layers = mutableListOf<MutableList<Event>>()
+        return "${hourString(hour)}:$minute"
+    }
 
-        for (e in sortedEvents) {
-            val layer = layers.indexOfFirst { layer -> layer.none { checkOverlap(e, it) } }
-
-            if (layer == -1) {
-                layers.add(mutableListOf(e))
-            } else {
-                layers[layer].add(e)
-            }
+    private fun hourString(hour: Int): String {
+        return if (hour < 10) {
+            "0$hour"
+        } else {
+            hour.toString()
         }
-
-        return layers.indexOfFirst { layer -> layer.contains(event) }
     }
 
     private fun checkOverlap(event1: Event, event2: Event): Boolean {
@@ -236,7 +239,11 @@ class EventBreakdown {
     }
 
     @Composable
-    fun TimeGridSlot(time: String, scale: Int, showTimes: Boolean) {
+    fun TimeGridSlot(
+        time: String,
+        scale: Int,
+        showTimes: Boolean
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -378,7 +385,23 @@ class EventBreakdown {
                 .fillMaxWidth(1f)
                 .padding(horizontal = 8.dp)
                 .verticalScroll(scrollState)
-                .background(Color.Transparent),
+                .background(Color.Transparent)
+                .pointerInput(Unit) {
+                    detectTapGestures(onLongPress = { offset ->
+                        val clickedSlot = timeSlots.find { slot ->
+                            val slotStart = convertTimeToFloat(slot.startTime) * 60 * scale
+                            val slotEnd = slotStart + slot.height * 60 * scale
+                            offset.y in slotStart..slotEnd
+                        }
+                        if (clickedSlot == null) {
+                            val offsetInHours = (offset.y / (60.dp.toPx())) / scale
+                            val startTime = hourString((offsetInHours - 0.5).toInt())
+                            val endTime = hourString((offsetInHours + 0.5).toInt())
+                            Log.d("TimeSlotLayer", "Clicked on empty slot at $startTime - $endTime")
+                            navController.navigate("addEvent/${date}/${startTime}:00/${endTime}:00")
+                        }
+                    })
+                },
             contentAlignment = Alignment.TopEnd
         ) {
             Column(
