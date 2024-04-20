@@ -318,7 +318,9 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
         // Init nonRainingTimes bool
         var hasRainingTimes = true
         // Check if the nonRainingTimes list is 0:00-00:00
-        if (nonRainingTimes.isNotEmpty()) { // Out of bounds check
+        if (nonRainingTimes.isNullOrEmpty()) { // Out of bounds check
+            hasRainingTimes = false
+        } else {
             if (nonRainingTimes.size == 1 && nonRainingTimes[0].first.hour == 0 && nonRainingTimes[0].second.hour == 0 && events.any { it.isOutside }) {
                 hasRainingTimes = false
             }
@@ -351,6 +353,11 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                     try {
                         optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
                     } catch (e: Exception) {
+                        timesRan++
+                        if (timesRan > maxRetries - 1 && !isCallbackInvoked) {
+                            timesRan = 0
+                            thirdCall()
+                        }
                         return@getResponseNoLocationData
                     }
                     if (!isCallbackInvoked) { // If the callback hasn't been called yet
@@ -373,6 +380,11 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                     try {
                         optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
                     } catch (e: Exception) {
+                        timesRan++
+                        if (timesRan > maxRetries - 1 && !isCallbackInvoked) {
+                            timesRan = 0
+                            thirdCall()
+                        }
                         return@getResponseBlockedEvents
                     }
                     if (!isCallbackInvoked) { // If the callback hasn't been called yet
@@ -397,6 +409,11 @@ class OptimizeSchedule(day: String, month: String, year: String, events: List<Fi
                 try {
                     optimizedSchedule = parse.fromJson(response, OptimizedSchedule::class.java)
                 } catch (e: Exception) {
+                    timesRan++
+                    if (timesRan > maxRetries - 1 && !isCallbackInvoked) {
+                        timesRan = 0
+                        thirdCall()
+                    }
                     return@getResponse
                 }
                 if (!isCallbackInvoked) { // If the callback hasn't been called yet
